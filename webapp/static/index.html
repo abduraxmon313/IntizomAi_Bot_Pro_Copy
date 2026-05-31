@@ -1067,7 +1067,7 @@ function applyPremiumUI(s){
     if(cta)cta.style.display='none';
     // progress: qolgan kun / tarif umumiy kuni
     if(bar){
-      const totalDays={'1 oylik':30,'3 oylik':90,'6 oylik':180,'1 yillik':365}[s.plan_title]||30;
+      const totalDays={'Sinov 7 kun':7,'Oylik':30,'3 oy':90,'6 oy':180,'Yillik':365}[s.plan_title]||30;
       const pct=Math.max(4,Math.min(100,Math.round(dl*100/totalDays)));
       setTimeout(()=>{bar.style.width=pct+'%';},150);
     }
