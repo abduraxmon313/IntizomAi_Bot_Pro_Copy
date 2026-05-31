@@ -94,8 +94,8 @@ async def build_report_text(session, user) -> str:
     # ── Statistika qatori ───────────────────────────────────
     text += (
         f"🔥 <b>{user.streak}</b> kun   "
-        f"⚡️ <b>+{today_xp}</b> XP   "
-        f"🏆 <b>{user.total_score}</b> jami\n"
+        f"⭐️ <b>+{today_xp}</b> ball   "
+        f"🏆 <b>{user.total_score}</b> umumiy\n"
     )
     text += f"{status}\n\n"
     text += _closing_line(done_n, total)

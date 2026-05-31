@@ -21,68 +21,59 @@ from bot.models.user import User
 
 # ── Templates ────────────────────────────────────────────────
 MORNING = [
-    "🌅 Yangi kun — yangi imkoniyat. Bugun qaysi cho'qqini zabt etamiz?",
-    "☀️ Erta turdingmi? Bu allaqachon kichik g'alaba.",
-    "🔥 Bugungi sen — kechagi sendan bir qadam oldinda.",
-    "🌱 Har kichik qadam — katta o'zgarishning bir bo'lagi.",
-    "💎 Intizom — bu kayfiyat emas, bu qaror.",
-    "🚀 Bugun atigi 1% yaxshiroq bo'l — yil oxirida bu 37 baravar.",
-    "🧭 Maqsading aniq bo'lsa, yo'l o'zi ko'rinadi. Boshladikmi?",
-    "⚡️ Energiya — harakatdan tug'iladi. Birinchi qadamni tashla.",
+    "☀️ Xayrli tong! Yangi kun — yangi imkoniyat. Bugun nimadan boshlaymiz?",
+    "🌅 Erta turdingizmi? Bu allaqachon kichik g'alaba.",
+    "🔥 Bugungi siz — kechagi sizdan bir qadam oldinda.",
+    "🌱 Har kichik qadam katta natijaga olib boradi. Bugun ham davom etamiz.",
+    "💎 Intizom — bu kayfiyat emas, qaror. Bugun ham to'g'ri qaror qabul qiling.",
+    "🎯 Kuningizni rejalashtiring — shunda kun sizni boshqaradi emas, siz kunni.",
 ]
 
 STREAK_WARNING = [
-    "🔥 Streakingni qo'ldan chiqarma — {streak} kunlik mehnating xavf ostida.",
-    "⚠️ Bugun bittasini ham bajarmasang, {streak} kunlik olov o'chadi.",
-    "💪 Yana atigi 1 ta — va kun saqlanadi. Kelajakdagi sen minnatdor bo'ladi.",
-    "🛡 Streak — bu sen o'zingga bergan va'da. Uni buzma.",
-    "⏳ Kun tugayapti, lekin hali kech emas. Bitta yutuq — va olov yonadi.",
+    "🔥 Streakingizni saqlang — {streak} kunlik mehnatingiz xavf ostida.",
+    "⚠️ Bugun bitta reja ham bajarmasangiz, {streak} kunlik olov o'chadi.",
+    "💪 Yana atigi 1 ta reja — va kun saqlanadi. Buni keyinga qoldirmang.",
+    "🛡 Streak — bu o'zingizga bergan va'da. Uni buzmang.",
 ]
 
 LEVEL_UP = [
-    "⚡️ Yangi daraja — yangi sen.",
-    "🎉 Daraja oshdi! Endi keyingi cho'qqi ko'rinib turibdi.",
-    "🏆 Bu shunchaki raqam emas — bu sening o'sganing isboti.",
-    "🌟 Yuqoriga! Har daraja — qat'iyatingning mevasi.",
+    "🚀 Yangi daraja — yangi siz!",
+    "🎉 Daraja oshdi! Keyingi cho'qqi allaqachon ko'rinmoqda.",
+    "🏆 Bu shunchaki raqam emas — bu sizning o'sganingiz isboti.",
 ]
 
 PERFECT_DAY = [
-    "✨ Mukammal kun! Hech narsa o'tkazib yuborilmadi.",
-    "🌟 Bugun sen 1% emas — 100% bo'lding.",
-    "💎 Bu kun tarixingda oltin harflar bilan qoladi.",
-    "👑 To'liq nazorat. Bugun sen o'z hayotingning xo'jasisan.",
+    "✨ Mukammal kun! Bironta reja ham o'tkazib yuborilmadi.",
+    "🌟 Bugun siz 100% bo'ldingiz. Bunday kunlar sizni ajratib turadi.",
+    "💎 Bu kun tarixingizda oltin sahifa bo'lib qoladi.",
 ]
 
 COMEBACK = [
-    "🔄 Qaytib kelding — bu eng muhim qadam edi.",
-    "💪 Tushish — mag'lubiyat emas. To'xtab qolish — mag'lubiyat.",
-    "🌱 Yana boshlash — eng kuchli odatlardan biri.",
-    "🌅 Har kun — yangi sahifa. Bugun toza varaqdan boshla.",
+    "🔄 Qaytib keldingiz — bu eng muhim qadam edi.",
+    "💪 Tushish — mag'lubiyat emas. To'xtab qolish — mag'lubiyat. Davom etamiz.",
+    "🌱 Yana boshlash — eng kuchli odatlardan biri. Bugun toza varaqdan boshlaymiz.",
 ]
 
 LOW_DISCIPLINE = [
-    "🎯 Discipline biroz pasaydi. Bitta kichik yutuq — va u tiklanadi.",
-    "📈 Hammasi sening qo'lingda. Bugun bitta narsani uddalab ko'r.",
-    "🪄 Katta o'zgarish kichik qadamdan boshlanadi. Bittasini tanla.",
+    "🎯 Intizom kuchingiz biroz pasaydi. Bitta kichik yutuq — va u tiklanadi.",
+    "📈 Hammasi sizning qo'lingizda. Bugun bitta narsani uddalab ko'ring.",
 ]
 
 HIGH_DISCIPLINE = [
-    "🏆 Discipline cho'qqida! Sen o'z shaxsingni qurmoqdasan.",
-    "💎 Sen endi shunchaki 'qilaman' deydigon emas — qiluvchisan.",
-    "👑 Bu daraja — kamchilikning emas, izchillikning mevasi.",
+    "🏆 Intizom kuchingiz cho'qqida! Siz o'z xarakteringizni qurmoqdasiz.",
+    "💎 Siz endi shunchaki 'qilaman' deydigan emas — qiluvchisiz.",
 ]
 
 EVENING = [
-    "🌙 Kun yakuni. Bugun qaysi qadaming bilan faxrlanasan?",
-    "✨ Esda tut: bugungi tanlovlaring — ertangi poydevoring.",
-    "🌌 Tinch dam ol. Ertaga yana yangi savash bor.",
-    "📖 Bugungi kuningni bir jumlada yakunla — nimadan minnatdorsan?",
+    "🌙 Kun yakuni. Bugun qaysi ishingiz bilan faxrlanasiz?",
+    "✨ Esda tuting: bugungi tanlovlaringiz — ertangi poydevoringiz.",
+    "🌌 Yaxshi dam oling. Ertaga yana yangi imkoniyat bor.",
 ]
 
 EMPTY_DAY = [
-    "📋 Bugun reja yo'q. Bitta kichik niyatdan boshla.",
+    "📋 Bugun reja yo'q. Bitta kichik niyatdan boshlang.",
     "🌱 Eng kichik reja — eng kuchli boshlanish.",
-    "✏️ Bo'sh sahifa — imkoniyat. Bugun nimani uddalashni xohlaysan?",
+    "✍️ Bo'sh sahifa — imkoniyat. Bugun nimani uddalashni xohlaysiz?",
 ]
 
 

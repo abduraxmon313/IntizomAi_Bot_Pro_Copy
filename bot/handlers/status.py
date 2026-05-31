@@ -52,19 +52,21 @@ async def my_status_handler(message: Message, session: AsyncSession):
 
     text = (
         f"{emoji} <b>{user.full_name}</b>\n"
-        f"🏅 <b>{rank}</b> · Daraja {lvl}\n"
-        f"<code>{bar_filled}{bar_empty}</code> {pct}%\n"
-        f"⚡️ XP: <b>{user.xp or 0}</b>  ·  keyingi darajaga <b>{max(0, needed - in_lvl)}</b>\n\n"
-        f"━━━━━━━━━━━━━\n"
+        f"📊 {rank} · {lvl}-daraja\n"
+        f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
         f"🔥 Streak: <b>{user.streak or 0} kun</b>"
         f"  (rekord {user.longest_streak or 0})\n"
-        f"💎 Discipline: <b>{user.discipline_score or 50}/100</b>\n"
+        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
         f"✨ Mukammal kunlar: <b>{user.perfect_days or 0}</b>\n"
-        f"🏆 Yutuqlar: <b>{ach_count} ta</b>\n"
-        f"✅ Jami bajarilgan: <b>{all_done} ta</b>\n"
-        f"━━━━━━━━━━━━━\n"
-        f"📅 <b>Bugun:</b> {done_today}/{total_today} reja bajarildi\n"
-        f"⚡️ Bugungi XP: <b>{today_score:+d}</b>"
+        f"🏅 Yutuqlar: <b>{ach_count} ta</b>\n"
+        f"✅ Jami bajarilgan: <b>{all_done} ta</b>\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 <b>Bugun:</b>\n"
+        f"📋 Rejalar: <b>{total_today} ta</b>\n"
+        f"✅ Bajarildi: <b>{done_today} ta</b>\n"
+        f"⭐️ Bugungi ball: <b>{today_score:+d}</b>"
     )
 
     await message.answer(text, parse_mode="HTML")

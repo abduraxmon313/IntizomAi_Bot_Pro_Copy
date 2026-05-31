@@ -49,17 +49,16 @@ async def start_handler(message: Message, session: AsyncSession):
 
     if not user.onboarded:
         text = (
-            "✨ <b>Salom, " + (user.full_name or "do'st") + "!</b>\n\n"
-            "Men <b>Intizom AI</b> — sening cho'ntagingdagi intizom murabbiying. 🚀\n\n"
-            "Men bilan birga sen:\n"
-            "🎯 Maqsadlaringni aniq rejaga aylantirasan\n"
-            "🔥 Har kuni streak yig'ib, izchillik quroying\n"
-            "⚡️ XP va darajalar bilan o'sishingni ko'rasan\n"
-            "💎 Discipline kuchingni 100 ballik shkalada kuzatasan\n"
-            "🧠 Shaxsiy AI tahlil va motivatsiya olasan\n\n"
-            "<b>Keling, boshlaymiz!</b> Bugun nima qilmoqchisan?\n"
-            "🎤 Ovoz yoki ✍️ matn bilan ayting:\n"
-            "<i>«Soat 7 da turaman, 9 da kitob o'qiyman»</i>"
+            "🎯 <b>Intizom AI</b> ga xush kelibsiz!\n\n"
+            "Men sizning shaxsiy intizom yordamchingizman.\n\n"
+            "📌 <b>Nima qila olaman:</b>\n"
+            "• Ovoz yoki matn orqali reja tuzish\n"
+            "• Vaqti kelganda eslatish\n"
+            "• Bajargan ishlaringiz uchun ball berish\n"
+            "• Streak, daraja va kunlik hisobot yuritish\n\n"
+            "💡 <b>Boshlash uchun</b> — bugun nima qilmoqchi ekanligingizni "
+            "ovozli xabar yoki matn yuboring!\n\n"
+            "<i>Masalan: 'Soat 6 da turaman, 9 da kitob o'qiyman'</i>"
         )
     else:
         lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
@@ -68,13 +67,13 @@ async def start_handler(message: Message, session: AsyncSession):
         bar_empty = "▱" * (10 - len(bar_filled))
         name = user.full_name or "do'st"
         text = (
-            f"✨ <b>Salom, {name}!</b>\n\n"
-            f"{emoji} <b>{rank}</b> · Daraja {lvl}\n"
+            f"🎯 <b>Xush kelibsiz, {name}!</b>\n\n"
+            f"{emoji} <b>{rank}</b> · {lvl}-daraja\n"
             f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
             f"🔥 Streak: <b>{user.streak or 0} kun</b>\n"
-            f"💎 Discipline: <b>{user.discipline_score or 50}/100</b>\n"
-            f"⚡️ XP: <b>{user.xp or 0}</b>\n\n"
-            "<b>Bugun nimani uddalaymiz?</b> 👇"
+            f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
+            f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n\n"
+            "Bugun nima qilamiz? 👇"
         )
 
     await message.answer(
@@ -89,13 +88,13 @@ async def start_handler(message: Message, session: AsyncSession):
         if is_premium:
             promo_text = (
                 "🚀 <b>Mini App</b> — kalendar, statistika va shaxsiy AI Coach.\n"
-                f"👑 Premium faol — <b>{days_left(user)} kun</b> qoldi. Bahridan to'liq foydalan!"
+                f"💎 Premium faol — <b>{days_left(user)} kun</b> qoldi. Bahridan to'liq foydalaning!"
             )
         else:
             promo_text = (
                 "🚀 <b>Mini App</b> — kalendar, statistika va AI Coach bir joyda.\n\n"
-                "👑 Bu <b>Premium</b> imkoniyat. Ochish uchun obuna kerak.\n"
-                "Tugmani bossang, ichida obuna shartlari ko'rinadi 👇"
+                "💎 Bu <b>Premium</b> imkoniyat. Ochish uchun obuna kerak.\n"
+                "Tugmani bossangiz, ichida obuna shartlari ko'rsatiladi 👇"
             )
         await message.answer(
             promo_text,
@@ -120,11 +119,11 @@ async def home_handler(callback: CallbackQuery, session: AsyncSession):
     await callback.message.edit_text(
         f"🏠 <b>Bosh sahifa</b>\n\n"
         f"{emoji} <b>{user.full_name}</b>\n"
-        f"🏅 {rank} · Daraja {lvl}\n"
+        f"📊 {rank} · {lvl}-daraja\n"
         f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
-        f"🔥 Streak: <b>{user.streak or 0}</b> kun\n"
-        f"💎 Discipline: <b>{user.discipline_score or 50}/100</b>\n"
-        f"⚡️ XP: <b>{user.xp or 0}</b>",
+        f"🔥 Streak: <b>{user.streak or 0} kun</b>\n"
+        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
+        f"⭐️ Jami ball: <b>{user.total_score or 0}</b>",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )

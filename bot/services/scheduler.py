@@ -58,11 +58,11 @@ async def send_plan_notifications(bot):
                 await bot.send_message(
                     chat_id=user.telegram_id,
                     text=(
-                        f"⏰ <b>Vaqt keldi!</b>\n\n"
+                        f"⏰ <b>Vaqt bo'ldi!</b>\n\n"
                         f"📌 <b>{plan.title}</b>\n"
                         f"🕐 {plan.scheduled_time}\n\n"
-                        f"✅ Hoziroq bajar — <b>+{plan.score_value} XP</b> seni kutmoqda\n"
-                        f"🔥 Streakingni uzma!"
+                        f"✅ Bajarsangiz <b>+{plan.score_value} ball</b>\n"
+                        f"❌ Bajarmasangiz <b>-3 ball</b>"
                     ),
                     parse_mode="HTML",
                     reply_markup=done_failed_keyboard(plan.id),
@@ -227,16 +227,14 @@ async def send_daily_summary(bot):
                 await bot.send_message(
                     chat_id=user.telegram_id,
                     text=(
-                        f"🌙 <b>Kun yakuni</b>\n"
-                        f"━━━━━━━━━━━━━\n"
+                        f"🌙 <b>Kunlik hisobot</b>\n\n"
                         f"✅ Bajarildi: <b>{len(done)} ta</b>\n"
                         f"❌ Bajarilmadi: <b>{len(failed)} ta</b>\n"
-                        f"⏳ Qoldi: <b>{len(pending)} ta</b>\n"
-                        f"━━━━━━━━━━━━━\n"
-                        f"⚡️ XP: <b>{user.xp or 0}</b>\n"
+                        f"⏳ Eslatilmadi: <b>{len(pending)} ta</b>\n\n"
+                        f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
                         f"🔥 Streak: <b>{user.streak} kun</b>\n"
-                        f"💎 Discipline: <b>{user.discipline_score or 50}/100</b>\n\n"
-                        f"<i>Ertaga yana zo'r bo'lamiz 🚀</i>"
+                        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n\n"
+                        f"<i>Ertaga yana davom etamiz!</i>"
                     ),
                     parse_mode="HTML", reply_markup=kb,
                 )
@@ -287,10 +285,10 @@ async def check_pending_plans(bot):
                 await bot.send_message(
                     chat_id=user.telegram_id,
                     text=(
-                        f"🌙 <b>Kun tugamoqda</b>\n\n"
+                        f"🌙 <b>Kun tugayapti</b>\n\n"
                         f"Quyidagi <b>{len(plans)} ta</b> reja hali belgilanmagan:\n\n"
                         + "\n".join(lines) + extra +
-                        "\n\nBugun nimalarni uddaladingiz? Belgilab qo'ying 👇"
+                        "\n\nBugun nimalarni bajardingiz? Belgilab qo'ying 👇"
                     ),
                     parse_mode="HTML", reply_markup=kb,
                 )

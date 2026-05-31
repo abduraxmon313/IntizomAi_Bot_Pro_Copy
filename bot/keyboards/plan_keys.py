@@ -54,7 +54,7 @@ def plan_actions_keyboard(plan_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{plan_id}"),
-            InlineKeyboardButton(text="❌ Ulgurmadim", callback_data=f"failed_{plan_id}"),
+            InlineKeyboardButton(text="❌ Bajara olmadim", callback_data=f"failed_{plan_id}"),
         ],
         [
             InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"delete_{plan_id}"),
@@ -70,10 +70,10 @@ def back_to_home_keyboard() -> InlineKeyboardMarkup:
 
 
 def done_failed_keyboard(plan_id: int) -> InlineKeyboardMarkup:
-    """Notification xabarida bajardim/ulgurmadim"""
+    """Notification xabarida bajardim/bajara olmadim"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="✅ Bajardim", callback_data=f"done_{plan_id}"),
-            InlineKeyboardButton(text="❌ Ulgurmadim", callback_data=f"failed_{plan_id}"),
+            InlineKeyboardButton(text="❌ Bajara olmadim", callback_data=f"failed_{plan_id}"),
         ]
     ])

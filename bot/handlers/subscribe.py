@@ -61,16 +61,15 @@ async def render_subscription(message: Message, session: AsyncSession, telegram_
     if status.is_premium:
         # Faol obuna — sotib olish tugmalari YO'Q
         text = (
-            "👑 <b>Premium faol!</b>\n"
-            "━━━━━━━━━━━━━\n"
+            "💎 <b>Premium faol!</b>\n\n"
             f"📦 Tarif: <b>{status.plan_title or 'Premium'}</b>\n"
             f"📅 Tugaydi: <b>{_fmt_date(status.premium_until)}</b>\n"
-            f"⏳ Qolgan: <b>{status.days_left} kun</b>\n\n"
-            "✨ Barcha imkoniyatlar ochiq:\n"
-            "♾ Cheksiz reja va maqsadlar\n"
-            "🚀 Mini App — kalendar, statistika, AI Coach\n"
-            "🛡 Streak Freeze va chuqur tahlil\n\n"
-            "Rahmat! Intizoming davom etsin 🔥"
+            f"⏳ Qolgan kun: <b>{status.days_left} kun</b>\n\n"
+            "✨ Sizda barcha imkoniyatlar ochiq:\n"
+            "• Cheksiz reja va maqsadlar\n"
+            "• Mini App (kalendar, statistika, AI Coach)\n"
+            "• Streak Freeze va chuqur tahlil\n\n"
+            "Rahmat! Intizomingiz davom etsin 🔥"
         )
         await message.answer(
             text, parse_mode="HTML", reply_markup=premium_active_keyboard()
@@ -79,16 +78,15 @@ async def render_subscription(message: Message, session: AsyncSession, telegram_
 
     # Bepul foydalanuvchi — planlarni taklif qilamiz
     text = (
-        "👑 <b>Intizom AI Premium</b>\n"
-        "━━━━━━━━━━━━━\n\n"
-        "Premium bilan sen olasan:\n"
-        "🚀 <b>Mini App</b> — kalendar, statistika, AI Coach\n"
-        "♾ Cheksiz reja va maqsadlar\n"
-        "🛡 Streak Freeze — streakni himoya qil\n"
-        "📈 Chuqur tahlil va elite belgilar\n"
-        "🎨 Premium temalar\n\n"
-        f"🆓 <b>Bepul rejim:</b> Mini App'siz, kuniga {FREE_DAILY_PLAN_LIMIT} ta reja.\n\n"
-        "👇 O'zingga mos tarifni tanla:"
+        "💎 <b>Intizom AI Premium</b>\n\n"
+        "Premium bilan to'liq imkoniyatlar ochiladi:\n"
+        "• <b>Mini App</b> — kalendar, statistika, AI Coach\n"
+        "• Cheksiz reja va maqsadlar\n"
+        "• Streak Freeze (streakni himoya qilish)\n"
+        "• Chuqur tahlil va elite belgilar\n"
+        "• Premium temalar\n\n"
+        f"🆓 <b>Bepul rejim:</b> Mini App'siz, kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja.\n\n"
+        "👇 Tarifni tanlang:"
     )
     await message.answer(text, parse_mode="HTML", reply_markup=plans_keyboard())
 
@@ -176,13 +174,12 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
     await state.clear()
     plan = SUBSCRIPTION_PLANS.get(sub.plan, {})
     await message.answer(
-        "🎉 <b>Tabriklaymiz — Premium faollashdi!</b> 👑\n"
-        "━━━━━━━━━━━━━\n"
+        "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>\n\n"
         f"📦 Tarif: <b>{plan.get('title', sub.plan)}</b>\n"
         f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
         f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
         "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
-        "Pastdagi tugma orqali Mini App'ni och 👇",
+        "Pastdagi tugma orqali Mini App'ni oching 👇",
         parse_mode="HTML",
         reply_markup=premium_active_keyboard(),
     )
