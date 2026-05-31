@@ -4,6 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
 
 from bot.services.admin_service import (
     is_admin, get_all_users, get_users_count,
@@ -518,6 +519,69 @@ async def broadcast_text_received(message: Message, state: FSMContext, session: 
 
 
 # Yuborish tasdiqlandi
+async def _run_broadcast_all(bot, final_text, progress_msg):
+    """
+    Barcha userlarga xabar yuborish — FON (background) vazifa sifatida.
+    Handler darhol javob qaytaradi, yuborish esa orqa fonda davom etadi
+    (flood-control + bloklagan userni nofaol qilish bilan).
+    """
+    import asyncio
+    from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
+    from sqlalchemy import select
+    from database.db import AsyncSessionLocal
+    from bot.models.user import User
+
+    sent = failed = blocked = 0
+    async with AsyncSessionLocal() as session:
+        users = (await session.execute(select(User))).scalars().all()
+        total = len(users)
+        for i, user in enumerate(users, 1):
+            try:
+                await bot.send_message(user.telegram_id, final_text, parse_mode="HTML")
+                sent += 1
+            except TelegramRetryAfter as e:
+                await asyncio.sleep(e.retry_after + 1)
+                try:
+                    await bot.send_message(user.telegram_id, final_text, parse_mode="HTML")
+                    sent += 1
+                except Exception:
+                    failed += 1
+            except TelegramForbiddenError:
+                blocked += 1
+                user.is_active = False
+            except Exception:
+                failed += 1
+
+            if i % 25 == 0:
+                try:
+                    await progress_msg.edit_text(f"⏳ Yuborilmoqda... {i}/{total}")
+                except Exception:
+                    pass
+                try:
+                    await session.commit()  # bloklaganlarni saqlab boramiz
+                except Exception:
+                    await session.rollback()
+            await asyncio.sleep(0.05)
+
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    try:
+        await progress_msg.edit_text(
+            f"✅ <b>Xabar yuborildi!</b>\n\n"
+            f"👥 Jami: <b>{total} ta</b>\n"
+            f"✅ Muvaffaqiyatli: <b>{sent} ta</b>\n"
+            f"🚫 Bloklagan: <b>{blocked} ta</b>\n"
+            f"❌ Yuborilmadi: <b>{failed} ta</b>",
+            parse_mode="HTML",
+            reply_markup=back_to_admin_keyboard(),
+        )
+    except Exception:
+        pass
+
+
 @router.callback_query(F.data == "broadcast_send")
 async def broadcast_send_confirmed(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     if not await is_admin(session, callback.from_user.id):
@@ -534,7 +598,7 @@ async def broadcast_send_confirmed(callback: CallbackQuery, state: FSMContext, s
     final_text = f"📢 <b>Intizom AI:</b>\n\n{broadcast_text}"
 
     if target == "id":
-        # Bitta usergа
+        # Bitta userga
         try:
             await callback.bot.send_message(
                 chat_id=target_id,
@@ -551,70 +615,14 @@ async def broadcast_send_confirmed(callback: CallbackQuery, state: FSMContext, s
                 f"❌ Xabar yuborishda xatolik: {str(e)}",
                 reply_markup=back_to_admin_keyboard()
             )
+        await callback.answer()
     else:
-        # Barcha userlarga — Telegram flood limitidan saqlanish uchun
-        # har bir xabar orasida kichik pauza (0.05s ≈ 20 msg/sek) qo'yamiz
-        # va flood xatosi bo'lsa kutib qayta urinamiz.
-        import asyncio
-        from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
-
-        users = await get_all_users(session)
-        total = len(users)
-        sent = 0
-        failed = 0
-        blocked = 0
-
+        # Barcha userlarga — FON vazifasi (handler bloklanmaydi, callback eskirmaydi)
         progress_msg = await callback.message.edit_text(
-            f"⏳ Yuborilmoqda... 0/{total}"
+            "⏳ Yuborish boshlandi... (orqa fonda davom etadi)"
         )
-
-        for i, user in enumerate(users, 1):
-            try:
-                await callback.bot.send_message(
-                    chat_id=user.telegram_id,
-                    text=final_text,
-                    parse_mode="HTML",
-                )
-                sent += 1
-            except TelegramRetryAfter as e:
-                # Telegram flood limit — ko'rsatilgan vaqt kutib, qayta urinamiz
-                await asyncio.sleep(e.retry_after + 1)
-                try:
-                    await callback.bot.send_message(
-                        chat_id=user.telegram_id,
-                        text=final_text,
-                        parse_mode="HTML",
-                    )
-                    sent += 1
-                except Exception:
-                    failed += 1
-            except TelegramForbiddenError:
-                # User botni bloklagan / to'xtatgan
-                blocked += 1
-            except Exception:
-                failed += 1
-
-            # Har 25 ta xabardan keyin progressni yangilaymiz
-            if i % 25 == 0:
-                try:
-                    await progress_msg.edit_text(f"⏳ Yuborilmoqda... {i}/{total}")
-                except Exception:
-                    pass
-
-            # Sekundlik pauza — flood limitiga tushmaslik uchun
-            await asyncio.sleep(0.05)
-
-        await progress_msg.edit_text(
-            f"✅ <b>Xabar yuborildi!</b>\n\n"
-            f"👥 Jami: <b>{total} ta</b>\n"
-            f"✅ Muvaffaqiyatli: <b>{sent} ta</b>\n"
-            f"🚫 Bloklagan: <b>{blocked} ta</b>\n"
-            f"❌ Yuborilmadi: <b>{failed} ta</b>",
-            parse_mode="HTML",
-            reply_markup=back_to_admin_keyboard(),
-        )
-
-    await callback.answer()
+        asyncio.create_task(_run_broadcast_all(callback.bot, final_text, progress_msg))
+        await callback.answer("📢 Yuborish boshlandi", show_alert=False)
 
 
 
