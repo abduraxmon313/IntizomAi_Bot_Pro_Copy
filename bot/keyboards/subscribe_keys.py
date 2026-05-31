@@ -16,12 +16,15 @@ def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool 
     """
     rows = []
     for key, plan in SUBSCRIPTION_PLANS.items():
+        emoji = plan.get("emoji", "💎")
+        tag = plan.get("tag", "")
+        tag_str = f" ({tag})" if tag else ""
         if free:
-            label = f"🎁 {plan['title']} — BEPUL"
+            label = f"🎁 {plan['title']} — BEPUL{tag_str}"
         elif bonus_days > 0:
-            label = f"💎 {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
+            label = f"{emoji} {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
         else:
-            label = f"💎 {plan['title']} — {format_price(plan['price'])} so'm"
+            label = f"{emoji} {plan['title']} — {format_price(plan['price'])} so'm{tag_str}"
         rows.append([
             InlineKeyboardButton(text=label, callback_data=f"sub_plan_{key}")
         ])
@@ -29,11 +32,11 @@ def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool 
     # Promokod tugmasi — bekor qilishdan tepada
     if promo_applied:
         rows.append([
-            InlineKeyboardButton(text="🎟 Promokodni o'zgartirish", callback_data="sub_promo_enter")
+            InlineKeyboardButton(text="🏷️ Promokodni o'zgartirish", callback_data="sub_promo_enter")
         ])
     else:
         rows.append([
-            InlineKeyboardButton(text="🎟 Promokod kiritish", callback_data="sub_promo_enter")
+            InlineKeyboardButton(text="🏷️ Promokod kiritish", callback_data="sub_promo_enter")
         ])
     rows.append([
         InlineKeyboardButton(text="❌ Bekor qilish", callback_data="sub_cancel")

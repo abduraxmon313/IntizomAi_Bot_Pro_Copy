@@ -49,12 +49,13 @@ FREE_DAILY_PLAN_LIMIT = int(os.getenv("FREE_DAILY_PLAN_LIMIT", 5))
 # Free foydalanuvchi uchun kunlik AI Coach suhbat limiti (taste → premiumga undash).
 FREE_AI_DAILY_LIMIT = int(os.getenv("FREE_AI_DAILY_LIMIT", 3))
 
-# Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda).
+# Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 SUBSCRIPTION_PLANS = {
-    "1m":  {"title": "1 oylik",  "days": 30,  "price": 9900},
-    "3m":  {"title": "3 oylik",  "days": 90,  "price": 26900},
-    "6m":  {"title": "6 oylik",  "days": 180, "price": 49900},
-    "12m": {"title": "1 yillik", "days": 365, "price": 89900},
+    "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "Challenge"},
+    "1m":  {"title": "Oylik",       "days": 30,  "price": 19900, "emoji": "💎", "tag": ""},
+    "3m":  {"title": "3 oy",        "days": 90,  "price": 39900, "emoji": "⭐", "tag": "TOP tanlov"},
+    "6m":  {"title": "6 oy",        "days": 180, "price": 59900, "emoji": "🚀", "tag": "Ko'proq tejash"},
+    "12m": {"title": "Yillik",      "days": 365, "price": 99900, "emoji": "👑", "tag": "Eng yaxshi qiymat"},
 }
 
 # Obuna tugashidan necha kun oldin eslatma yuborilsin.

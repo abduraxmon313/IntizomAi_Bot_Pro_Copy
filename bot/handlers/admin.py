@@ -691,7 +691,7 @@ async def admin_premium_grant_start(callback: CallbackQuery, state: FSMContext, 
         "➕ <b>Premium berish</b>\n\n"
         "Telegram ID va tarifni yuboring.\n"
         "Format: <code>ID tarif</code>\n\n"
-        "Tariflar: <code>1m</code> / <code>3m</code> / <code>6m</code> / <code>12m</code>\n"
+        "Tariflar: <code>7d</code> / <code>1m</code> / <code>3m</code> / <code>6m</code> / <code>12m</code>\n"
         "Masalan: <code>123456789 3m</code>",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
