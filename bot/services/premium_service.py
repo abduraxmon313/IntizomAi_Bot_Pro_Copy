@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import (
     FREE_AI_DAILY_LIMIT,
     FREE_DAILY_PLAN_LIMIT,
-    PROMO_CODE,
     SUBSCRIPTION_PLANS,
 )
 from bot.models.plan import Plan
@@ -199,20 +198,17 @@ class PromoResult:
 
 async def validate_promocode(session: AsyncSession, code: str) -> PromoResult:
     """
-    Promokodni tekshiradi. Ikki manba:
-      1) Config'dagi sinov promokodi (PROMO_CODE, masalan 'intizom') — har doim ishlaydi.
-      2) DB'dagi Promocode yozuvlari (admin yaratgan).
+    Promokodni tekshiradi. Faqat DB'dagi (admin yaratgan) promokodlar ishlaydi.
+
+    Eslatma: kuchsizlantirilgan (is_active=False) promokod YANGI foydalanuvchilar
+    uchun ishlamaydi; ammo avval undan foydalanib olganlarning obunasiga ta'sir
+    qilmaydi (Subscription yozuvlari tegilmaydi).
     """
     if not code:
         return PromoResult(valid=False, reason="Promokod bo'sh")
 
     norm = code.strip().lower()
 
-    # 1) Sinov promokodi
-    if PROMO_CODE and norm == PROMO_CODE.strip().lower():
-        return PromoResult(valid=True, reason="test_code")
-
-    # 2) DB promokod
     res = await session.execute(
         select(Promocode).where(func.lower(Promocode.code) == norm)
     )
@@ -220,7 +216,7 @@ async def validate_promocode(session: AsyncSession, code: str) -> PromoResult:
     if not promo:
         return PromoResult(valid=False, reason="Bunday promokod topilmadi")
     if not promo.is_active:
-        return PromoResult(valid=False, reason="Promokod faol emas")
+        return PromoResult(valid=False, reason="Promokod kuchsizlantirilgan")
     if promo.expires_at and promo.expires_at < datetime.utcnow():
         return PromoResult(valid=False, reason="Promokod muddati tugagan")
     if promo.max_uses and promo.used_count >= promo.max_uses:
@@ -233,6 +229,42 @@ async def validate_promocode(session: AsyncSession, code: str) -> PromoResult:
         bonus_days=promo.bonus_days or 0,
         promo=promo,
     )
+
+
+async def list_promocodes(session: AsyncSession) -> list[Promocode]:
+    """Barcha promokodlar (eng yangisi birinchi)."""
+    res = await session.execute(
+        select(Promocode).order_by(Promocode.created_at.desc())
+    )
+    return res.scalars().all()
+
+
+async def deactivate_promocode(session: AsyncSession, promo_id: int) -> Optional[Promocode]:
+    """
+    Promokodni kuchsizlantiradi (is_active=False).
+    Bu faqat YANGI foydalanuvchilar uchun amal qiladi — avval foydalanganlarning
+    obunasi (Subscription) saqlanib qoladi.
+    """
+    promo = await session.get(Promocode, promo_id)
+    if not promo:
+        return None
+    promo.is_active = False
+    await session.commit()
+    await session.refresh(promo)
+    return promo
+
+
+async def increment_promocode_use(session: AsyncSession, code: str) -> None:
+    """Promokod ishlatilganini (used_count) bittaga oshiradi."""
+    if not code:
+        return
+    res = await session.execute(
+        select(Promocode).where(func.lower(Promocode.code) == code.strip().lower())
+    )
+    promo = res.scalar_one_or_none()
+    if promo is not None:
+        promo.used_count = (promo.used_count or 0) + 1
+        await session.commit()
 
 
 async def redeem_with_promocode(
