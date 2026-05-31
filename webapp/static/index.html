@@ -521,6 +521,9 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .chat-head .av{position:relative;width:44px;height:44px;border-radius:14px;background:var(--grad);display:grid;place-items:center;font-size:23px;flex-shrink:0;box-shadow:var(--glow);animation:aiBreathe 3s ease-in-out infinite}
 .chat-head .av::after{content:'';position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--surface);box-shadow:0 0 6px #22c55e}
 @keyframes aiBreathe{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.06);filter:brightness(1.12)}}
+.chat-head .av svg{display:block}
+.ai-bot .eye{transform-box:fill-box;transform-origin:center;animation:botBlink 4.5s ease-in-out infinite}
+@keyframes botBlink{0%,90%,100%{transform:scaleY(1)}94%,96.5%{transform:scaleY(.12)}}
 .chat-head .ti{flex:1;min-width:0}
 .chat-head .ti .nm{font-size:14px;font-weight:800}
 .chat-head .ti .st{font-size:11px;color:var(--text-2);display:flex;align-items:center;gap:5px}
@@ -693,7 +696,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 
 <div class="chat-card" id="chatCard">
   <div class="chat-head">
-    <div class="av">🤖</div>
+    <div class="av"><svg class="ai-bot" viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true"><path d="M12 2.6v2.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="2" r="1.15" fill="#fff"/><rect x="4" y="5" width="16" height="12.6" rx="4.2" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7"/><rect x="2.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><rect x="20.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><circle class="eye" cx="9" cy="11.2" r="1.7" fill="#fff"/><circle class="eye" cx="15" cy="11.2" r="1.7" fill="#fff"/><path d="M9.3 14.7h5.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div>
     <div class="ti">
       <div class="nm">Intizom AI</div>
       <div class="st"><span class="dot"></span> Sening maqsadlaringni ko'rib turibdi</div>
