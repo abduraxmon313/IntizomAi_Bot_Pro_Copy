@@ -1237,9 +1237,18 @@ function openPlanModal(plan){
   if(plan&&plan.scheduled_time&&plan.scheduled_time.includes(':')){const pp=plan.scheduled_time.split(':');hh=pad(parseInt(pp[0],10)||0);const mi=parseInt(pp[1],10)||0;mm=pad(Math.round(mi/5)*5%60);}
   const hSel=document.getElementById('pHour');if(hSel)hSel.value=hh;
   const mSel=document.getElementById('pMin');if(mSel)mSel.value=mm;
-  // Sana: tahrirda reja sanasi, yangi rejada tanlangan kun
+  // Sana: tahrirda reja sanasi, yangi rejada tanlangan kun (o'tgan kun emas)
   const dEl=document.getElementById('pDate');
-  if(dEl)dEl.value=(plan&&plan.plan_date)||ymd(State.selectedDate||new Date());
+  if(dEl){
+    const todayStr=ymd(new Date());
+    if(plan&&plan.plan_date){
+      dEl.value=plan.plan_date;dEl.removeAttribute('min');
+    }else{
+      const sel=ymd(State.selectedDate||new Date());
+      dEl.value=(sel<todayStr)?todayStr:sel;
+      dEl.min=todayStr;  // yangi rejada o'tib ketgan kun tanlab bo'lmaydi
+    }
+  }
   const back=document.getElementById('planModalBack');if(back)back.classList.add('show');
   setTimeout(()=>{const f=document.getElementById('pTitle');if(f)f.focus();},300);
 }
@@ -1260,12 +1269,14 @@ async function savePlanModal(){
   const dt=document.getElementById('pDate')?.value||ymd(State.selectedDate||new Date());
   const body={title:t,description:desc||null,scheduled_time:tm,plan_date:dt};
   const isEdit=!!State.planModal.id;
+  if(!isEdit && dt < ymd(new Date())){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
   try{
     if(isEdit){const np=await apiPlanUpdate(State.planModal.id,body);const idx=State.plans.findIndex(x=>x.id===State.planModal.id);if(idx>=0)State.plans[idx]=np;}
     else{await apiPlanCreate(body);}
   }catch(e){
     const msg=String(e&&e.message||'');
     if(msg.includes('402')){closePlanModal();toast('💎 Bepul kunlik limit tugadi');openPaywall();return;}
+    if(msg.includes('409')){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
     toast('Xato: '+msg,true);return;
   }
   // Saqlash muvaffaqiyatli — endi UI ni yangilaymiz (bu yerdagi xato saqlashga ta'sir qilmaydi)
