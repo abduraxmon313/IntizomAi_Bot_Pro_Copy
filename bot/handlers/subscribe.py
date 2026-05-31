@@ -1,14 +1,17 @@
 """
-Obuna (premium) oqimi.
+Obuna (premium) oqimi — to'lov tizimiga tayyorlangan.
 
 Foydalanuvchi yo'li:
-  1. "💎 Obuna" tugmasi yoki paywall'dagi tugma → obuna sahifasi
-  2. Plan tanlaydi (1/3/6/12 oy)
-  3. Promokod so'raladi
-  4. To'g'ri promokod ("intizom") yuborsa — obuna faollashadi
-  5. Faol obunasi bo'lsa — sotib olish tugmalari ko'rsatilmaydi (faqat holat)
+  1. "💎 Obuna" → tariflar ro'yxati + "🎟 Promokod kiritish" tugmasi
+  2. (ixtiyoriy) Promokod kiritadi → agar admin yaratgan amaldagi kod bo'lsa,
+     har bir tarifga promokoddagi bonus kunlar qo'shiladi ("1 oylik +15 kun")
+  3. Tarifni tanlaydi → to'lov oynasi ochiladi
+  4. "💳 To'lovni amalga oshirish" → (hozircha to'lov SIMULYATSIYA qilinadi)
+     premium = tarif kunlari + promokod bonus kunlari muddatga ochiladi va DB ga
+     shu muddat bilan saqlanadi.
 
-Kelajakda karta to'lovi qo'shilsa — faqat 3→4 bosqich o'zgaradi.
+Kelajakda to'lov kompaniyasi API qo'shilsa — faqat 4-bosqich (sub_pay_*) ichida
+haqiqiy to'lov tasdiqlanishi tekshiriladi, qolgan oqim o'zgarmaydi.
 """
 import logging
 from datetime import datetime
@@ -19,16 +22,20 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import PROMO_CODE, SUBSCRIPTION_PLANS, FREE_DAILY_PLAN_LIMIT
+from bot.config import SUBSCRIPTION_PLANS, FREE_DAILY_PLAN_LIMIT
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import (
     get_status,
     get_plan,
     format_price,
-    redeem_with_promocode,
+    validate_promocode,
+    activate_subscription,
+    increment_promocode_use,
+    user_is_premium,
 )
 from bot.keyboards.subscribe_keys import (
     plans_keyboard,
+    payment_keyboard,
     promocode_keyboard,
     premium_active_keyboard,
 )
@@ -38,7 +45,6 @@ logger = logging.getLogger(__name__)
 
 
 class SubscribeState(StatesGroup):
-    choosing_plan = State()
     waiting_promocode = State()
 
 
@@ -48,7 +54,13 @@ def _fmt_date(dt: datetime | None) -> str:
     return dt.strftime("%d.%m.%Y")
 
 
-async def render_subscription(message: Message, session: AsyncSession, telegram_id: int):
+async def render_subscription(
+    message: Message,
+    session: AsyncSession,
+    telegram_id: int,
+    bonus_days: int = 0,
+    promo_code: str | None = None,
+):
     """Obuna sahifasini ko'rsatadi (holatga qarab)."""
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
@@ -86,9 +98,25 @@ async def render_subscription(message: Message, session: AsyncSession, telegram_
         "• Chuqur tahlil va elite belgilar\n"
         "• Premium temalar\n\n"
         f"🆓 <b>Bepul rejim:</b> Mini App'siz, kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja.\n\n"
-        "👇 Tarifni tanlang:"
     )
-    await message.answer(text, parse_mode="HTML", reply_markup=plans_keyboard())
+    if bonus_days > 0 and promo_code:
+        text += (
+            f"🎟 <b>Promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
+            f"Har bir tarifga <b>+{bonus_days} kun</b> qo'shildi! 🎁\n\n"
+        )
+    text += "👇 Tarifni tanlang:"
+
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=plans_keyboard(bonus_days=bonus_days, promo_applied=bool(promo_code)),
+    )
+
+
+async def _state_promo(state: FSMContext) -> tuple[int, str | None]:
+    """FSM holatidan qo'llangan promokod bonusini o'qiydi."""
+    data = await state.get_data()
+    return int(data.get("promo_bonus_days") or 0), data.get("promo_code")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -102,13 +130,64 @@ async def subscription_button(message: Message, state: FSMContext, session: Asyn
 
 @router.callback_query(F.data == "open_subscription")
 async def open_subscription_cb(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
-    await state.clear()
-    await render_subscription(callback.message, session, callback.from_user.id)
+    # State TOZALANMAYDI — qo'llangan promokod tariflarga qaytganda saqlanadi.
+    bonus_days, promo_code = await _state_promo(state)
+    await render_subscription(
+        callback.message, session, callback.from_user.id,
+        bonus_days=bonus_days, promo_code=promo_code,
+    )
     await callback.answer()
 
 
 # ─────────────────────────────────────────────────────────────
-#  PLAN TANLASH
+#  PROMOKOD KIRITISH
+# ─────────────────────────────────────────────────────────────
+@router.callback_query(F.data == "sub_promo_enter")
+async def promo_enter_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user and user_is_premium(user):
+        await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
+        return
+
+    await state.set_state(SubscribeState.waiting_promocode)
+    await callback.message.edit_text(
+        "🎟 <b>Promokod kiriting</b>\n\n"
+        "Sizda promokod bo'lsa — uni shu yerga matn ko'rinishida yuboring.\n"
+        "Promokod tariflaringizga qo'shimcha kunlar qo'shadi 🎁",
+        parse_mode="HTML",
+        reply_markup=promocode_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.message(SubscribeState.waiting_promocode, F.text)
+async def receive_promocode(message: Message, state: FSMContext, session: AsyncSession):
+    code = (message.text or "").strip()
+    result = await validate_promocode(session, code)
+
+    if not result.valid:
+        await message.answer(
+            f"❌ <b>Promokod qabul qilinmadi.</b>\n\n"
+            f"Sabab: <i>{result.reason}</i>\n\n"
+            "Boshqa promokod kiriting yoki tariflarga qayting.",
+            parse_mode="HTML",
+            reply_markup=promocode_keyboard(),
+        )
+        return
+
+    # Promokod qabul qilindi — bonusni holatga saqlaymiz (hali ishlatilmaydi)
+    await state.update_data(promo_code=code, promo_bonus_days=int(result.bonus_days or 0))
+    await state.set_state(None)  # tariflar bosqichiga qaytamiz (data saqlanadi)
+
+    await render_subscription(
+        message, session, message.from_user.id,
+        bonus_days=int(result.bonus_days or 0), promo_code=code,
+    )
+    logger.info(f"🎟 Promokod qo'llandi: user={message.from_user.id} code={code} bonus={result.bonus_days}")
+
+
+# ─────────────────────────────────────────────────────────────
+#  TARIF TANLASH → TO'LOV OYNASI
 # ─────────────────────────────────────────────────────────────
 @router.callback_query(F.data.startswith("sub_plan_"))
 async def choose_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
@@ -119,63 +198,78 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
         return
 
     user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user and user.premium_until and user.premium_until > datetime.utcnow():
-        # Allaqachon premium — qayta sotib olishga yo'l qo'ymaymiz
+    if user and user_is_premium(user):
         await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
         return
 
-    await state.update_data(plan_key=plan_key)
-    await state.set_state(SubscribeState.waiting_promocode)
+    bonus_days, promo_code = await _state_promo(state)
+    total_days = plan["days"] + bonus_days
 
+    bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
+    text = (
+        "💳 <b>To'lov</b>\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
+        f"📅 Muddat: <b>{total_days} kun</b>\n"
+        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
+        "Quyidagi tugma orqali to'lovni amalga oshiring 👇\n"
+        "<i>(To'lov tizimi tez orada ulanadi. Hozircha tugmani bossangiz, "
+        "obuna sinov tariqasida faollashadi.)</i>"
+    )
     await callback.message.edit_text(
-        f"💎 <b>{plan['title']}</b> tanlandi\n"
-        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n"
-        f"📅 Davomiyligi: <b>{plan['days']} kun</b>\n\n"
-        "🎟 <b>Promokodni kiriting:</b>\n"
-        f"<i>(sinov bosqichi uchun: <code>{PROMO_CODE}</code>)</i>\n\n"
-        "Promokodni shu yerga matn ko'rinishida yuboring.",
-        parse_mode="HTML",
-        reply_markup=promocode_keyboard(),
+        text, parse_mode="HTML", reply_markup=payment_keyboard(plan_key),
     )
     await callback.answer()
 
 
 # ─────────────────────────────────────────────────────────────
-#  PROMOKOD QABUL QILISH
+#  TO'LOV (hozircha simulyatsiya) → PREMIUM OCHILADI
 # ─────────────────────────────────────────────────────────────
-@router.message(SubscribeState.waiting_promocode, F.text)
-async def receive_promocode(message: Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
-    plan_key = data.get("plan_key")
-    if not plan_key:
-        await state.clear()
-        await render_subscription(message, session, message.from_user.id)
+@router.callback_query(F.data.startswith("sub_pay_"))
+async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    plan_key = callback.data.replace("sub_pay_", "")
+    plan = get_plan(plan_key)
+    if not plan:
+        await callback.answer("Tarif topilmadi!", show_alert=True)
         return
 
-    user = await get_user_by_telegram_id(session, message.from_user.id)
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
     if not user:
         user = await get_or_create_user(
-            session, message.from_user.id, message.from_user.full_name, message.from_user.username or ""
+            session, callback.from_user.id,
+            callback.from_user.full_name, callback.from_user.username or "",
         )
-
-    code = (message.text or "").strip()
-    success, reason, sub = await redeem_with_promocode(session, user, plan_key, code)
-
-    if not success:
-        await message.answer(
-            f"❌ <b>Promokod qabul qilinmadi.</b>\n\n"
-            f"Sabab: <i>{reason}</i>\n\n"
-            "Qaytadan urinib ko'ring yoki bekor qiling.",
-            parse_mode="HTML",
-            reply_markup=promocode_keyboard(),
-        )
+    if user_is_premium(user):
+        await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
         return
 
+    bonus_days, promo_code = await _state_promo(state)
+
+    # Promokod hali ham amaldami — qayta tekshiramiz (xavfsizlik uchun)
+    if promo_code:
+        recheck = await validate_promocode(session, promo_code)
+        bonus_days = int(recheck.bonus_days or 0) if recheck.valid else 0
+        if not recheck.valid:
+            promo_code = None
+
+    # TODO: shu yerda haqiqiy to'lov tizimi javobini tekshirish kerak bo'ladi.
+    # Hozircha to'lov muvaffaqiyatli deb hisoblaymiz.
+    sub = await activate_subscription(
+        session, user,
+        plan_key=plan_key,
+        source="card",
+        promocode=promo_code,
+        bonus_days=bonus_days,
+    )
+    if promo_code:
+        await increment_promocode_use(session, promo_code)
+
     await state.clear()
-    plan = SUBSCRIPTION_PLANS.get(sub.plan, {})
-    await message.answer(
+
+    bonus_line = f" (+{bonus_days} kun promokod)" if bonus_days > 0 else ""
+    await callback.message.edit_text(
         "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>\n\n"
-        f"📦 Tarif: <b>{plan.get('title', sub.plan)}</b>\n"
+        f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
         f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
         f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
         "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
@@ -183,7 +277,11 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
         parse_mode="HTML",
         reply_markup=premium_active_keyboard(),
     )
-    logger.info(f"🎟 Promokod ishlatildi: user={user.telegram_id} code={code} plan={sub.plan}")
+    await callback.answer("To'lov qabul qilindi ✅")
+    logger.info(
+        f"💳 Obuna sotib olindi: user={user.telegram_id} plan={plan_key} "
+        f"bonus={bonus_days} promo={promo_code}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────

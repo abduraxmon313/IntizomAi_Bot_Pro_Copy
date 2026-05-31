@@ -8,15 +8,30 @@ from bot.config import SUBSCRIPTION_PLANS, WEBAPP_URL
 from bot.services.premium_service import format_price
 
 
-def plans_keyboard() -> InlineKeyboardMarkup:
-    """Obuna planlarini tanlash klaviaturasi."""
+def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False) -> InlineKeyboardMarkup:
+    """
+    Obuna planlarini tanlash klaviaturasi.
+    Agar promokod qo'llangan bo'lsa — har bir tarif nomida '+N kun' qo'shiladi
+    va promokod tugmasi 'o'zgartirish' holatiga o'tadi.
+    """
     rows = []
     for key, plan in SUBSCRIPTION_PLANS.items():
+        if bonus_days > 0:
+            label = f"💎 {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
+        else:
+            label = f"💎 {plan['title']} — {format_price(plan['price'])} so'm"
         rows.append([
-            InlineKeyboardButton(
-                text=f"💎 {plan['title']} — {format_price(plan['price'])} so'm",
-                callback_data=f"sub_plan_{key}",
-            )
+            InlineKeyboardButton(text=label, callback_data=f"sub_plan_{key}")
+        ])
+
+    # Promokod tugmasi — bekor qilishdan tepada
+    if promo_applied:
+        rows.append([
+            InlineKeyboardButton(text="🎟 Promokodni o'zgartirish", callback_data="sub_promo_enter")
+        ])
+    else:
+        rows.append([
+            InlineKeyboardButton(text="🎟 Promokod kiritish", callback_data="sub_promo_enter")
         ])
     rows.append([
         InlineKeyboardButton(text="❌ Bekor qilish", callback_data="sub_cancel")
@@ -24,10 +39,18 @@ def plans_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def payment_keyboard(plan_key: str) -> InlineKeyboardMarkup:
+    """To'lov oynasi tugmalari (hozircha to'lov simulyatsiya qilinadi)."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 To'lovni amalga oshirish", callback_data=f"sub_pay_{plan_key}")],
+        [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
+    ])
+
+
 def promocode_keyboard() -> InlineKeyboardMarkup:
     """Promokod kiritish bosqichidagi tugmalar."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Planlarga qaytish", callback_data="open_subscription")],
+        [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
         [InlineKeyboardButton(text="❌ Bekor qilish", callback_data="sub_cancel")],
     ])
 
