@@ -6,9 +6,11 @@ never blocks the rest.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
+from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -37,12 +39,45 @@ from database.db import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone=str(TIMEZONE))
 
+# Telegram global limiti ~30 msg/sek. Xavfsizlik uchun har yuborish orasida
+# kichik pauza qo'yamiz (~20 msg/sek).
+SEND_DELAY = 0.05
+
+
+async def _deliver(bot, user, text, reply_markup=None) -> str:
+    """
+    Bitta foydalanuvchiga xabar yuboradi — flood-control bilan.
+    Qaytaradi: 'ok' | 'blocked' | 'failed'.
+      • TelegramRetryAfter — ko'rsatilgan vaqt kutib, bir marta qayta urinadi.
+      • TelegramForbiddenError — user botni bloklagan/to'xtatgan ('blocked').
+    """
+    try:
+        await bot.send_message(
+            user.telegram_id, text, parse_mode="HTML", reply_markup=reply_markup
+        )
+        return "ok"
+    except TelegramRetryAfter as e:
+        await asyncio.sleep(e.retry_after + 1)
+        try:
+            await bot.send_message(
+                user.telegram_id, text, parse_mode="HTML", reply_markup=reply_markup
+            )
+            return "ok"
+        except Exception:
+            return "failed"
+    except TelegramForbiddenError:
+        return "blocked"
+    except Exception as e:
+        logger.debug(f"send skip {user.telegram_id}: {e}")
+        return "failed"
+
 
 # ─────────────────────────────────────────────────────────────
 async def send_plan_notifications(bot):
     """Every minute — fire reminders for plans whose time has come."""
     async with AsyncSessionLocal() as session:
         from bot.services.plan_service import get_pending_plans_to_notify
+        from bot.keyboards.plan_keys import done_failed_keyboard
         plans = await get_pending_plans_to_notify(session)
 
         for plan in plans:
@@ -52,26 +87,26 @@ async def send_plan_notifications(bot):
             if not user:
                 continue
 
-            from bot.keyboards.plan_keys import done_failed_keyboard
-
+            st = await _deliver(
+                bot, user,
+                (
+                    f"⏰ <b>Vaqt bo'ldi!</b>\n\n"
+                    f"📌 <b>{plan.title}</b>\n"
+                    f"🕐 {plan.scheduled_time}\n\n"
+                    f"✅ Bajarsangiz <b>+{plan.score_value} ball</b>\n"
+                    f"❌ Bajarmasangiz <b>-3 ball</b>"
+                ),
+                done_failed_keyboard(plan.id),
+            )
+            if st == "blocked":
+                user.is_active = False
+            # Qayta yubormaslik uchun belgilab qo'yamiz
+            plan.notified_at = datetime.now(TIMEZONE).replace(tzinfo=None)
             try:
-                await bot.send_message(
-                    chat_id=user.telegram_id,
-                    text=(
-                        f"⏰ <b>Vaqt bo'ldi!</b>\n\n"
-                        f"📌 <b>{plan.title}</b>\n"
-                        f"🕐 {plan.scheduled_time}\n\n"
-                        f"✅ Bajarsangiz <b>+{plan.score_value} ball</b>\n"
-                        f"❌ Bajarmasangiz <b>-3 ball</b>"
-                    ),
-                    parse_mode="HTML",
-                    reply_markup=done_failed_keyboard(plan.id),
-                )
-                plan.notified_at = datetime.now(TIMEZONE).replace(tzinfo=None)
                 await session.commit()
-            except Exception as e:
+            except Exception:
                 await session.rollback()
-                logger.warning(f"Notification error: {e}")
+            await asyncio.sleep(SEND_DELAY)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -82,18 +117,22 @@ async def send_morning_nudge(bot):
             select(User).where(User.is_active == True)
         )).scalars().all()
 
+        blocked = False
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Bugungi rejam", callback_data="my_plans")],
+            [InlineKeyboardButton(text="➕ Reja qo'sh", callback_data="add_plan")],
+        ])
         for user in users:
+            st = await _deliver(bot, user, message_for_morning(), kb)
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                msg = message_for_morning()
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="📋 Bugungi rejam", callback_data="my_plans")],
-                    [InlineKeyboardButton(text="➕ Reja qo'sh", callback_data="add_plan")],
-                ])
-                await bot.send_message(
-                    user.telegram_id, msg, parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Morning nudge skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -108,19 +147,23 @@ async def send_streak_warning(bot):
             )
         )).scalars().all()
 
+        blocked = False
         for user in users:
             if user.last_completed_date == today:
                 continue
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔥 Streakni saqlash", callback_data="my_plans")],
+            ])
+            st = await _deliver(bot, user, message_for_streak_warning(user.streak), kb)
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                msg = message_for_streak_warning(user.streak)
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔥 Streakni saqlash", callback_data="my_plans")],
-                ])
-                await bot.send_message(
-                    user.telegram_id, msg, parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Streak warn skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -133,6 +176,7 @@ async def send_inactivity_comeback(bot):
             select(User).where(User.is_active == True)
         )).scalars().all()
 
+        blocked = False
         for user in users:
             last = user.last_completed_date
             if last is None:
@@ -141,18 +185,24 @@ async def send_inactivity_comeback(bot):
             # Only nudge at exact 3-day and 7-day marks (avoid spamming)
             if days_idle not in (3, 7, 14):
                 continue
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Qaytib boshlash", callback_data="add_plan")],
+            ])
+            st = await _deliver(
+                bot, user,
+                message_for_comeback() +
+                f"\n\n💎 Sening eng yaxshi streaking: <b>{user.longest_streak} kun</b>",
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔄 Qaytib boshlash", callback_data="add_plan")],
-                ])
-                await bot.send_message(
-                    user.telegram_id,
-                    message_for_comeback() +
-                    f"\n\n💎 Sening eng yaxshi streaking: <b>{user.longest_streak} kun</b>",
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Comeback skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -163,18 +213,21 @@ async def send_evening_reflection(bot):
             select(User).where(User.is_active == True)
         )).scalars().all()
 
+        blocked = False
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Bugungi hisobot", callback_data="report")],
+        ])
         for user in users:
+            st = await _deliver(bot, user, message_for_evening(), kb)
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="📊 Bugungi hisobot", callback_data="report")],
-                ])
-                await bot.send_message(
-                    user.telegram_id,
-                    message_for_evening(),
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Evening skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -223,23 +276,27 @@ async def send_daily_summary(bot):
                 [InlineKeyboardButton(text="📊 Batafsil hisobot", callback_data="report")]
             ])
 
-            try:
-                await bot.send_message(
-                    chat_id=user.telegram_id,
-                    text=(
-                        f"🌙 <b>Kunlik hisobot</b>\n\n"
-                        f"✅ Bajarildi: <b>{len(done)} ta</b>\n"
-                        f"❌ Bajarilmadi: <b>{len(failed)} ta</b>\n"
-                        f"⏳ Eslatilmadi: <b>{len(pending)} ta</b>\n\n"
-                        f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
-                        f"🔥 Streak: <b>{user.streak} kun</b>\n"
-                        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n\n"
-                        f"<i>Ertaga yana davom etamiz!</i>"
-                    ),
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Summary skip {user.telegram_id}: {e}")
+            st = await _deliver(
+                bot, user,
+                (
+                    f"🌙 <b>Kunlik hisobot</b>\n\n"
+                    f"✅ Bajarildi: <b>{len(done)} ta</b>\n"
+                    f"❌ Bajarilmadi: <b>{len(failed)} ta</b>\n"
+                    f"⏳ Eslatilmadi: <b>{len(pending)} ta</b>\n\n"
+                    f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
+                    f"🔥 Streak: <b>{user.streak} kun</b>\n"
+                    f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n\n"
+                    f"<i>Ertaga yana davom etamiz!</i>"
+                ),
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+            await asyncio.sleep(SEND_DELAY)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -264,6 +321,7 @@ async def check_pending_plans(bot):
         for plan in pending_plans:
             by_user.setdefault(plan.user_id, []).append(plan)
 
+        blocked = False
         for user_id, plans in by_user.items():
             user = (await session.execute(
                 select(User).where(User.id == user_id)
@@ -281,19 +339,25 @@ async def check_pending_plans(bot):
                 [InlineKeyboardButton(text="📋 Rejalarni belgilash", callback_data="my_plans")],
             ])
 
+            st = await _deliver(
+                bot, user,
+                (
+                    f"🌙 <b>Kun tugayapti</b>\n\n"
+                    f"Quyidagi <b>{len(plans)} ta</b> reja hali belgilanmagan:\n\n"
+                    + "\n".join(lines) + extra +
+                    "\n\nBugun nimalarni bajardingiz? Belgilab qo'ying 👇"
+                ),
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                await bot.send_message(
-                    chat_id=user.telegram_id,
-                    text=(
-                        f"🌙 <b>Kun tugayapti</b>\n\n"
-                        f"Quyidagi <b>{len(plans)} ta</b> reja hali belgilanmagan:\n\n"
-                        + "\n".join(lines) + extra +
-                        "\n\nBugun nimalarni bajardingiz? Belgilab qo'ying 👇"
-                    ),
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Pending check skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -322,17 +386,21 @@ async def downgrade_expired_premium(bot):
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="💎 Obunani yangilash", callback_data="open_subscription")],
             ])
-            try:
-                await bot.send_message(
-                    user.telegram_id,
-                    "⌛️ <b>Premium obunangiz tugadi.</b>\n\n"
-                    "Mini App va cheksiz imkoniyatlar yopildi.\n"
-                    "Streakingizni va natijalaringizni yo'qotmaslik uchun "
-                    "obunani yangilang 👇",
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Downgrade notify skip {user.telegram_id}: {e}")
+            st = await _deliver(
+                bot, user,
+                "⌛️ <b>Premium obunangiz tugadi.</b>\n\n"
+                "Mini App va cheksiz imkoniyatlar yopildi.\n"
+                "Streakingizni va natijalaringizni yo'qotmaslik uchun "
+                "obunani yangilang 👇",
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+            await asyncio.sleep(SEND_DELAY)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -349,6 +417,7 @@ async def premium_expiry_reminder(bot):
             )
         )).scalars().all()
 
+        blocked = False
         for user in users:
             left = days_left(user)
             if left not in PREMIUM_EXPIRY_REMINDER_DAYS:
@@ -356,16 +425,22 @@ async def premium_expiry_reminder(bot):
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="💎 Obunani uzaytirish", callback_data="open_subscription")],
             ])
+            st = await _deliver(
+                bot, user,
+                f"⏳ <b>Premium obunangizga {left} kun qoldi.</b>\n\n"
+                "Uzluksiz davom etish uchun obunani oldindan uzaytiring — "
+                "shunda qolgan kunlar yo'qolmaydi 👇",
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
             try:
-                await bot.send_message(
-                    user.telegram_id,
-                    f"⏳ <b>Premium obunangizga {left} kun qoldi.</b>\n\n"
-                    "Uzluksiz davom etish uchun obunani oldindan uzaytiring — "
-                    "shunda qolgan kunlar yo'qolmaydi 👇",
-                    parse_mode="HTML", reply_markup=kb,
-                )
-            except Exception as e:
-                logger.debug(f"Expiry reminder skip {user.telegram_id}: {e}")
+                await session.commit()
+            except Exception:
+                await session.rollback()
 
 
 # ─────────────────────────────────────────────────────────────

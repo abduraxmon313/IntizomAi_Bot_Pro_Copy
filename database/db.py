@@ -14,9 +14,10 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
-    pool_recycle=3600,
-    pool_size=5,
-    max_overflow=10
+    pool_recycle=1800,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -57,6 +58,23 @@ USER_NEW_COLUMNS = [
     ("ai_msgs_count", "INTEGER DEFAULT 0"),
 ]
 
+# Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
+# avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
+NEW_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS ix_plans_user_id ON plans (user_id)",
+    "CREATE INDEX IF NOT EXISTS ix_plans_user_date ON plans (user_id, plan_date)",
+    "CREATE INDEX IF NOT EXISTS ix_plans_due ON plans (scheduled_time, status, plan_date)",
+    "CREATE INDEX IF NOT EXISTS ix_plans_status_date ON plans (status, plan_date)",
+    "CREATE INDEX IF NOT EXISTS ix_score_logs_user_created ON score_logs (user_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS ix_goals_user_id ON goals (user_id)",
+    "CREATE INDEX IF NOT EXISTS ix_achievements_user_id ON achievements (user_id)",
+    "CREATE INDEX IF NOT EXISTS ix_checkins_user_date ON daily_checkins (user_id, checkin_date)",
+    "CREATE INDEX IF NOT EXISTS ix_subscriptions_user_active ON subscriptions (user_id, is_active)",
+    "CREATE INDEX IF NOT EXISTS ix_users_premium_until ON users (premium_until)",
+    "CREATE INDEX IF NOT EXISTS ix_users_last_active ON users (last_active)",
+    "CREATE INDEX IF NOT EXISTS ix_users_is_active ON users (is_active)",
+]
+
 
 async def _run_migrations(conn):
     for col, ddl in USER_NEW_COLUMNS:
@@ -66,6 +84,15 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip {col}: {e}")
+
+    # Ko'lamlilik (scalability) uchun indekslar — userlar/rejalar ko'payganda
+    # so'rovlar full-scan qilmasligi uchun. CREATE INDEX IF NOT EXISTS idempotent
+    # (mavjud bo'lsa qayta yaratmaydi), shuning uchun har startda xavfsiz ishlaydi.
+    for ddl in NEW_INDEXES:
+        try:
+            await conn.execute(text(ddl))
+        except Exception as e:
+            logger.warning(f"Index skip: {e}")
 
 
 async def create_tables():

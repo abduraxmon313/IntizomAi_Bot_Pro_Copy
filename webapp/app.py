@@ -111,9 +111,16 @@ async def security_middleware(request: Request, call_next):
 
     # 3) Xavfsizlik header'lari (barcha javoblarga)
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Faqat Telegram (va o'zimiz) sahifani <iframe> ga joylashi mumkin —
+    # boshqa saytlar embed qilolmaydi (clickjacking himoyasi). Bu X-Frame-Options:
+    # SAMEORIGIN o'rniga ishlatiladi, chunki u Telegram Web'dagi Mini App'ni
+    # (boshqa origin'dagi iframe) bloklab qo'yardi.
+    response.headers["Content-Security-Policy"] = (
+        "frame-ancestors 'self' https://telegram.org https://*.telegram.org "
+        "https://web.telegram.org tg://"
+    )
     return response
 
 app.include_router(plans.router, prefix="/api/webapp")
