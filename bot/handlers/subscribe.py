@@ -89,6 +89,8 @@ async def render_subscription(
         return
 
     # Bepul foydalanuvchi — planlarni taklif qilamiz
+    free = bool(promo_code) and bonus_days == 0
+
     text = (
         "💎 <b>Intizom AI Premium</b>\n\n"
         "Premium bilan to'liq imkoniyatlar ochiladi:\n"
@@ -99,17 +101,27 @@ async def render_subscription(
         "• Premium temalar\n\n"
         f"🆓 <b>Bepul rejim:</b> Mini App'siz, kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja.\n\n"
     )
-    if bonus_days > 0 and promo_code:
+    if free:
+        text += (
+            f"🎁 <b>Bepul promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
+            "Tarifni tanlang — <b>to'lovsiz</b> ochiladi! 🎉\n\n"
+            "👇 Tarifni tanlang:"
+        )
+    elif bonus_days > 0 and promo_code:
         text += (
             f"🎟 <b>Promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
             f"Har bir tarifga <b>+{bonus_days} kun</b> qo'shildi! 🎁\n\n"
+            "👇 Tarifni tanlang:"
         )
-    text += "👇 Tarifni tanlang:"
+    else:
+        text += "👇 Tarifni tanlang:"
 
     await message.answer(
         text,
         parse_mode="HTML",
-        reply_markup=plans_keyboard(bonus_days=bonus_days, promo_applied=bool(promo_code)),
+        reply_markup=plans_keyboard(
+            bonus_days=bonus_days, promo_applied=bool(promo_code), free=free,
+        ),
     )
 
 
@@ -189,6 +201,44 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
 # ─────────────────────────────────────────────────────────────
 #  TARIF TANLASH → TO'LOV OYNASI
 # ─────────────────────────────────────────────────────────────
+async def _finalize_subscription(callback, state, session, user, plan, plan_key, bonus_days, promo_code, free):
+    """Obunani faollashtiradi, promokod hisobini oshiradi va xabar beradi."""
+    source = "promo_free" if free else "card"
+    sub = await activate_subscription(
+        session, user,
+        plan_key=plan_key,
+        source=source,
+        promocode=promo_code,
+        bonus_days=bonus_days,
+    )
+    if promo_code:
+        await increment_promocode_use(session, promo_code)
+
+    await state.clear()
+
+    if free:
+        head = "🎁 <b>Bepul obuna faollashdi!</b>"
+        extra = f" (promokod: <code>{promo_code}</code>)"
+    else:
+        head = "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>"
+        extra = f" (+{bonus_days} kun promokod)" if bonus_days > 0 else ""
+
+    await callback.message.edit_text(
+        f"{head}\n\n"
+        f"📦 Tarif: <b>{plan['title']}</b>{extra}\n"
+        f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
+        f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
+        "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
+        "Pastdagi tugma orqali Mini App'ni oching 👇",
+        parse_mode="HTML",
+        reply_markup=premium_active_keyboard(),
+    )
+    logger.info(
+        f"💳 Obuna: user={user.telegram_id} plan={plan_key} bonus={bonus_days} "
+        f"promo={promo_code} free={free}"
+    )
+
+
 @router.callback_query(F.data.startswith("sub_plan_"))
 async def choose_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     plan_key = callback.data.replace("sub_plan_", "")
@@ -198,13 +248,38 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
         return
 
     user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user and user_is_premium(user):
+    if not user:
+        user = await get_or_create_user(
+            session, callback.from_user.id,
+            callback.from_user.full_name, callback.from_user.username or "",
+        )
+    if user_is_premium(user):
         await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
         return
 
     bonus_days, promo_code = await _state_promo(state)
-    total_days = plan["days"] + bonus_days
 
+    # Promokod hali ham amaldami — qayta tekshiramiz
+    if promo_code:
+        recheck = await validate_promocode(session, promo_code)
+        if recheck.valid:
+            bonus_days = int(recheck.bonus_days or 0)
+        else:
+            bonus_days, promo_code = 0, None
+            await state.update_data(promo_code=None, promo_bonus_days=0)
+
+    free = bool(promo_code) and bonus_days == 0
+
+    # BEPUL promokod (bonus_days=0) → to'lovsiz darhol ochamiz
+    if free:
+        await _finalize_subscription(
+            callback, state, session, user, plan, plan_key, 0, promo_code, free=True
+        )
+        await callback.answer("Bepul obuna ochildi 🎁")
+        return
+
+    # Aks holda — to'lov oynasi
+    total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     text = (
         "💳 <b>To'lov</b>\n"
@@ -254,34 +329,10 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
 
     # TODO: shu yerda haqiqiy to'lov tizimi javobini tekshirish kerak bo'ladi.
     # Hozircha to'lov muvaffaqiyatli deb hisoblaymiz.
-    sub = await activate_subscription(
-        session, user,
-        plan_key=plan_key,
-        source="card",
-        promocode=promo_code,
-        bonus_days=bonus_days,
-    )
-    if promo_code:
-        await increment_promocode_use(session, promo_code)
-
-    await state.clear()
-
-    bonus_line = f" (+{bonus_days} kun promokod)" if bonus_days > 0 else ""
-    await callback.message.edit_text(
-        "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>\n\n"
-        f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
-        f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
-        f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
-        "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
-        "Pastdagi tugma orqali Mini App'ni oching 👇",
-        parse_mode="HTML",
-        reply_markup=premium_active_keyboard(),
+    await _finalize_subscription(
+        callback, state, session, user, plan, plan_key, bonus_days, promo_code, free=False
     )
     await callback.answer("To'lov qabul qilindi ✅")
-    logger.info(
-        f"💳 Obuna sotib olindi: user={user.telegram_id} plan={plan_key} "
-        f"bonus={bonus_days} promo={promo_code}"
-    )
 
 
 # ─────────────────────────────────────────────────────────────

@@ -39,16 +39,15 @@ def admin_premium_keyboard() -> InlineKeyboardMarkup:
 
 
 def admin_promo_list_keyboard(promos: list) -> InlineKeyboardMarkup:
-    """Promokodlar ro'yxati — har bir amaldagi kod uchun kuchsizlantirish tugmasi."""
+    """Promokodlar ro'yxati — har bir kod uchun butunlay o'chirish tugmasi."""
     rows = []
     for p in promos:
-        if p.is_active:
-            rows.append([
-                InlineKeyboardButton(
-                    text=f"🚫 Kuchsizlantirish: {p.code}",
-                    callback_data=f"admin_promo_off_{p.id}",
-                )
-            ])
+        rows.append([
+            InlineKeyboardButton(
+                text=f"🗑 O'chirish: {p.code}",
+                callback_data=f"admin_promo_del_{p.id}",
+            )
+        ])
     rows.append([InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_premium")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
