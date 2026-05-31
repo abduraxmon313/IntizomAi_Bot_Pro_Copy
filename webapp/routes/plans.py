@@ -160,20 +160,20 @@ async def edit_plan(
         if not plan:
             raise HTTPException(status_code=404, detail="Reja topilmadi")
 
-        # "bajarildi" deb belgilashda: kechagi/oldingi kun yoki vaqti kelmagan
-        # rejani belgilab bo'lmaydi. ("pending" — bekor qilish — har doim ruxsat.)
-        if body.status == "done":
-            reason = plan_block_reason(plan.plan_date, plan.scheduled_time)
-            if reason == "past":
-                raise HTTPException(
-                    status_code=409,
-                    detail="O'tib ketgan kundagi rejani belgilab bo'lmaydi.",
-                )
-            if reason == "future":
-                raise HTTPException(
-                    status_code=409,
-                    detail="Rejaning vaqti hali kelmagan.",
-                )
+        # O'tib ketgan kun rejasini UMUMAN o'zgartirib bo'lmaydi (belgilash ham,
+        # belgilanmagan/pending qilish ham). Bugungi vaqti hali kelmagan rejani
+        # esa faqat "done" qilib bo'lmaydi.
+        reason = plan_block_reason(plan.plan_date, plan.scheduled_time)
+        if reason == "past":
+            raise HTTPException(
+                status_code=409,
+                detail="O'tib ketgan kundagi rejani o'zgartirib bo'lmaydi.",
+            )
+        if body.status == "done" and reason == "future":
+            raise HTTPException(
+                status_code=409,
+                detail="Rejaning vaqti hali kelmagan.",
+            )
 
         target = {
             "done": PlanStatus.done,
