@@ -32,11 +32,11 @@ def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool 
     # Promokod tugmasi — bekor qilishdan tepada
     if promo_applied:
         rows.append([
-            InlineKeyboardButton(text="🏷️ Promokodni o'zgartirish", callback_data="sub_promo_enter")
+            InlineKeyboardButton(text="🎟️ Promokodni o'zgartirish", callback_data="sub_promo_enter")
         ])
     else:
         rows.append([
-            InlineKeyboardButton(text="🏷️ Promokod kiritish", callback_data="sub_promo_enter")
+            InlineKeyboardButton(text="🎟️ Promokod kiritish", callback_data="sub_promo_enter")
         ])
     rows.append([
         InlineKeyboardButton(text="❌ Bekor qilish", callback_data="sub_cancel")
