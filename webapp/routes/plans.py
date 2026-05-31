@@ -112,6 +112,20 @@ async def add_plan(
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
+    # O'tib ketgan kun uchun reja qo'shib bo'lmaydi
+    if body.plan_date:
+        from datetime import date as _date, datetime as _dt
+        from bot.config import TIMEZONE
+        try:
+            _pd = _date.fromisoformat(body.plan_date)
+        except Exception:
+            _pd = None
+        if _pd and _pd < _dt.now(TIMEZONE).date():
+            raise HTTPException(
+                status_code=409,
+                detail="O'tib ketgan kun uchun reja qo'shib bo'lmaydi.",
+            )
+
     # Free-tier kunlik limit (premium foydalanuvchilarga cheksiz)
     from bot.services.premium_service import check_plan_limit
     limit = await check_plan_limit(session, user, adding=1)
