@@ -822,11 +822,14 @@ async def admin_promo_create_start(callback: CallbackQuery, state: FSMContext, s
         return
     await callback.message.edit_text(
         "🎟 <b>Promokod yaratish</b>\n\n"
-        "Format: <code>KOD bonus_kun [max_uses]</code>\n\n"
-        "• <b>bonus_kun</b>: tarifga qo'shiladigan qo'shimcha kunlar (masalan 15)\n"
-        "• <b>max_uses</b>: nechta marta ishlatilsin (0 = cheksiz)\n\n"
-        "Masalan: <code>YANGI2026 15 100</code>\n"
-        "Yoki: <code>SOVGA 30</code> (cheksiz)",
+        "Format: <code>KOD bonus_kun [max_uses] [amal_kun]</code>\n\n"
+        "• <b>bonus_kun</b>: tarifga qo'shiladigan kunlar.\n"
+        "   <code>0</code> = obuna <b>BEPUL</b> ochiladi (to'lovsiz)\n"
+        "• <b>max_uses</b>: nechta marta ishlatilsin (0 = cheksiz)\n"
+        "• <b>amal_kun</b>: promokod necha kun amal qiladi (0 = muddatsiz)\n\n"
+        "Masalan:\n"
+        "<code>YANGI2026 15 100 30</code> — +15 kun, 100 marta, 30 kun amal qiladi\n"
+        "<code>SOVGA 0 0 7</code> — bepul obuna, cheksiz, 7 kun amal qiladi",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
     )
@@ -842,30 +845,42 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
     parts = (message.text or "").split()
     if len(parts) < 2:
         await message.answer(
-            "❌ Format: <code>KOD bonus_kun [max_uses]</code>\n"
-            "Masalan: <code>YANGI2026 15 100</code>",
+            "❌ Format: <code>KOD bonus_kun [max_uses] [amal_kun]</code>\n"
+            "Masalan: <code>YANGI2026 15 100 30</code>",
             parse_mode="HTML",
         )
         return
 
+    from datetime import datetime, timedelta
     from bot.services.premium_service import create_promocode
 
     code = parts[0].strip()
     try:
         bonus_days = max(0, int(parts[1]))
     except ValueError:
-        await message.answer("❌ <b>bonus_kun</b> butun son bo'lishi kerak. Masalan: <code>YANGI 15 100</code>", parse_mode="HTML")
+        await message.answer("❌ <b>bonus_kun</b> butun son bo'lishi kerak. Masalan: <code>YANGI 15 100 30</code>", parse_mode="HTML")
         return
+
     max_uses = 0
     if len(parts) >= 3:
         try:
-            max_uses = int(parts[2])
+            max_uses = max(0, int(parts[2]))
         except ValueError:
             max_uses = 0
 
+    expires_at = None
+    valid_days = 0
+    if len(parts) >= 4:
+        try:
+            valid_days = max(0, int(parts[3]))
+        except ValueError:
+            valid_days = 0
+        if valid_days > 0:
+            expires_at = datetime.utcnow() + timedelta(days=valid_days)
+
     promo = await create_promocode(
         session, code=code, bonus_days=bonus_days, max_uses=max_uses,
-        created_by=message.from_user.id,
+        created_by=message.from_user.id, expires_at=expires_at,
     )
     await state.clear()
 
@@ -878,13 +893,18 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
         return
 
     uses_label = "cheksiz" if max_uses == 0 else f"{max_uses} marta"
+    valid_label = "muddatsiz" if valid_days == 0 else f"{valid_days} kun"
+    if bonus_days == 0:
+        type_label = "🎁 <b>BEPUL obuna</b> (to'lovsiz ochiladi)"
+    else:
+        type_label = f"🎁 Bonus: <b>+{bonus_days} kun</b> (tarif ustiga qo'shiladi)"
+
     await message.answer(
         f"✅ <b>Promokod yaratildi!</b>\n\n"
         f"🎟 Kod: <code>{promo.code}</code>\n"
-        f"🎁 Bonus: <b>+{bonus_days} kun</b>\n"
-        f"🔢 Limit: <b>{uses_label}</b>\n\n"
-        f"Foydalanuvchi obuna sotib olganda tanlagan tarifiga "
-        f"<b>{bonus_days} kun</b> qo'shiladi.",
+        f"{type_label}\n"
+        f"🔢 Limit: <b>{uses_label}</b>\n"
+        f"⏳ Amal qiladi: <b>{valid_label}</b>",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
     )
@@ -896,17 +916,25 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
 def _promos_text(promos: list) -> str:
     if not promos:
         return "🎟 <b>Promokodlar</b>\n\nHozircha promokod yaratilmagan."
+    from datetime import datetime
+    now = datetime.utcnow()
     text = "🎟 <b>Promokodlar</b>\n\n"
     for p in promos:
-        emoji = "🟢" if p.is_active else "🔴"
         uses = f"{p.used_count}/{p.max_uses}" if p.max_uses else f"{p.used_count}/∞"
+        kind = "🎁 BEPUL" if (p.bonus_days or 0) == 0 else f"+{p.bonus_days} kun"
+        if p.expires_at:
+            if p.expires_at < now:
+                valid = "⛔️ muddati tugagan"
+            else:
+                valid = f"{p.expires_at.strftime('%d.%m.%Y')} gacha"
+        else:
+            valid = "muddatsiz"
         text += (
-            f"{emoji} <code>{p.code}</code> · +{p.bonus_days} kun · "
-            f"ishlatildi {uses}\n"
+            f"<code>{p.code}</code> · {kind} · ishlatildi {uses}\n"
+            f"   ⏳ {valid}\n"
         )
     text += (
-        "\n🟢 amaldagi · 🔴 kuchsizlantirilgan\n\n"
-        "<i>Kuchsizlantirilsa — faqat yangi foydalanuvchilar uchun ishlamaydi. "
+        "\n<i>O'chirilsa — faqat yangi foydalanuvchilar uchun ishlamaydi. "
         "Avval foydalanganlarning obunasiga ta'sir qilmaydi.</i>"
     )
     return text
@@ -929,8 +957,8 @@ async def admin_promo_list(callback: CallbackQuery, session: AsyncSession):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("admin_promo_off_"))
-async def admin_promo_off(callback: CallbackQuery, session: AsyncSession):
+@router.callback_query(F.data.startswith("admin_promo_del_"))
+async def admin_promo_del(callback: CallbackQuery, session: AsyncSession):
     if not await is_admin(session, callback.from_user.id):
         await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
@@ -941,10 +969,10 @@ async def admin_promo_off(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Xato!", show_alert=True)
         return
 
-    from bot.services.premium_service import deactivate_promocode, list_promocodes
-    promo = await deactivate_promocode(session, promo_id)
-    if promo:
-        await callback.answer(f"🚫 {promo.code} kuchsizlantirildi", show_alert=True)
+    from bot.services.premium_service import delete_promocode, list_promocodes
+    code = await delete_promocode(session, promo_id)
+    if code:
+        await callback.answer(f"🗑 {code} o'chirildi", show_alert=True)
     else:
         await callback.answer("Promokod topilmadi", show_alert=True)
 

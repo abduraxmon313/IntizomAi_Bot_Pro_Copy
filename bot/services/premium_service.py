@@ -239,19 +239,21 @@ async def list_promocodes(session: AsyncSession) -> list[Promocode]:
     return res.scalars().all()
 
 
-async def deactivate_promocode(session: AsyncSession, promo_id: int) -> Optional[Promocode]:
+async def delete_promocode(session: AsyncSession, promo_id: int) -> Optional[str]:
     """
-    Promokodni kuchsizlantiradi (is_active=False).
-    Bu faqat YANGI foydalanuvchilar uchun amal qiladi — avval foydalanganlarning
-    obunasi (Subscription) saqlanib qoladi.
+    Promokodni BUTUNLAY o'chiradi (DB dan yo'q qiladi).
+    Bu faqat YANGI foydalanuvchilar uchun amal qiladi — avval foydalanib
+    olganlarning obunasi (Subscription) saqlanib qoladi, chunki ular alohida
+    jadvalda. O'chirilgach kod boshqa ishlamaydi.
+    Qaytaradi: o'chirilgan promokod matni (yoki None).
     """
     promo = await session.get(Promocode, promo_id)
     if not promo:
         return None
-    promo.is_active = False
+    code = promo.code
+    await session.delete(promo)
     await session.commit()
-    await session.refresh(promo)
-    return promo
+    return code
 
 
 async def increment_promocode_use(session: AsyncSession, code: str) -> None:
@@ -310,6 +312,7 @@ async def create_promocode(
     bonus_days: int = 0,
     max_uses: int = 0,
     created_by: Optional[int] = None,
+    expires_at: Optional[datetime] = None,
 ) -> Optional[Promocode]:
     """Yangi promokod yaratadi (admin). Mavjud bo'lsa None qaytaradi."""
     norm = code.strip()
@@ -324,6 +327,7 @@ async def create_promocode(
         bonus_days=bonus_days,
         max_uses=max_uses,
         created_by=created_by,
+        expires_at=expires_at,
     )
     session.add(promo)
     await session.commit()

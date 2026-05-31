@@ -8,15 +8,17 @@ from bot.config import SUBSCRIPTION_PLANS, WEBAPP_URL
 from bot.services.premium_service import format_price
 
 
-def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False) -> InlineKeyboardMarkup:
+def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool = False) -> InlineKeyboardMarkup:
     """
     Obuna planlarini tanlash klaviaturasi.
-    Agar promokod qo'llangan bo'lsa — har bir tarif nomida '+N kun' qo'shiladi
-    va promokod tugmasi 'o'zgartirish' holatiga o'tadi.
+      • free=True (bonus_days=0 promokod) → har bir tarif "BEPUL" ko'rinadi.
+      • bonus_days>0 → har bir tarif nomida "+N kun" qo'shiladi.
     """
     rows = []
     for key, plan in SUBSCRIPTION_PLANS.items():
-        if bonus_days > 0:
+        if free:
+            label = f"🎁 {plan['title']} — BEPUL"
+        elif bonus_days > 0:
             label = f"💎 {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
         else:
             label = f"💎 {plan['title']} — {format_price(plan['price'])} so'm"
