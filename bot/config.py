@@ -68,11 +68,29 @@ PREMIUM_EXPIRY_REMINDER_DAYS = [3, 1]
 # ─────────────────────────────────────────────────────────────
 # Railway env qiymatlari (.env kabi o'qiladi). Asosiy nomlar — foydalanuvchi
 # Railway'ga qo'ygan nomlar; PAYLOV_ prefiksli muqobil nomlar ham qo'llab-quvvatlanadi.
-PAYLOV_BASE_URL = (
+def _normalize_api_base(url: str) -> str:
+    """
+    To'lov API bazaviy URL'ini normallashtiradi.
+
+    Klient (bot/services/paylov.py) yo'lga doim '/api/v1' prefiksini qo'shadi,
+    shuning uchun bazaviy URL faqat HOST bo'lishi kerak (masalan
+    https://api.wlcm.uz). Agar Railway'da Base_URL ga '/api/v1' (yoki '/api')
+    qo'shib qo'yilgan bo'lsa — uni olib tashlaymiz, aks holda yo'l
+    '/api/v1/api/v1/...' bo'lib 404 (Not Found) qaytaradi.
+    """
+    url = (url or "").strip().rstrip("/")
+    for suffix in ("/api/v1", "/api"):
+        if url.lower().endswith(suffix):
+            url = url[: -len(suffix)].rstrip("/")
+            break
+    return url
+
+
+PAYLOV_BASE_URL = _normalize_api_base(
     os.getenv("Base_URL")
     or os.getenv("PAYLOV_BASE_URL")
     or "https://api.wlcm.uz"
-).rstrip("/")
+)
 PAYLOV_API_KEY = os.getenv("API_KEY") or os.getenv("PAYLOV_API_KEY", "") or ""
 PAYLOV_API_SECRET = os.getenv("API_SECRET") or os.getenv("PAYLOV_API_SECRET", "") or ""
 PAYLOV_PARTNER_ID = os.getenv("PARTNER_ID") or os.getenv("PAYLOV_PARTNER_ID", "") or ""
