@@ -122,7 +122,7 @@ async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: A
 
     from bot.config import (
         PAYLOV_BASE_URL, PAYLOV_ENABLED, PAYLOV_PARTNER_ID,
-        PAYLOV_PROD_TOKEN, PAYLOV_API_KEY,
+        PAYLOV_PROD_TOKEN, PAYLOV_API_KEY, PAYLOV_WEBHOOK_URL,
     )
 
     has_token = bool(PAYLOV_PROD_TOKEN)
@@ -141,6 +141,10 @@ async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: A
     )
     if PAYLOV_ENABLED:
         text += f"🔐 API key: <code>{_mask(PAYLOV_API_KEY)}</code>\n"
+        text += (
+            f"\n📡 <b>Webhook URL</b> (WLCM'ga shuni bering):\n"
+            f"<code>{PAYLOV_WEBHOOK_URL}</code>\n"
+        )
 
     text += (
         "\n<b>Onboarding (2 bosqichli):</b>\n"
@@ -189,6 +193,54 @@ async def admin_keys_check(callback: CallbackQuery, session: AsyncSession):
         "Endi <b>«🔑 API key/secret olish»</b> orqali kalit yaratishingiz mumkin.",
         parse_mode="HTML",
         reply_markup=admin_keys_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "admin_keys_test")
+async def admin_keys_test(callback: CallbackQuery, session: AsyncSession):
+    """Joriy API_KEY/API_SECRET bilan GET /me chaqiradi — kalitlar ishlashini tasdiqlaydi."""
+    if not await _is_super_admin(callback):
+        return
+
+    from bot.config import PAYLOV_ENABLED
+    if not PAYLOV_ENABLED:
+        await callback.answer("Kalitlar o'rnatilmagan (API_KEY/API_SECRET).", show_alert=True)
+        return
+
+    from bot.services.paylov import get_me, PaylovError
+
+    await callback.answer("🔌 Tekshirilmoqda...")
+    try:
+        me = await get_me()
+    except PaylovError as e:
+        await callback.message.edit_text(
+            "🔌 <b>Ulanish testi (/me)</b>\n\n"
+            f"❌ Muvaffaqiyatsiz:\n<code>{str(e)[:400]}</code>\n\n"
+            "Sabablar: API_KEY/API_SECRET noto'g'ri, IP whitelist yoki partner inactive.",
+            parse_mode="HTML",
+            reply_markup=admin_keys_keyboard(enabled=True),
+        )
+        return
+
+    name = me.get("name", "—")
+    pid = me.get("id", "—")
+    uuid = me.get("uuid", "—")
+    is_active = me.get("is_active")
+    api_keys = me.get("api_keys", []) or []
+    subs = me.get("sub_partners", []) or []
+
+    await callback.message.edit_text(
+        "🔌 <b>Ulanish testi (/me)</b>\n\n"
+        "✅ Kalitlar <b>ishlayapti</b>!\n\n"
+        f"🏷 Partner: <b>{name}</b>\n"
+        f"🆔 ID: <code>{pid}</code>\n"
+        f"🔑 UUID: <code>{uuid}</code>\n"
+        f"📦 Faol: <b>{'ha' if is_active else 'yoʻq'}</b>\n"
+        f"🗝 API keylar soni: <b>{len(api_keys)}</b>\n"
+        f"👥 Sub-partnerlar: <b>{len(subs)}</b>\n\n"
+        "To'lov tizimi to'liq tayyor. Endi foydalanuvchilar to'lov qila oladi.",
+        parse_mode="HTML",
+        reply_markup=admin_keys_keyboard(enabled=True),
     )
 
 
