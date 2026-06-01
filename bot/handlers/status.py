@@ -7,7 +7,6 @@ from datetime import datetime
 from bot.config import TIMEZONE
 from bot.services.user_service import get_user_by_telegram_id
 from bot.services.gamification_service import xp_progress, rank_for_level
-from bot.services.score_service import get_today_score
 from bot.models.plan import Plan, PlanStatus
 from bot.models.achievement import Achievement
 
@@ -35,10 +34,16 @@ async def my_status_handler(message: Message, session: AsyncSession):
     )
     plans = plans_result.scalars().all()
 
-    done_today = len([p for p in plans if p.status == PlanStatus.done])
+    done_plans = [p for p in plans if p.status == PlanStatus.done]
+    failed_plans = [p for p in plans if p.status == PlanStatus.failed]
+    done_today = len(done_plans)
     total_today = len(plans)
 
-    today_score = await get_today_score(session, user)
+    # Bugungi ball: bajarilganlardan ball, bajarilmaganlardan -3 (report.py bilan
+    # bir xil — deterministik). Avval ScoreLog yig'indisidan olinardi; reja qayta
+    # belgilanganda yoki tugma ikki marta bosilganda ball ikki marta qo'shilib
+    # ("takrorlanib") ko'rinardi. Endi bugungi rejalardan to'g'ridan-to'g'ri hisoblanadi.
+    today_score = sum(p.score_value or 0 for p in done_plans) - 3 * len(failed_plans)
 
     all_done = await session.scalar(
         select(func.count(Plan.id)).where(
