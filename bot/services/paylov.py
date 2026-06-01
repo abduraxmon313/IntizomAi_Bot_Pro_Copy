@@ -40,6 +40,7 @@ _TIMEOUT = httpx.Timeout(30.0)
 
 class PaylovError(Exception):
     """Paylov API xatosi."""
+    status_code: int | None = None
 
 
 def _canonical_path(path: str, query_string: str = "") -> str:
@@ -97,7 +98,9 @@ async def _request(method: str, path: str, payload: dict | None = None) -> dict:
 
     if resp.status_code >= 400:
         logger.error(f"❌ Paylov {method} {path} → {resp.status_code}: {resp.text[:400]}")
-        raise PaylovError(f"Paylov {resp.status_code}: {resp.text[:200]}")
+        err = PaylovError(f"Paylov {resp.status_code}: {resp.text[:200]}")
+        err.status_code = resp.status_code
+        raise err
 
     try:
         return resp.json()
@@ -109,8 +112,28 @@ async def _request(method: str, path: str, payload: dict | None = None) -> dict:
 #  PUBLIC API
 # ─────────────────────────────────────────────────────────────
 async def get_me() -> dict:
-    """Partner ma'lumotlari — kalitlarni tekshirish uchun (debug)."""
-    return await _request("GET", f"{API_PREFIX}/integrations/me")
+    """
+    Partner ma'lumotlari — kalitlarni tekshirish uchun.
+
+    /me yo'li hujjatlarda ziddiyatli ko'rsatilgan (bir joyda `/partners/me`,
+    boshqa joyda `/integrations/me`). Shu sabab bir nechta nomzodni navbatma-navbat
+    sinaymiz: 404 bo'lsa keyingisiga o'tamiz, boshqa xato bo'lsa darhol uzatamiz.
+    """
+    candidates = [
+        f"{API_PREFIX}/partners/me",
+        f"{API_PREFIX}/integrations/me",
+        f"{API_PREFIX}/me",
+    ]
+    last_err: PaylovError | None = None
+    for path in candidates:
+        try:
+            return await _request("GET", path)
+        except PaylovError as e:
+            if getattr(e, "status_code", None) == 404:
+                last_err = e
+                continue
+            raise
+    raise last_err or PaylovError("get_me: barcha /me yo'llari 404 qaytardi")
 
 
 async def create_checkout(external_id: str, amount_tiyin: int,

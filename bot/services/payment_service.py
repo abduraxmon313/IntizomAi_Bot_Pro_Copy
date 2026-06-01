@@ -95,13 +95,20 @@ async def _notify(telegram_id: int, text: str) -> None:
 
 
 def _amounts_match(webhook_amount, order_amount_tiyin: int) -> bool:
-    """Webhook summasi (so'mda, masalan '29000.00') buyurtma summasiga mosmi."""
+    """
+    Webhook summasi buyurtma summasiga mosligini tekshiradi (tamper himoyasi).
+
+    Webhook summasi formati noaniq bo'lishi mumkin: so'mda ("1000" yoki "1000.00")
+    yoki tiyinda ("100000"). Shu sabab IKKALA talqinni ham qabul qilamiz — aks
+    holda haqiqiy to'lov jim rad etilib, premium ochilmay qoladi.
+    """
     try:
-        paid_som = float(str(webhook_amount).replace(" ", ""))
+        paid = float(str(webhook_amount).replace(" ", "").replace(",", "."))
     except (TypeError, ValueError):
         return False
-    expected_som = order_amount_tiyin / 100.0
-    return abs(paid_som - expected_som) < 1.0
+    expected_som = order_amount_tiyin / 100.0      # masalan 1000.0
+    expected_tiyin = float(order_amount_tiyin)      # masalan 100000.0
+    return abs(paid - expected_som) < 1.0 or abs(paid - expected_tiyin) < 1.0
 
 
 async def process_webhook(payload: dict) -> dict:

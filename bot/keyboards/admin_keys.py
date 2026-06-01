@@ -34,7 +34,10 @@ def admin_keys_keyboard(enabled: bool = False, has_token: bool = True) -> Inline
         rows.append([
             InlineKeyboardButton(text="🔌 Ulanishni tekshirish (/me)", callback_data="admin_keys_test"),
         ])
-    if has_token:
+    # Token onboarding tugmalari FAQAT kalitlar hali yo'q bo'lganda ko'rsatiladi.
+    # Kalitlar bor bo'lsa token allaqachon sarflangan (bir martalik) — bu tugmalar
+    # faqat chalkashtiradi (har doim "invalid_or_expired" beradi).
+    if has_token and not enabled:
         rows.append([
             InlineKeyboardButton(text="🔍 Tokenni tekshirish", callback_data="admin_keys_check"),
         ])
