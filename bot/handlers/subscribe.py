@@ -17,12 +17,14 @@ import logging
 from datetime import datetime
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import (
+    Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton,
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import SUBSCRIPTION_PLANS, FREE_DAILY_PLAN_LIMIT
+from bot.config import SUBSCRIPTION_PLANS, FREE_DAILY_PLAN_LIMIT, PAYLOV_ENABLED
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import (
     get_status,
@@ -298,7 +300,7 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
 
 
 # ─────────────────────────────────────────────────────────────
-#  TO'LOV (hozircha simulyatsiya) → PREMIUM OCHILADI
+#  TO'LOV — Paylov checkout (sozlanmagan bo'lsa simulyatsiya)
 # ─────────────────────────────────────────────────────────────
 @router.callback_query(F.data.startswith("sub_pay_"))
 async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
@@ -327,12 +329,49 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         if not recheck.valid:
             promo_code = None
 
-    # TODO: shu yerda haqiqiy to'lov tizimi javobini tekshirish kerak bo'ladi.
-    # Hozircha to'lov muvaffaqiyatli deb hisoblaymiz.
-    await _finalize_subscription(
-        callback, state, session, user, plan, plan_key, bonus_days, promo_code, free=False
+    # ── To'lov tizimi sozlanmagan bo'lsa — sinov (simulyatsiya) rejimi ──
+    if not PAYLOV_ENABLED:
+        await _finalize_subscription(
+            callback, state, session, user, plan, plan_key, bonus_days, promo_code, free=False
+        )
+        await callback.answer("To'lov qabul qilindi ✅ (sinov)")
+        return
+
+    # ── Haqiqiy Paylov checkout ──────────────────────────────
+    from bot.services.payment_service import create_checkout_order
+    from bot.services.paylov import PaylovError
+    try:
+        order, checkout_url = await create_checkout_order(
+            session, user, plan_key, bonus_days=bonus_days, promo_code=promo_code,
+        )
+    except (PaylovError, Exception) as e:
+        logger.error(f"❌ Checkout yaratishda xato: {type(e).__name__}: {e}")
+        await callback.answer("To'lov sahifasini ochib bo'lmadi. Birozdan so'ng urinib ko'ring.", show_alert=True)
+        return
+
+    if not checkout_url:
+        await callback.answer("To'lov sahifasi olinmadi. Birozdan so'ng urinib ko'ring.", show_alert=True)
+        return
+
+    total_days = plan["days"] + bonus_days
+    bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 To'lash", url=checkout_url)],
+        [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
+    ])
+    await callback.message.edit_text(
+        "💳 <b>To'lovga tayyor</b>\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
+        f"📅 Muddat: <b>{total_days} kun</b>\n"
+        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
+        "Quyidagi <b>«💳 To'lash»</b> tugmasi orqali to'lovni amalga oshiring.\n"
+        "To'lov muvaffaqiyatli bo'lgach, <b>premium avtomatik ochiladi</b> va "
+        "sizga xabar keladi 🔔",
+        parse_mode="HTML",
+        reply_markup=kb,
     )
-    await callback.answer("To'lov qabul qilindi ✅")
+    await callback.answer()
 
 
 # ─────────────────────────────────────────────────────────────

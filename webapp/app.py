@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from webapp.routes import goals, plans, stats, subscription, ai
+from webapp.routes import goals, plans, stats, subscription, ai, payments
 from webapp.security import (
     MAX_BODY_BYTES,
     RATE_LIMIT_MAX,
@@ -128,6 +128,8 @@ app.include_router(goals.router, prefix="/api/webapp")
 app.include_router(stats.router, prefix="/api/webapp")
 app.include_router(subscription.router, prefix="/api/webapp")
 app.include_router(ai.router, prefix="/api/webapp")
+# Paylov webhook — /webhook/paylov (prefiksiz, /api/ ostida emas)
+app.include_router(payments.router)
 
 
 @app.get("/health")
