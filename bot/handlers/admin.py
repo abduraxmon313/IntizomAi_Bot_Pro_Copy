@@ -144,19 +144,24 @@ async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: A
         text += (
             f"\n📡 <b>Webhook URL</b> (WLCM'ga shuni bering):\n"
             f"<code>{PAYLOV_WEBHOOK_URL}</code>\n"
+            "\n⚠️ <b>Premium avtomatik ochilishi shu webhook'ga bog'liq!</b>\n"
+            "WLCM bu manzilga to'lov natijasini yuborishi kerak. Aks holda "
+            "foydalanuvchi to'laydi, lekin obuna ochilmaydi.\n"
+            "\n🔌 <b>«Ulanishni tekshirish (/me)»</b> bilan kalitlar to'g'riligini "
+            "bilib oling."
         )
-
-    text += (
-        "\n<b>Onboarding (2 bosqichli):</b>\n"
-        "1️⃣ <b>Tokenni tekshirish</b> — token amaldaligini bilib oladi "
-        "(tokenni sarflamaydi).\n"
-        "2️⃣ <b>API key/secret olish</b> — yangi <code>API_KEY</code> va "
-        "<code>API_SECRET</code> yaratadi.\n\n"
-        "⚠️ Token cheklangan martalik. \"Olish\" tugmasi tokenni <b>sarflaydi</b>, "
-        "shuning uchun faqat bir marta bosing va kalitlarni Railway env'ga qo'ying."
-    )
-    if not has_token:
-        text += "\n\n❌ <b>PROD_TOKEN topilmadi.</b> Avval Railway env'da PROD_TOKEN ni to'ldiring."
+    else:
+        text += (
+            "\n<b>Onboarding (2 bosqichli):</b>\n"
+            "1️⃣ <b>Tokenni tekshirish</b> — token amaldaligini bilib oladi "
+            "(tokenni sarflamaydi).\n"
+            "2️⃣ <b>API key/secret olish</b> — yangi <code>API_KEY</code> va "
+            "<code>API_SECRET</code> yaratadi.\n\n"
+            "⚠️ Token cheklangan martalik. \"Olish\" tugmasi tokenni <b>sarflaydi</b>, "
+            "shuning uchun faqat bir marta bosing va kalitlarni Railway env'ga qo'ying."
+        )
+        if not has_token:
+            text += "\n\n❌ <b>PROD_TOKEN topilmadi.</b> Avval Railway env'da PROD_TOKEN ni to'ldiring."
 
     await callback.message.edit_text(
         text,

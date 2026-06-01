@@ -23,6 +23,15 @@ async def paylov_webhook(request: Request):
     except Exception:
         payload = {}
 
+    # Diagnostika: WLCM webhookni chaqirayotganini ko'rish uchun log.
+    # (To'lov nega avtomatik ochilmadi muammosini aniqlashga yordam beradi.)
+    client = request.client.host if request.client else "?"
+    logger.info(
+        f"📥 Paylov webhook keldi: ip={client} "
+        f"external_id={payload.get('external_id')} state={payload.get('state')} "
+        f"payment_id={payload.get('payment_id')} amount={payload.get('amount')}"
+    )
+
     try:
         from bot.services.payment_service import process_webhook
         return await process_webhook(payload or {})
