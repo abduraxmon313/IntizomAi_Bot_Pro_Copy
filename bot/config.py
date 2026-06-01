@@ -93,3 +93,31 @@ PAYLOV_ONBOARDING_PATH = (
 
 # To'lov tizimi sozlanganmi (kalitlar bormi). Bo'lmasa — sinov (simulyatsiya) rejimi.
 PAYLOV_ENABLED = bool(PAYLOV_API_KEY and PAYLOV_API_SECRET)
+
+
+# ─────────────────────────────────────────────────────────────
+#  WEBHOOK URL (WLCM shu manzilga to'lov natijasini yuboradi)
+# ─────────────────────────────────────────────────────────────
+def _origin(url: str) -> str:
+    """URL dan faqat scheme://host qismini ajratadi (path/queryни tashlaydi)."""
+    if not url:
+        return ""
+    from urllib.parse import urlsplit
+    parts = urlsplit(url if "://" in url else f"https://{url}")
+    if parts.scheme and parts.netloc:
+        return f"{parts.scheme}://{parts.netloc}"
+    return ""
+
+
+# Ommaviy domen: aniq PUBLIC_BASE_URL > Railway domeni > WEBAPP_URL origin'i.
+PUBLIC_BASE_URL = (
+    _origin(os.getenv("PUBLIC_BASE_URL", ""))
+    or (f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "")
+    or _origin(WEBAPP_URL)
+).rstrip("/")
+
+PAYLOV_WEBHOOK_PATH = "/webhook/paylov"
+# To'liq webhook URL (domen aniqlansa). Aniqlanmasa — faqat path.
+PAYLOV_WEBHOOK_URL = (
+    f"{PUBLIC_BASE_URL}{PAYLOV_WEBHOOK_PATH}" if PUBLIC_BASE_URL else PAYLOV_WEBHOOK_PATH
+)

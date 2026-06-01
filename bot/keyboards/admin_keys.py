@@ -29,6 +29,11 @@ def admin_keys_keyboard(enabled: bool = False, has_token: bool = True) -> Inline
       • 🔑 API key/secret olish — onboarding POST (token SARFLANADI), tasdiqlash bilan.
     """
     rows = []
+    # Kalitlar o'rnatilgan bo'lsa — ulanishni tekshirish (/me) birinchi o'rinda.
+    if enabled:
+        rows.append([
+            InlineKeyboardButton(text="🔌 Ulanishni tekshirish (/me)", callback_data="admin_keys_test"),
+        ])
     if has_token:
         rows.append([
             InlineKeyboardButton(text="🔍 Tokenni tekshirish", callback_data="admin_keys_check"),
