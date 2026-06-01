@@ -96,6 +96,10 @@ PAYLOV_API_SECRET = os.getenv("API_SECRET") or os.getenv("PAYLOV_API_SECRET", ""
 PAYLOV_PARTNER_ID = os.getenv("PARTNER_ID") or os.getenv("PAYLOV_PARTNER_ID", "") or ""
 PAYLOV_PROD_TOKEN = os.getenv("PROD_TOKEN") or os.getenv("PAYLOV_PROD_TOKEN", "") or ""
 
+# Webhook imzo maxfiy kaliti (WLCM webhookni ulagandan keyin beradi).
+# Webhook haqiqatan WLCM'dan kelganini HMAC-SHA256 orqali tasdiqlash uchun.
+PAYLOV_WEBHOOK_SECRET = os.getenv("PAYLOV_WEBHOOK_SECRET", "") or ""
+
 # To'lov provayderi (paylov/payme/click/uzum/card) va to'lovdan keyin qaytish URL.
 # PAYLOV_PROVIDER — foydalanuvchi tanlamasa ishlatiladigan default provayder.
 PAYLOV_PROVIDER = os.getenv("PAYLOV_PROVIDER", "paylov").strip()
