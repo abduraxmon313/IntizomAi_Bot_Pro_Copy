@@ -82,5 +82,14 @@ PAYLOV_PROD_TOKEN = os.getenv("PROD_TOKEN") or os.getenv("PAYLOV_PROD_TOKEN", ""
 PAYLOV_PROVIDER = os.getenv("PAYLOV_PROVIDER", "paylov").strip()
 PAYLOV_RETURN_URL = os.getenv("PAYLOV_RETURN_URL", "https://t.me/intizomAi_bot").strip()
 
+# Onboarding endpoint path (PROD_TOKEN → api_key + api_secret olish uchun).
+# Hujjatda `partners/onboarding/` deyilgan; boshqa endpointlar /api/v1 ostida.
+# Agar server boshqa path ishlatsa — WLCM_ONBOARDING_PATH bilan o'zgartiring.
+PAYLOV_ONBOARDING_PATH = (
+    os.getenv("WLCM_ONBOARDING_PATH")
+    or os.getenv("PAYLOV_ONBOARDING_PATH")
+    or "/api/v1/partners/onboarding/"
+).strip()
+
 # To'lov tizimi sozlanganmi (kalitlar bormi). Bo'lmasa — sinov (simulyatsiya) rejimi.
 PAYLOV_ENABLED = bool(PAYLOV_API_KEY and PAYLOV_API_SECRET)

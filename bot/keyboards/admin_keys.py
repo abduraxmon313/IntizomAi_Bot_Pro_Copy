@@ -14,8 +14,39 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📢 Xabar yuborish", callback_data="admin_broadcast"),
         ],
         [
+            InlineKeyboardButton(text="🔑 To'lov kalitlari (WLCM)", callback_data="admin_keys"),
+        ],
+        [
             InlineKeyboardButton(text="🚪 Chiqish", callback_data="home"),
         ]
+    ])
+
+
+def admin_keys_keyboard(enabled: bool = False, has_token: bool = True) -> InlineKeyboardMarkup:
+    """
+    WLCM to'lov kalitlari bo'limi tugmalari.
+      • 🔍 Tokenni tekshirish — token amaldaligini GET orqali tekshiradi (sarflamaydi).
+      • 🔑 API key/secret olish — onboarding POST (token SARFLANADI), tasdiqlash bilan.
+    """
+    rows = []
+    if has_token:
+        rows.append([
+            InlineKeyboardButton(text="🔍 Tokenni tekshirish", callback_data="admin_keys_check"),
+        ])
+        rows.append([
+            InlineKeyboardButton(text="🔑 API key/secret olish", callback_data="admin_keys_confirm"),
+        ])
+    rows.append([
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_panel"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def admin_keys_confirm_keyboard() -> InlineKeyboardMarkup:
+    """Onboarding'ni yakunlash (token sarflanadi) uchun tasdiqlash tugmalari."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Ha, kalit yarat", callback_data="admin_keys_generate")],
+        [InlineKeyboardButton(text="❌ Yo'q, bekor", callback_data="admin_keys")],
     ])
 
 
