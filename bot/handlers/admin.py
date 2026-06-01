@@ -18,6 +18,7 @@ from bot.keyboards.admin_keys import (
     back_to_admin_keyboard, back_to_users_keyboard,
     admin_premium_keyboard, back_to_premium_keyboard,
     admin_promo_list_keyboard,
+    admin_keys_keyboard, admin_keys_confirm_keyboard,
 )
 
 router = Router()
@@ -87,6 +88,179 @@ async def admin_panel_callback(callback: CallbackQuery, state: FSMContext, sessi
         reply_markup=admin_main_keyboard()
     )
     await callback.answer()
+
+
+# ===================== WLCM TO'LOV KALITLARI (ONBOARDING) =====================
+# Faqat super admin (ADMIN_ID) ko'radi va boshqaradi — bu bo'lim maxfiy
+# api_key/api_secret ni ochib beradi va cheklangan martalik tokenni sarflaydi.
+
+def _mask(value: str, head: int = 6, tail: int = 4) -> str:
+    value = value or ""
+    if not value:
+        return "(yo'q)"
+    if len(value) <= head + tail:
+        return "***"
+    return f"{value[:head]}…{value[-tail:]}"
+
+
+async def _is_super_admin(callback: CallbackQuery) -> bool:
+    from bot.config import ADMIN_ID
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer(
+            "❌ Bu bo'lim faqat bosh admin (super admin) uchun.",
+            show_alert=True,
+        )
+        return False
+    return True
+
+
+@router.callback_query(F.data == "admin_keys")
+async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await _is_super_admin(callback):
+        return
+    await state.clear()
+
+    from bot.config import (
+        PAYLOV_BASE_URL, PAYLOV_ENABLED, PAYLOV_PARTNER_ID,
+        PAYLOV_PROD_TOKEN, PAYLOV_API_KEY,
+    )
+
+    has_token = bool(PAYLOV_PROD_TOKEN)
+    status_line = (
+        "✅ Kalitlar o'rnatilgan (to'lov yoqilgan)"
+        if PAYLOV_ENABLED else
+        "⚠️ Kalitlar hali yo'q (to'lov o'chiq)"
+    )
+
+    text = (
+        "🔑 <b>WLCM to'lov kalitlari</b>\n\n"
+        f"🌐 Server: <code>{PAYLOV_BASE_URL}</code>\n"
+        f"🏷 Partner ID: <code>{PAYLOV_PARTNER_ID or '—'}</code>\n"
+        f"🎫 Token: <code>{_mask(PAYLOV_PROD_TOKEN)}</code>\n"
+        f"📦 Holat: {status_line}\n"
+    )
+    if PAYLOV_ENABLED:
+        text += f"🔐 API key: <code>{_mask(PAYLOV_API_KEY)}</code>\n"
+
+    text += (
+        "\n<b>Onboarding (2 bosqichli):</b>\n"
+        "1️⃣ <b>Tokenni tekshirish</b> — token amaldaligini bilib oladi "
+        "(tokenni sarflamaydi).\n"
+        "2️⃣ <b>API key/secret olish</b> — yangi <code>API_KEY</code> va "
+        "<code>API_SECRET</code> yaratadi.\n\n"
+        "⚠️ Token cheklangan martalik. \"Olish\" tugmasi tokenni <b>sarflaydi</b>, "
+        "shuning uchun faqat bir marta bosing va kalitlarni Railway env'ga qo'ying."
+    )
+    if not has_token:
+        text += "\n\n❌ <b>PROD_TOKEN topilmadi.</b> Avval Railway env'da PROD_TOKEN ni to'ldiring."
+
+    await callback.message.edit_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=admin_keys_keyboard(enabled=PAYLOV_ENABLED, has_token=has_token),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_keys_check")
+async def admin_keys_check(callback: CallbackQuery, session: AsyncSession):
+    if not await _is_super_admin(callback):
+        return
+
+    from bot.services.onboarding import validate_token, OnboardingError
+
+    await callback.answer("🔍 Tekshirilmoqda...")
+    try:
+        path, info = await validate_token()
+    except OnboardingError as e:
+        await callback.message.edit_text(
+            "🔍 <b>Token tekshiruvi</b>\n\n"
+            f"❌ Muvaffaqiyatsiz:\n<code>{str(e)[:400]}</code>",
+            parse_mode="HTML",
+            reply_markup=admin_keys_keyboard(),
+        )
+        return
+
+    await callback.message.edit_text(
+        "🔍 <b>Token tekshiruvi</b>\n\n"
+        "✅ Token <b>amalda</b>!\n"
+        f"🔗 Endpoint: <code>{path}</code>\n"
+        f"📨 Javob: <code>{info}</code>\n\n"
+        "Endi <b>«🔑 API key/secret olish»</b> orqali kalit yaratishingiz mumkin.",
+        parse_mode="HTML",
+        reply_markup=admin_keys_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "admin_keys_confirm")
+async def admin_keys_confirm(callback: CallbackQuery, session: AsyncSession):
+    if not await _is_super_admin(callback):
+        return
+    await callback.message.edit_text(
+        "⚠️ <b>Diqqat — tokenni sarflaysiz!</b>\n\n"
+        "Bu amal WLCM'da yangi <code>API_KEY</code> va <code>API_SECRET</code> "
+        "yaratadi va onboarding tokenni <b>bir martaga sarflaydi</b>.\n\n"
+        "Kalitlar shu yerda ko'rsatiladi — ularni darhol <b>Railway env</b>'ga "
+        "(<code>API_KEY</code>, <code>API_SECRET</code>) qo'ying.\n\n"
+        "Davom etamizmi?",
+        parse_mode="HTML",
+        reply_markup=admin_keys_confirm_keyboard(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_keys_generate")
+async def admin_keys_generate(callback: CallbackQuery, session: AsyncSession):
+    if not await _is_super_admin(callback):
+        return
+
+    from bot.services.onboarding import complete_onboarding, OnboardingError
+
+    await callback.answer("🔑 Kalit yaratilmoqda...")
+    try:
+        await callback.message.edit_text("⏳ Onboarding bajarilmoqda...")
+    except Exception:
+        pass
+
+    try:
+        data = await complete_onboarding(name="intizom-ai-prod")
+    except OnboardingError as e:
+        await callback.message.edit_text(
+            "🔑 <b>API key/secret olish</b>\n\n"
+            f"❌ Xatolik:\n<code>{str(e)[:500]}</code>\n\n"
+            "Token amaldaligini tekshiring yoki WLCM bilan bog'laning.",
+            parse_mode="HTML",
+            reply_markup=admin_keys_keyboard(),
+        )
+        return
+
+    api_key = data.get("api_key", "")
+    api_secret = data.get("api_secret", "")
+    key_id = data.get("id", "")
+    key_name = data.get("name", "")
+
+    # Kalitlarni alohida xabarda (oson nusxalash uchun) yuboramiz.
+    await callback.message.edit_text(
+        "✅ <b>Kalitlar yaratildi!</b>\n\n"
+        f"🆔 Key ID: <code>{key_id}</code>\n"
+        f"🏷 Nomi: <code>{key_name}</code>\n\n"
+        "⬇️ Quyidagilarni <b>Railway env</b>'ga qo'ying:",
+        parse_mode="HTML",
+    )
+    await callback.message.answer(
+        f"<code>API_KEY={api_key}</code>\n\n<code>API_SECRET={api_secret}</code>",
+        parse_mode="HTML",
+    )
+    await callback.message.answer(
+        "📌 <b>Keyingi qadamlar:</b>\n"
+        "1. Yuqoridagi <code>API_KEY</code> va <code>API_SECRET</code> ni Railway "
+        "Variables bo'limiga qo'shing.\n"
+        "2. Servisni qayta ishga tushiring (redeploy).\n"
+        "3. Menga xabar bering — to'liq to'lov oqimini (avtomatik obuna) yoqamiz.\n\n"
+        "⚠️ Bu kalitlarni boshqa hech kimga bermang. <code>API_SECRET</code> qayta ko'rsatilmaydi.",
+        parse_mode="HTML",
+        reply_markup=admin_keys_keyboard(enabled=True),
+    )
 
 
 # ===================== USERLAR =====================

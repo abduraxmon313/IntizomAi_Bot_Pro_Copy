@@ -283,15 +283,23 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
     # Aks holda — to'lov oynasi
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
+    if PAYLOV_ENABLED:
+        note = (
+            "Quyidagi tugma orqali to'lovni amalga oshiring 👇\n"
+            "To'lov muvaffaqiyatli bo'lgach, premium <b>avtomatik</b> ochiladi 🔔"
+        )
+    else:
+        note = (
+            "<i>💳 To'lov tizimi tez orada ulanadi. Hozircha obunani admin yoki "
+            "promokod orqali ochishingiz mumkin.</i>"
+        )
     text = (
         "💳 <b>To'lov</b>\n"
         "━━━━━━━━━━━━━━━\n"
         f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
         f"📅 Muddat: <b>{total_days} kun</b>\n"
         f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
-        "Quyidagi tugma orqali to'lovni amalga oshiring 👇\n"
-        "<i>(To'lov tizimi tez orada ulanadi. Hozircha tugmani bossangiz, "
-        "obuna sinov tariqasida faollashadi.)</i>"
+        f"{note}"
     )
     await callback.message.edit_text(
         text, parse_mode="HTML", reply_markup=payment_keyboard(plan_key),
@@ -329,12 +337,13 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         if not recheck.valid:
             promo_code = None
 
-    # ── To'lov tizimi sozlanmagan bo'lsa — sinov (simulyatsiya) rejimi ──
+    # ── To'lov tizimi hali sozlanmagan (kalitlar yo'q) — Phase 1 ──
+    # Tugma bosilsa hech narsa faollashtirilmaydi (bepul premium berilmaydi).
     if not PAYLOV_ENABLED:
-        await _finalize_subscription(
-            callback, state, session, user, plan, plan_key, bonus_days, promo_code, free=False
+        await callback.answer(
+            "💳 To'lov tizimi tez orada ulanadi. Obuna admin yoki promokod orqali ochiladi.",
+            show_alert=True,
         )
-        await callback.answer("To'lov qabul qilindi ✅ (sinov)")
         return
 
     # ── Haqiqiy Paylov checkout ──────────────────────────────
