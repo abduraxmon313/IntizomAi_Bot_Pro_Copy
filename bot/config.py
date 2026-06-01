@@ -60,3 +60,27 @@ SUBSCRIPTION_PLANS = {
 
 # Obuna tugashidan necha kun oldin eslatma yuborilsin.
 PREMIUM_EXPIRY_REMINDER_DAYS = [3, 1]
+
+
+
+# ─────────────────────────────────────────────────────────────
+#  PAYLOV / wlcm.uz TO'LOV TIZIMI
+# ─────────────────────────────────────────────────────────────
+# Railway env qiymatlari (.env kabi o'qiladi). Asosiy nomlar — foydalanuvchi
+# Railway'ga qo'ygan nomlar; PAYLOV_ prefiksli muqobil nomlar ham qo'llab-quvvatlanadi.
+PAYLOV_BASE_URL = (
+    os.getenv("Base_URL")
+    or os.getenv("PAYLOV_BASE_URL")
+    or "https://api.wlcm.uz"
+).rstrip("/")
+PAYLOV_API_KEY = os.getenv("API_KEY") or os.getenv("PAYLOV_API_KEY", "") or ""
+PAYLOV_API_SECRET = os.getenv("API_SECRET") or os.getenv("PAYLOV_API_SECRET", "") or ""
+PAYLOV_PARTNER_ID = os.getenv("PARTNER_ID") or os.getenv("PAYLOV_PARTNER_ID", "") or ""
+PAYLOV_PROD_TOKEN = os.getenv("PROD_TOKEN") or os.getenv("PAYLOV_PROD_TOKEN", "") or ""
+
+# To'lov provayderi (paylov/payme/click/uzum/card) va to'lovdan keyin qaytish URL.
+PAYLOV_PROVIDER = os.getenv("PAYLOV_PROVIDER", "paylov").strip()
+PAYLOV_RETURN_URL = os.getenv("PAYLOV_RETURN_URL", "https://t.me/intizomAi_bot").strip()
+
+# To'lov tizimi sozlanganmi (kalitlar bormi). Bo'lmasa — sinov (simulyatsiya) rejimi.
+PAYLOV_ENABLED = bool(PAYLOV_API_KEY and PAYLOV_API_SECRET)
