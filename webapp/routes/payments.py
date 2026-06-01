@@ -16,6 +16,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/webhook/paylov")
+async def paylov_webhook_verify(request: Request):
+    """
+    Webhook URL'ni TEKSHIRISH (verification) uchun GET handler.
+
+    Ko'p to'lov tizimlari (jumladan WLCM) webhook URL'ni ro'yxatga olishdan oldin
+    unga GET so'rov yuborib, manzil tirik va to'g'riligini tekshiradi. Avval bu
+    yerda faqat POST bor edi va GET → 405 (Method Not Allowed) qaytarardi; bu
+    tufayli URL "yaroqsiz" deb hisoblanib, ro'yxatga olinmasligi mumkin edi.
+
+    Shu sabab GET'ga 200 OK qaytaramiz. Haqiqiy to'lov bildirishnomalari POST
+    orqali keladi (pastdagi handler).
+    """
+    client = request.client.host if request.client else "?"
+    logger.info(f"🔎 Webhook GET tekshiruvi: ip={client}")
+    return {
+        "ok": True,
+        "service": "paylov-webhook",
+        "note": "Endpoint live. Send payment notifications via POST.",
+    }
+
+
 @router.post("/webhook/paylov")
 async def paylov_webhook(request: Request):
     try:
