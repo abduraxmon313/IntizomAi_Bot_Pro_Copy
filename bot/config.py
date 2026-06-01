@@ -97,8 +97,21 @@ PAYLOV_PARTNER_ID = os.getenv("PARTNER_ID") or os.getenv("PAYLOV_PARTNER_ID", ""
 PAYLOV_PROD_TOKEN = os.getenv("PROD_TOKEN") or os.getenv("PAYLOV_PROD_TOKEN", "") or ""
 
 # To'lov provayderi (paylov/payme/click/uzum/card) va to'lovdan keyin qaytish URL.
+# PAYLOV_PROVIDER — foydalanuvchi tanlamasa ishlatiladigan default provayder.
 PAYLOV_PROVIDER = os.getenv("PAYLOV_PROVIDER", "paylov").strip()
 PAYLOV_RETURN_URL = os.getenv("PAYLOV_RETURN_URL", "https://t.me/intizomAi_bot").strip()
+
+# To'lov oynasida foydalanuvchiga ko'rsatiladigan provayderlar (tugma sifatida).
+# Vergul bilan ajratilgan. Hujjatdagi qiymatlar: payme, click, uzum, paylov, card.
+# Eslatma: 'card' bu yerga KIRITILMAYDI — u alohida OTP oqimini talab qiladi
+# (checkout_url emas, balki transaction_id + OTP). Faqat redirect-checkout
+# provayderlari ko'rsatiladi.
+_VALID_PROVIDERS = {"payme", "click", "uzum", "paylov"}
+PAYLOV_PROVIDERS = [
+    p.strip().lower()
+    for p in os.getenv("PAYLOV_PROVIDERS", "payme,click,uzum,paylov").split(",")
+    if p.strip().lower() in _VALID_PROVIDERS
+] or ["paylov"]
 
 # Onboarding endpoint path (PROD_TOKEN → api_key + api_secret olish uchun).
 # Hujjatda `partners/onboarding/` deyilgan; boshqa endpointlar /api/v1 ostida.
