@@ -40,6 +40,7 @@ from bot.keyboards.subscribe_keys import (
     payment_keyboard,
     promocode_keyboard,
     premium_active_keyboard,
+    PROVIDER_LABELS,
 )
 
 router = Router()
@@ -285,7 +286,7 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     if PAYLOV_ENABLED:
         note = (
-            "Quyidagi tugma orqali to'lovni amalga oshiring 👇\n"
+            "💳 <b>To'lov usulini tanlang</b> 👇\n"
             "To'lov muvaffaqiyatli bo'lgach, premium <b>avtomatik</b> ochiladi 🔔"
         )
     else:
@@ -312,7 +313,21 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
 # ─────────────────────────────────────────────────────────────
 @router.callback_query(F.data.startswith("sub_pay_"))
 async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
-    plan_key = callback.data.replace("sub_pay_", "")
+    # callback format: sub_pay_<plan_key>_<provider>  (provider ixtiyoriy).
+    # Tarif kalitlari (7d/1m/3m/6m/12m) va provayder nomlari '_' tutmaydi,
+    # shuning uchun oxirgi '_' bo'yicha ajratamiz.
+    from bot.config import PAYLOV_PROVIDERS
+    raw = callback.data.replace("sub_pay_", "")
+    provider = None
+    if "_" in raw:
+        plan_key, maybe_provider = raw.rsplit("_", 1)
+        if maybe_provider in PAYLOV_PROVIDERS:
+            provider = maybe_provider
+        else:
+            plan_key = raw  # provayder noma'lum — butun qism tarif kaliti
+    else:
+        plan_key = raw
+
     plan = get_plan(plan_key)
     if not plan:
         await callback.answer("Tarif topilmadi!", show_alert=True)
@@ -352,6 +367,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
     try:
         order, checkout_url = await create_checkout_order(
             session, user, plan_key, bonus_days=bonus_days, promo_code=promo_code,
+            provider=provider,
         )
     except (PaylovError, Exception) as e:
         logger.error(f"❌ Checkout yaratishda xato: {type(e).__name__}: {e}")
@@ -364,17 +380,19 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
 
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
+    prov_label = PROVIDER_LABELS.get(order.provider, order.provider.capitalize())
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 To'lash", url=checkout_url)],
+        [InlineKeyboardButton(text=f"💳 {prov_label} orqali to'lash", url=checkout_url)],
         [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
     ])
     await callback.message.edit_text(
         "💳 <b>To'lovga tayyor</b>\n"
         "━━━━━━━━━━━━━━━\n"
         f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
+        f"🏦 To'lov usuli: <b>{prov_label}</b>\n"
         f"📅 Muddat: <b>{total_days} kun</b>\n"
         f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
-        "Quyidagi <b>«💳 To'lash»</b> tugmasi orqali to'lovni amalga oshiring.\n"
+        f"Quyidagi <b>«💳 {prov_label} orqali to'lash»</b> tugmasi orqali to'lovni yakunlang.\n"
         "To'lov muvaffaqiyatli bo'lgach, <b>premium avtomatik ochiladi</b> va "
         "sizga xabar keladi 🔔",
         parse_mode="HTML",

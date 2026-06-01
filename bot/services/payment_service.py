@@ -19,7 +19,7 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from bot.config import BOT_TOKEN, SUBSCRIPTION_PLANS
+from bot.config import BOT_TOKEN, SUBSCRIPTION_PLANS, PAYLOV_PROVIDER
 from bot.models.payment_order import PaymentOrder
 from bot.models.user import User
 from bot.services import paylov
@@ -40,15 +40,18 @@ def _gen_external_id(user_id: int) -> str:
 
 
 async def create_checkout_order(session, user, plan_key: str,
-                                bonus_days: int = 0, promo_code: str | None = None):
+                                bonus_days: int = 0, promo_code: str | None = None,
+                                provider: str | None = None):
     """
     PaymentOrder (pending) yaratadi va Paylov checkout URL oladi.
+    provider — to'lov provayderi (payme/click/uzum/paylov). None bo'lsa default.
     Qaytaradi: (order, checkout_url). checkout_url None bo'lsa — xato.
     """
     plan = SUBSCRIPTION_PLANS.get(plan_key)
     if not plan:
         raise ValueError(f"Noma'lum tarif: {plan_key}")
 
+    prov = (provider or PAYLOV_PROVIDER).strip().lower()
     amount_tiyin = int(plan["price"]) * 100  # so'm -> tiyin
     external_id = _gen_external_id(user.id)
 
@@ -59,14 +62,14 @@ async def create_checkout_order(session, user, plan_key: str,
         bonus_days=int(bonus_days or 0),
         promocode=promo_code,
         amount=amount_tiyin,
-        provider="paylov",
+        provider=prov,
         status="pending",
     )
     session.add(order)
     await session.commit()
     await session.refresh(order)
 
-    resp = await paylov.create_checkout(external_id, amount_tiyin)
+    resp = await paylov.create_checkout(external_id, amount_tiyin, provider=prov)
     checkout_url = resp.get("checkout_url")
     order.provider_order_id = str(resp.get("order_id") or "") or None
     await session.commit()

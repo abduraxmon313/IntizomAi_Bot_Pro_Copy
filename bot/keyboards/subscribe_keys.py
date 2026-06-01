@@ -4,8 +4,17 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from bot.config import SUBSCRIPTION_PLANS, WEBAPP_URL
+from bot.config import SUBSCRIPTION_PLANS, WEBAPP_URL, PAYLOV_PROVIDERS
 from bot.services.premium_service import format_price
+
+# Provayder kodlari → foydalanuvchiga ko'rinadigan nom + emoji.
+PROVIDER_LABELS = {
+    "payme": "Payme",
+    "click": "Click",
+    "uzum": "Uzum",
+    "paylov": "Paylov",
+    "card": "Bank kartasi",
+}
 
 
 def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool = False) -> InlineKeyboardMarkup:
@@ -44,12 +53,29 @@ def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool 
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def payment_keyboard(plan_key: str) -> InlineKeyboardMarkup:
-    """To'lov oynasi tugmalari (hozircha to'lov simulyatsiya qilinadi)."""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💳 To'lovni amalga oshirish", callback_data=f"sub_pay_{plan_key}")],
-        [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
+def payment_keyboard(plan_key: str, providers: list[str] | None = None) -> InlineKeyboardMarkup:
+    """
+    To'lov usulini (provayderni) tanlash klaviaturasi.
+
+    Har bir provayder tugmasi `sub_pay_<plan_key>_<provider>` callback yuboradi.
+    Provayderlar 2 ustun qilib joylanadi (config PAYLOV_PROVIDERS dan).
+    """
+    provs = providers or PAYLOV_PROVIDERS
+    rows, row = [], []
+    for p in provs:
+        label = PROVIDER_LABELS.get(p, p.capitalize())
+        row.append(InlineKeyboardButton(
+            text=f"💳 {label}", callback_data=f"sub_pay_{plan_key}_{p}",
+        ))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([
+        InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")
     ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def promocode_keyboard() -> InlineKeyboardMarkup:
