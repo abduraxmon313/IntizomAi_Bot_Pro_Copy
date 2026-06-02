@@ -131,6 +131,29 @@ PAYLOV_ENABLED = bool(PAYLOV_API_KEY and PAYLOV_API_SECRET)
 
 
 # ─────────────────────────────────────────────────────────────
+#  FISCALIZATION (soliq cheki / OFD)
+# ─────────────────────────────────────────────────────────────
+def _to_int(val, default: int = 0) -> int:
+    try:
+        return int(str(val).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+# Soliq cheki yoqilganmi. Kalitlar (MXIK/package_code) bo'lmasa ham xavfsiz —
+# faqat to'lov uchun kerak emas, best-effort. Default: env'dagi qiymat.
+PAYLOV_FISCAL_ENABLED = (
+    os.getenv("PAYLOV_FISCAL_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+)
+# IKPU/MXIK mahsulot kodi (hujjatda item.code "mxik sifatida saqlanadi").
+PAYLOV_FISCAL_MXIK = (os.getenv("PAYLOV_FISCAL_MXIK", "") or "").strip()
+# Qadoq (package) kodi.
+PAYLOV_FISCAL_PACKAGE_CODE = (os.getenv("PAYLOV_FISCAL_PACKAGE_CODE", "") or "").strip()
+# QQS foizi (masalan 0 yoki 12).
+PAYLOV_FISCAL_VAT_PERCENT = _to_int(os.getenv("PAYLOV_FISCAL_VAT_PERCENT", "0"), 0)
+
+
+# ─────────────────────────────────────────────────────────────
 #  WEBHOOK URL (WLCM shu manzilga to'lov natijasini yuboradi)
 # ─────────────────────────────────────────────────────────────
 def _origin(url: str) -> str:
