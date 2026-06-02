@@ -12,6 +12,8 @@ idempotentlik (pending → paid) tekshiriladi.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import secrets
 import time
@@ -19,7 +21,12 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from bot.config import BOT_TOKEN, SUBSCRIPTION_PLANS, PAYLOV_PROVIDER
+from bot.config import (
+    BOT_TOKEN,
+    SUBSCRIPTION_PLANS,
+    PAYLOV_PROVIDER,
+    PAYLOV_WEBHOOK_SECRET,
+)
 from bot.models.payment_order import PaymentOrder
 from bot.models.user import User
 from bot.services import paylov
@@ -32,6 +39,45 @@ logger = logging.getLogger(__name__)
 
 STATE_SUCCESS = 2
 STATE_CANCELLED = -2
+
+
+def verify_webhook_signature(payload: dict) -> tuple[bool, str]:
+    """
+    WLCM webhook imzosini tekshiradi (HMAC-SHA256) — webhook haqiqatan WLCM'dan
+    kelganini tasdiqlaydi.
+
+    WLCM bergan formula:
+        message  = "{order_id}:{payment_id}:{state}:{timestamp}"
+        expected = HMAC_SHA256(key=PAYLOV_WEBHOOK_SECRET, msg=message).hexdigest()
+        valid    = compare_digest(expected, payload["signature"])
+
+    Qaytaradi: (valid, reason).
+      • PAYLOV_WEBHOOK_SECRET sozlanmagan bo'lsa → (True, "secret_not_set")
+        (secret kelguncha ishlash to'xtamasligi uchun; chaqiruvchi ogohlantiradi).
+      • signature yo'q bo'lsa → (False, "no_signature").
+      • mos kelmasa → (False, "mismatch").
+    """
+    if not PAYLOV_WEBHOOK_SECRET:
+        return True, "secret_not_set"
+
+    received = str(payload.get("signature") or "")
+    if not received:
+        return False, "no_signature"
+
+    # Qiymatlar payloaddan AYNAN olinadi (WLCM ham xuddi shu qiymatlar ustida
+    # imzolaydi). Format: order_id:payment_id:state:timestamp
+    message = (
+        f'{payload.get("order_id")}:{payload.get("payment_id")}:'
+        f'{payload.get("state")}:{payload.get("timestamp")}'
+    )
+    expected = hmac.new(
+        PAYLOV_WEBHOOK_SECRET.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    valid = hmac.compare_digest(expected, received)
+    return valid, ("ok" if valid else "mismatch")
 
 
 def _gen_external_id(user_id: int) -> str:

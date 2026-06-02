@@ -11,6 +11,7 @@ Eslatma: bu yo'l '/api/' ostida emas, shuning uchun rate-limitga tushmaydi
 import logging
 
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -54,8 +55,23 @@ async def paylov_webhook(request: Request):
         f"payment_id={payload.get('payment_id')} amount={payload.get('amount')}"
     )
 
+    # ── Imzo tekshiruvi (webhook haqiqatan WLCM'dan kelganini tasdiqlaydi) ──
+    from bot.services.payment_service import process_webhook, verify_webhook_signature
+    valid, reason = verify_webhook_signature(payload or {})
+    if not valid:
+        # Imzo noto'g'ri — bu soxta/buzilgan so'rov. Premium OCHILMAYDI.
+        logger.warning(
+            f"❌ Webhook imzo rad etildi ({reason}): "
+            f"external_id={payload.get('external_id')} ip={client}"
+        )
+        return JSONResponse(status_code=401, content={"ok": False, "error": "invalid_signature"})
+    if reason == "secret_not_set":
+        logger.warning(
+            "⚠️ PAYLOV_WEBHOOK_SECRET sozlanmagan — webhook imzosi TEKSHIRILMADI. "
+            "WLCM bergan secret'ni Railway env'ga qo'shing."
+        )
+
     try:
-        from bot.services.payment_service import process_webhook
         return await process_webhook(payload or {})
     except Exception as e:
         # Hech qachon 500 qaytarmaymiz — aks holda Paylov cheksiz qayta yuboradi.
