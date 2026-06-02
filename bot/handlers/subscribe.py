@@ -398,6 +398,13 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         parse_mode="HTML",
         reply_markup=kb,
     )
+    # To'lov xabari id'sini saqlaymiz — to'lov muvaffaqiyatli bo'lgach webhook
+    # bu xabarni o'chiradi (foydalanuvchiga keraksiz "To'lovga tayyor" qolmasin).
+    try:
+        order.pay_message_id = callback.message.message_id
+        await session.commit()
+    except Exception:
+        pass
     await callback.answer()
 
 

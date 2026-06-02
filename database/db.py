@@ -58,6 +58,11 @@ USER_NEW_COLUMNS = [
     ("ai_msgs_count", "INTEGER DEFAULT 0"),
 ]
 
+# payment_orders jadvali uchun yangi ustunlar.
+PAYMENT_ORDER_NEW_COLUMNS = [
+    ("pay_message_id", "BIGINT"),
+]
+
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -84,6 +89,15 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip {col}: {e}")
+
+    # payment_orders uchun yangi ustunlar (idempotent — ADD COLUMN IF NOT EXISTS).
+    for col, ddl in PAYMENT_ORDER_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip payment_orders.{col}: {e}")
 
     # Ko'lamlilik (scalability) uchun indekslar — userlar/rejalar ko'payganda
     # so'rovlar full-scan qilmasligi uchun. CREATE INDEX IF NOT EXISTS idempotent

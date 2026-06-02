@@ -26,6 +26,10 @@ from bot.config import (
     SUBSCRIPTION_PLANS,
     PAYLOV_PROVIDER,
     PAYLOV_WEBHOOK_SECRET,
+    PAYLOV_FISCAL_ENABLED,
+    PAYLOV_FISCAL_MXIK,
+    PAYLOV_FISCAL_PACKAGE_CODE,
+    PAYLOV_FISCAL_VAT_PERCENT,
 )
 from bot.models.payment_order import PaymentOrder
 from bot.models.user import User
@@ -133,6 +137,23 @@ async def _notify(telegram_id: int, text: str) -> None:
         await bot.send_message(telegram_id, text, parse_mode="HTML")
     except Exception as e:
         logger.warning(f"To'lov xabarini yuborishda xato {telegram_id}: {e}")
+    finally:
+        try:
+            await bot.session.close()
+        except Exception:
+            pass
+
+
+async def _delete_message(telegram_id: int, message_id: int) -> None:
+    """Berilgan xabarni o'chiradi (xato bo'lsa jim o'tadi — masalan xabar eski bo'lsa)."""
+    if not BOT_TOKEN or not message_id:
+        return
+    from aiogram import Bot
+    bot = Bot(token=BOT_TOKEN)
+    try:
+        await bot.delete_message(chat_id=telegram_id, message_id=message_id)
+    except Exception as e:
+        logger.info(f"To'lov xabarini o'chirib bo'lmadi {telegram_id}/{message_id}: {e}")
     finally:
         try:
             await bot.session.close()
@@ -249,6 +270,10 @@ async def process_webhook(payload: dict) -> dict:
             "✨ Endi Mini App va barcha premium imkoniyatlar ochiq. Rahmat! 🔥",
         )
 
+        # To'lov uchun yuborilgan "To'lovga tayyor" xabarini o'chiramiz (bo'lsa).
+        if getattr(order, "pay_message_id", None):
+            await _delete_message(user.telegram_id, order.pay_message_id)
+
         # ── Soliq cheki (best-effort — premiumni bloklamaydi) ──
         await _try_fiscalization(session, order, user, plan, plan_title)
 
@@ -261,15 +286,23 @@ async def process_webhook(payload: dict) -> dict:
 
 async def _try_fiscalization(session, order, user, plan: dict, plan_title: str) -> None:
     """Soliq chekini yaratadi va foydalanuvchiga yuboradi (xato bo'lsa jim o'tadi)."""
+    if not PAYLOV_FISCAL_ENABLED:
+        return
     if order.fiscal_done or not order.payment_id:
         return
     try:
-        items = [{
+        item = {
             "title": f"IntizomAI — {plan_title} obuna",
             "price": int(plan.get("price", 0)),
             "count": 1,
-            "vat_percent": 0,
-        }]
+            "vat_percent": PAYLOV_FISCAL_VAT_PERCENT,
+        }
+        # IKPU/MXIK va qadoq kodi — O'zbekiston OFD uchun majburiy bo'lishi mumkin.
+        if PAYLOV_FISCAL_MXIK:
+            item["code"] = PAYLOV_FISCAL_MXIK
+        if PAYLOV_FISCAL_PACKAGE_CODE:
+            item["package_code"] = PAYLOV_FISCAL_PACKAGE_CODE
+        items = [item]
         result = await paylov.register_fiscalization(order.payment_id, items)
 
         order.fiscal_done = True

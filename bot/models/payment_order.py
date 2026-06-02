@@ -33,6 +33,8 @@ class PaymentOrder(Base):
 
     status = Column(String(16), default="pending")      # pending | paid | cancelled
     fiscal_done = Column(Boolean, default=False)
+    # "To'lovga tayyor" xabarining Telegram message_id — to'langach uni o'chiramiz.
+    pay_message_id = Column(BigInteger, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     paid_at = Column(DateTime, nullable=True)
