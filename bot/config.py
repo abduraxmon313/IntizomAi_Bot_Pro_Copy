@@ -51,7 +51,7 @@ FREE_AI_DAILY_LIMIT = int(os.getenv("FREE_AI_DAILY_LIMIT", 3))
 
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 SUBSCRIPTION_PLANS = {
-    "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 1000,  "emoji": "🔥", "tag": "sinov"},
+    "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "sinov"},
     "1m":  {"title": "Oylik",       "days": 30,  "price": 19900, "emoji": "💎", "tag": ""},
     "3m":  {"title": "3 oy",        "days": 90,  "price": 39900, "emoji": "🌟", "tag": "TOP tanlov"},
     "6m":  {"title": "6 oy",        "days": 180, "price": 59900, "emoji": "🚀", "tag": ""},
