@@ -1118,8 +1118,9 @@ function applyPremiumUI(s){
   }
 }
 // Onboarding'ni faqat premium foydalanuvchiga, bir marta ko'rsatamiz
+// Kalit yangilandi (v2): yaxshilangan tanishtiruv eski foydalanuvchilarga bir marta qayta ko'rsatiladi, keyin saqlanadi (qayta chiqmaydi)
 function maybeShowOnboarding(){
-  try{if(localStorage.getItem('iz_onboarded'))return;}catch(_){}
+  try{if(localStorage.getItem('iz_onboarded_v2'))return;}catch(_){}
   const ob=document.getElementById('onboarding');
   if(ob)setTimeout(()=>ob.classList.add('show'),350);
 }
@@ -1380,8 +1381,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#onboarding [data-go]').forEach(b=>b.onclick=()=>{const idx=+b.dataset.go;document.querySelectorAll('#onboarding .step').forEach(s=>s.classList.toggle('active',+s.dataset.step===idx));});
   document.querySelectorAll('#personaOpts .opt').forEach(o=>o.onclick=()=>{document.querySelectorAll('#personaOpts .opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');localStorage.setItem('iz_persona',o.dataset.p);});
   const _commitOpt=document.getElementById('commitOpt');if(_commitOpt)_commitOpt.onclick=()=>_commitOpt.classList.toggle('sel');
-  document.getElementById('obSkip').onclick=()=>{localStorage.setItem('iz_onboarded','1');document.getElementById('onboarding').classList.remove('show');};
-  document.getElementById('obFinish').onclick=()=>{localStorage.setItem('iz_onboarded','1');document.getElementById('onboarding').classList.remove('show');confetti(60);toast('🚀 Boshlandi!');};
+  document.getElementById('obSkip').onclick=()=>{localStorage.setItem('iz_onboarded_v2','1');document.getElementById('onboarding').classList.remove('show');};
+  document.getElementById('obFinish').onclick=()=>{localStorage.setItem('iz_onboarded_v2','1');document.getElementById('onboarding').classList.remove('show');confetti(60);toast('🚀 Boshlandi!');};
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
 });
