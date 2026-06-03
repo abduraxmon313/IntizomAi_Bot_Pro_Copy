@@ -14,6 +14,7 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
             ],
             [
                 KeyboardButton(text="💎 Obuna"),
+                KeyboardButton(text="📞 Admin bilan bog'lanish"),
             ],
         ],
         resize_keyboard=True,

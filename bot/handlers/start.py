@@ -107,6 +107,17 @@ async def start_handler(message: Message, session: AsyncSession):
         await session.commit()
 
 
+@router.message(F.text == "📞 Admin bilan bog'lanish")
+async def contact_admin(message: Message):
+    await message.answer(
+        "📞 <b>Admin bilan bog'lanish</b>\n\n"
+        "Savol, taklif yoki muammo bo'lsa — admin bilan bog'laning:\n"
+        "👉 @Dilshod_Toxirov_adminbot\n\n"
+        "Tugmani bosing yoki username'ni nusxalab yozing.",
+        parse_mode="HTML",
+    )
+
+
 @router.callback_query(F.data == "home")
 async def home_handler(callback: CallbackQuery, session: AsyncSession):
     user = await get_user_by_telegram_id(session, callback.from_user.id)
