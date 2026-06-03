@@ -1,7 +1,7 @@
 """
 Gamification + coach + quest API for the WebApp.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -158,7 +158,9 @@ async def get_history(
     """
     Foydalanuvchining BUTUN reja tarixi — kun bo'yicha guruhlangan:
     har bir kun uchun jami reja soni va bajarilgan rejalar soni.
-    Eng yangi kun birinchi (desc). Faqat reja bo'lgan kunlar qaytariladi.
+    Eng yangi kun birinchi (desc). Eng erta reja sanasidan to BUGUNgacha
+    (Toshkent vaqti) BARCHA sanalar qaytariladi — reja yo'q kunlar 0/0,
+    rejasi bor lekin bajarilmagan kunlar done:0.
     """
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
@@ -167,19 +169,33 @@ async def get_history(
     done_expr = func.sum(
         case((Plan.status == PlanStatus.done, 1), else_=0)
     )
+    # Kunlar bo'yicha guruhlangan jami/bajarilgan — SQL'da tartiblash shart emas
     res = await session.execute(
         select(Plan.plan_date, func.count(Plan.id), done_expr)
         .where(Plan.user_id == user.id)
         .group_by(Plan.plan_date)
-        .order_by(Plan.plan_date.desc())
     )
-    days = []
+    by_date = {}
+    earliest = None
     for plan_date, total, done in res.all():
         if plan_date is None:
             continue
-        days.append({
-            "date": str(plan_date),
-            "total": int(total or 0),
-            "done": int(done or 0),
-        })
+        by_date[plan_date] = (int(total or 0), int(done or 0))
+        if earliest is None or plan_date < earliest:
+            earliest = plan_date
+
+    # Umuman reja bo'lmasa — bo'sh ro'yxat (frontend bo'sh holatni ko'rsatadi)
+    if earliest is None:
+        return {"days": []}
+
+    # BUGUNdan boshlab eng erta sanagacha teskari yuramiz (eng yangi tepada).
+    # 365 kunlik xavfsizlik chegarasi — ro'yxat haddan tashqari uzayib ketmasligi uchun.
+    today = datetime.now(TIMEZONE).date()
+    start = max(earliest, today - timedelta(days=365))
+    days = []
+    cur = today
+    while cur >= start:
+        t, dn = by_date.get(cur, (0, 0))
+        days.append({"date": str(cur), "total": t, "done": dn})
+        cur -= timedelta(days=1)
     return {"days": days}
