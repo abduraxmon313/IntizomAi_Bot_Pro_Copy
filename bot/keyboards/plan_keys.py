@@ -14,14 +14,14 @@ def confirm_plans_keyboard() -> InlineKeyboardMarkup:
 
 
 def plan_list_actions_keyboard() -> InlineKeyboardMarkup:
-    """Rejalar ro'yhati pastidagi tugmalar"""
+    """Rejalar ro'yhati pastidagi tugmalar.
+
+    Eslatma: tahrirlash bot ichida emas — Mini App (WebApp) orqali qilinadi,
+    shuning uchun bu yerda "Tahrirlash" tugmasi yo'q.
+    """
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="➕ Reja qo'shish", callback_data="add_plan"),
-            InlineKeyboardButton(text="✏️ Tahrirlash", callback_data="edit_plans"),
-        ],
-        [
-            InlineKeyboardButton(text="🗑 O'chirish", callback_data="my_plans"),
             InlineKeyboardButton(text="📈 Hisobot", callback_data="report"),
         ]
     ])

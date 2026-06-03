@@ -441,32 +441,33 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 @keyframes xpPop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}45%{transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
 
 /* ── Onboarding overlay (zamonaviy, temaga mos) ─────────────────────────── */
-.ob{position:fixed;inset:0;background:var(--grad);z-index:500;display:none;flex-direction:column;padding:28px 22px calc(28px + env(safe-area-inset-bottom));animation:fadeIn .4s ease;color:#fff;overflow:hidden}
+/* dvh + xavfsiz hudud: ekranni to'liq egallaydi, scrollsiz */
+.ob{position:fixed;inset:0;background:var(--grad);z-index:500;display:none;flex-direction:column;height:100vh;height:100dvh;min-height:100dvh;padding:calc(clamp(14px,3vh,28px) + env(safe-area-inset-top)) 22px calc(clamp(14px,3vh,28px) + env(safe-area-inset-bottom));animation:fadeIn .4s ease;color:#fff;overflow:hidden}
 .ob.show{display:flex}
 /* fon bezaklari */
 .ob::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.16);filter:blur(50px);top:-120px;right:-100px;animation:obFloat 16s ease-in-out infinite;pointer-events:none}
 .ob::after{content:'';position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.12);filter:blur(50px);bottom:-100px;left:-90px;animation:obFloat 20s ease-in-out infinite reverse;pointer-events:none}
 @keyframes obFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(26px,-32px) scale(1.14)}}
-.ob .step{flex:1;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;z-index:1}
+.ob .step{flex:1;min-height:0;width:100%;max-width:420px;margin:0 auto;display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative;z-index:1}
 .ob .step.active{display:flex;animation:obIn .55s cubic-bezier(.22,1,.36,1)}
 @keyframes obIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-.ob .em{font-size:80px;margin-bottom:18px;filter:drop-shadow(0 10px 22px rgba(0,0,0,.28));animation:obBob 3s ease-in-out infinite}
+.ob .em{font-size:clamp(44px,11vh,80px);margin-bottom:clamp(8px,2vh,18px);filter:drop-shadow(0 10px 22px rgba(0,0,0,.28));animation:obBob 3s ease-in-out infinite}
 @keyframes obBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-12px) rotate(3deg)}}
-.ob h1{font-size:27px;font-weight:900;margin-bottom:10px;line-height:1.22;letter-spacing:-.3px;text-shadow:0 2px 12px rgba(0,0,0,.18)}
-.ob p{font-size:14.5px;line-height:1.55;opacity:.95;max-width:300px;margin-bottom:24px}
-.ob .opts{display:flex;flex-direction:column;gap:11px;width:100%;max-width:330px}
-.ob .opt{padding:15px;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);border:1.5px solid rgba(255,255,255,.28);border-radius:16px;font-weight:700;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;color:#fff;transition:transform .2s,background .25s,box-shadow .25s;animation:obSlide .5s cubic-bezier(.22,1,.36,1) both}
+.ob h1{font-size:clamp(20px,5.6vw,27px);font-weight:900;margin-bottom:clamp(6px,1.4vh,10px);line-height:1.22;letter-spacing:-.3px;text-shadow:0 2px 12px rgba(0,0,0,.18)}
+.ob p{font-size:clamp(13px,3.6vw,14.5px);line-height:1.5;opacity:.95;max-width:300px;margin-bottom:clamp(12px,2.6vh,24px)}
+.ob .opts{display:flex;flex-direction:column;gap:clamp(7px,1.5vh,11px);width:100%;max-width:330px}
+.ob .opt{padding:clamp(11px,2.2vh,15px) 15px;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);border:1.5px solid rgba(255,255,255,.28);border-radius:16px;font-weight:700;font-size:14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;color:#fff;transition:transform .2s,background .25s,box-shadow .25s;animation:obSlide .5s cubic-bezier(.22,1,.36,1) both}
 .ob .opt:nth-child(1){animation-delay:.06s}.ob .opt:nth-child(2){animation-delay:.13s}.ob .opt:nth-child(3){animation-delay:.2s}.ob .opt:nth-child(4){animation-delay:.27s}
 @keyframes obSlide{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
 .ob .opt:active{transform:scale(.97)}
 .ob .opt.sel{background:#fff;color:var(--primary);border-color:#fff;box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .ob .opt.sel div div{color:var(--text-2) !important;opacity:1 !important}
 .ob .opt .em{font-size:24px;margin:0;animation:none;filter:none}
-.ob .dots{display:flex;justify-content:center;gap:7px;margin-bottom:18px}
+.ob .dots{display:flex;justify-content:center;gap:7px;margin-bottom:clamp(10px,2vh,18px)}
 .ob .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);transition:all .3s}
 .ob .dot.active{width:24px;border-radius:4px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.6)}
 .ob .nav{display:flex;gap:10px;width:100%;max-width:330px;margin-top:8px}
-.ob .nav button{flex:1;padding:15px;border-radius:15px;border:none;font-weight:800;font-size:14.5px;cursor:pointer;transition:transform .15s,box-shadow .2s}
+.ob .nav button{flex:1;padding:clamp(12px,2.4vh,15px);border-radius:15px;border:none;font-weight:800;font-size:14.5px;cursor:pointer;transition:transform .15s,box-shadow .2s}
 .ob .nav button:active{transform:scale(.97)}
 .ob .nav .skip{background:rgba(0,0,0,.28);color:#fff;border:1.5px solid rgba(255,255,255,.6);backdrop-filter:blur(8px);text-shadow:0 1px 4px rgba(0,0,0,.35)}
 .ob .nav .next{background:#fff;color:var(--primary);box-shadow:0 10px 26px rgba(0,0,0,.2)}
@@ -480,7 +481,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .plan .cbx.done{animation:checkPop .55s cubic-bezier(.34,1.56,.64,1)}
 
 /* ── Paywall (premium gate) — zamonaviy, animatsiyali ───────────────────── */
-.paywall{position:fixed;inset:0;z-index:600;background:var(--bg);color:var(--text);display:none;flex-direction:column;justify-content:flex-start;padding:20px 18px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* dvh + xavfsiz hudud: paywall ekranga sig'adi, odatda scrollsiz (ichki scroll faqat zaxira) */
+.paywall{position:fixed;inset:0;z-index:600;background:var(--bg);color:var(--text);display:none;flex-direction:column;justify-content:center;height:100vh;height:100dvh;min-height:100dvh;padding:calc(clamp(12px,2.5vh,20px) + env(safe-area-inset-top)) 18px calc(clamp(14px,2.5vh,24px) + env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .paywall.show{display:flex;animation:pwFade .4s ease}
 @keyframes pwFade{from{opacity:0}to{opacity:1}}
 /* fon orblar */
@@ -491,33 +493,62 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .pw-orbs span:nth-child(3){width:180px;height:180px;top:40%;left:55%;opacity:.25;animation:pwFloat 12s ease-in-out infinite}
 @keyframes pwFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(24px,-30px) scale(1.12)}}
 .pw-inner{position:relative;z-index:1;max-width:380px;width:100%;margin:auto;display:flex;flex-direction:column;align-items:stretch}
-.pw-crown{font-size:50px;text-align:center;margin:0 0 4px;filter:drop-shadow(0 8px 22px var(--primary-soft));animation:pwCrown 3s ease-in-out infinite}
+.pw-crown{font-size:clamp(34px,8vh,50px);text-align:center;margin:0 0 clamp(2px,1vh,4px);filter:drop-shadow(0 8px 22px var(--primary-soft));animation:pwCrown 3s ease-in-out infinite}
 @keyframes pwCrown{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-7px) rotate(5deg)}}
-.paywall h1{font-size:24px;font-weight:900;text-align:center;letter-spacing:-.5px}
+.paywall h1{font-size:clamp(20px,5.6vw,24px);font-weight:900;text-align:center;letter-spacing:-.5px}
 .pw-pro{background:var(--grad);background-size:220% 220%;-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;animation:pwProShine 3.5s ease infinite}
 @keyframes pwProShine{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.paywall .pw-sub{font-size:13px;line-height:1.5;text-align:center;color:var(--text-2);margin:8px auto 14px;max-width:340px}
-.paywall .pw-feats{display:grid;gap:7px;width:100%;margin:0 auto 12px}
-.paywall .pw-feat{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:10px 13px;font-size:13px;font-weight:600;box-shadow:var(--shadow-sm);animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both}
+.paywall .pw-sub{font-size:clamp(12px,3.3vw,13px);line-height:1.5;text-align:center;color:var(--text-2);margin:clamp(5px,1.2vh,8px) auto clamp(8px,1.8vh,14px);max-width:340px}
+.paywall .pw-feats{display:grid;gap:clamp(5px,1.1vh,7px);width:100%;margin:0 auto clamp(8px,1.6vh,12px)}
+.paywall .pw-feat{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:clamp(7px,1.5vh,10px) 13px;font-size:clamp(12px,3.3vw,13px);font-weight:600;box-shadow:var(--shadow-sm);animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both}
 .paywall .pw-feat:nth-child(1){animation-delay:.05s}.paywall .pw-feat:nth-child(2){animation-delay:.12s}.paywall .pw-feat:nth-child(3){animation-delay:.19s}.paywall .pw-feat:nth-child(4){animation-delay:.26s}.paywall .pw-feat:nth-child(5){animation-delay:.33s}
 @keyframes pwSlide{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
-.paywall .pw-feat .fic{font-size:17px;flex-shrink:0;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--grad-soft);animation:ficPulse 3.4s ease-in-out infinite}
+.paywall .pw-feat .fic{font-size:clamp(15px,4vw,17px);flex-shrink:0;width:clamp(28px,7vw,32px);height:clamp(28px,7vw,32px);border-radius:10px;display:grid;place-items:center;background:var(--grad-soft);animation:ficPulse 3.4s ease-in-out infinite}
 .paywall .pw-feat:nth-child(2) .fic{animation-delay:.4s}.paywall .pw-feat:nth-child(3) .fic{animation-delay:.8s}.paywall .pw-feat:nth-child(4) .fic{animation-delay:1.2s}.paywall .pw-feat:nth-child(5) .fic{animation-delay:1.6s}
 @keyframes ficPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-.paywall .pw-plans{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;margin:0 auto 12px}
-.paywall .pw-plan{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:9px 4px;transition:transform .2s,border-color .2s}
+.paywall .pw-plans{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;margin:0 auto clamp(8px,1.6vh,12px)}
+.paywall .pw-plan{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:9px 4px;transition:transform .2s,border-color .2s;animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both}
+.paywall .pw-plan:nth-child(1){animation-delay:.06s}.paywall .pw-plan:nth-child(2){animation-delay:.12s}.paywall .pw-plan:nth-child(3){animation-delay:.18s}.paywall .pw-plan:nth-child(4){animation-delay:.24s}
 .paywall .pw-plan:active{transform:scale(.96)}
 .paywall .pw-plan .pn{font-size:11px;font-weight:700;color:var(--text);text-align:center}
 .paywall .pw-plan .pp{font-size:11px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
-.paywall .pw-note{font-size:12px;text-align:center;color:var(--text-2);width:100%;margin:0 auto 12px;line-height:1.5}
+.paywall .pw-note{font-size:clamp(11px,3vw,12px);text-align:center;color:var(--text-2);width:100%;margin:0 auto clamp(8px,1.6vh,12px);line-height:1.5}
 .paywall .pw-note code{background:var(--primary-soft);color:var(--primary);padding:2px 8px;border-radius:6px;font-weight:800}
-.paywall .pw-cta{position:relative;overflow:hidden;display:block;width:100%;margin:0 auto;background:var(--grad);color:#fff;text-align:center;padding:15px;border-radius:16px;font-weight:800;font-size:15px;border:none;cursor:pointer;box-shadow:var(--glow);animation:pwGlow 3s ease-in-out infinite}
+.paywall .pw-cta{position:relative;overflow:hidden;display:block;width:100%;margin:0 auto;background:var(--grad);color:#fff;text-align:center;padding:clamp(12px,2.4vh,15px);border-radius:16px;font-weight:800;font-size:clamp(14px,4vw,15px);border:none;cursor:pointer;box-shadow:var(--glow);animation:pwGlow 3s ease-in-out infinite}
 @keyframes pwGlow{0%,100%{box-shadow:var(--glow)}50%{box-shadow:0 14px 38px var(--primary-soft),0 0 0 4px var(--primary-soft)}}
 .paywall .pw-cta::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:pwShine 3.2s ease-in-out infinite}
 @keyframes pwShine{0%{left:-60%}55%,100%{left:130%}}
 .paywall .pw-cta:active{transform:scale(.98)}
-.paywall .pw-badge{display:block;text-align:center;font-size:11.5px;color:var(--text-3);margin-top:16px;letter-spacing:2px;font-weight:700;animation:pwBadge 2.8s ease-in-out infinite}
+.paywall .pw-badge{display:block;text-align:center;font-size:11.5px;color:var(--text-3);margin-top:clamp(8px,1.8vh,16px);letter-spacing:2px;font-weight:700;animation:pwBadge 2.8s ease-in-out infinite}
 @keyframes pwBadge{0%,100%{opacity:.55}50%{opacity:1;text-shadow:0 0 12px var(--primary-soft)}}
+
+/* ── Past bo'yli ekranlar uchun zichlashtirish (scrollsiz sig'sin) ──────── */
+@media (max-height:720px){
+  .ob .em{font-size:clamp(36px,8vh,58px);margin-bottom:8px}
+  .ob h1{font-size:clamp(19px,5vw,23px);margin-bottom:6px}
+  .ob p{margin-bottom:12px}
+  .ob .opts{gap:7px}
+  .ob .opt{padding:11px 14px}
+  .ob .dots{margin-bottom:10px}
+  .pw-crown{font-size:clamp(30px,6vh,40px);margin-bottom:2px}
+  .paywall .pw-sub{margin:5px auto 8px}
+  .paywall .pw-feats{gap:5px;margin-bottom:8px}
+  .paywall .pw-feat{padding:7px 12px}
+  .paywall .pw-note{margin-bottom:8px}
+}
+@media (max-height:600px){
+  /* bezak blur orblarini yashiramiz — joy tejash uchun */
+  .ob::before,.ob::after{display:none}
+  .pw-orbs span:nth-child(3){display:none}
+  .ob .em{font-size:40px;margin-bottom:5px}
+  .ob h1{font-size:19px;margin-bottom:5px}
+  .ob p{font-size:12.5px;margin-bottom:8px;max-width:280px}
+  .ob .opt{padding:9px 12px;font-size:13px}
+  .pw-crown{font-size:30px}
+  .paywall h1{font-size:20px}
+  .paywall .pw-feat{padding:6px 11px}
+  .paywall .pw-badge{display:none}
+}
 
 /* ── AI Chat ────────────────────────────────────────────────────────────── */
 .chat-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 12px 12px;margin-bottom:14px;display:flex;flex-direction:column;overflow:hidden}
@@ -1001,7 +1032,7 @@ function renderHero(){
   setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const C=2*Math.PI*42;const ring=document.getElementById('dsRing');if(ring)ring.setAttribute('stroke-dashoffset',String(C*(1-ds/100)));countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');const dv=document.getElementById('dsValue');if(dv){dv.classList.remove('pop');void dv.offsetWidth;dv.classList.add('pop');}},120);
 }
 
-async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});let shownAchs;try{shownAchs=new Set(JSON.parse(localStorage.getItem('iz_shown_achs')||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
+async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
 
 async function loadQuest(){try{const q=await api('/api/webapp/quest');const c=document.getElementById('questCard');if(!c)return;c.style.display='flex';c.classList.toggle('done',!!q.completed);setText('qIcon',q.icon||'🎯');setText('qTitle',q.title||'');setText('qSub',q.subtitle||'');const pct=q.target?Math.round((q.progress||0)*100/q.target):0;setTimeout(()=>{const qp=document.getElementById('qProg');if(qp)qp.style.width=pct+'%';},150);setText('qMetaProg',(q.progress||0)+'/'+(q.target||0));setText('qReward',q.reward_xp?('+'+q.reward_xp+' XP'):'✓');}catch(e){console.warn('quest',e);}}
 

@@ -248,7 +248,8 @@ async def handle_voice_for_time(message: Message, state: FSMContext):
 # ─────────────────────────────────────────
 
 @router.message(F.text & ~F.text.startswith("/") & ~F.text.in_({
-    "📊 Mening statusim", "📋 Rejalarim", "📈 Hisobot", "➕ Reja qo'shish", "💎 Obuna"
+    "📊 Mening statusim", "📋 Rejalarim", "📈 Hisobot", "➕ Reja qo'shish", "💎 Obuna",
+    "📞 Admin bilan bog'lanish"
 }))
 async def handle_text_any(message: Message, state: FSMContext, session: AsyncSession):
     current_state = await state.get_state()
