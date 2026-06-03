@@ -88,9 +88,11 @@ async def get_today_checkin(
                 DailyCheckin.user_id == user.id,
                 DailyCheckin.checkin_date == today,
             )
-        )
+        ).order_by(DailyCheckin.id)
     )
-    row = res.scalar_one_or_none()
+    # scalar_one_or_none() o'rniga first() — agar takror yozuvlar bo'lsa
+    # MultipleResultsFound (500) bermasligi uchun.
+    row = res.scalars().first()
     if not row:
         return None
     return CheckinOut(
@@ -116,9 +118,16 @@ async def save_checkin(
                 DailyCheckin.user_id == user.id,
                 DailyCheckin.checkin_date == today,
             )
-        )
+        ).order_by(DailyCheckin.id)
     )
-    row = res.scalar_one_or_none()
+    # Bir kunga bir nechta yozuv bo'lib qolgan bo'lsa (avvalgi parallel so'rovlar
+    # natijasida) — birinchisini olib, qolganini tozalaymiz. Bu MultipleResultsFound
+    # (500 "saqlashda xato") muammosini bartaraf etadi va o'zini-o'zi tuzatadi.
+    rows = res.scalars().all()
+    row = rows[0] if rows else None
+    for extra in rows[1:]:
+        await session.delete(extra)
+
     if row is None:
         row = DailyCheckin(user_id=user.id, checkin_date=today)
         session.add(row)
