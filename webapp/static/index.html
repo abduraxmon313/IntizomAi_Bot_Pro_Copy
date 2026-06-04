@@ -841,7 +841,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
     <h1>Salom!<br>Men Intizom AI</h1>
     <p>Sening shaxsiy intizom OS'ing. Maqsadlaringni rejaga aylantiraman, streakingni saqlayman.</p>
     <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="nav"><button class="skip" id="obSkip">O'tkazib yuborish</button><button class="next" data-go="1">Davom etish ›</button></div>
+    <div class="nav"><button class="next" data-go="1">Davom etish ›</button></div>
   </div>
   <div class="step" data-step="1">
     <div class="em">🧭</div>
@@ -854,7 +854,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
       <div class="opt" data-p="mixed"><span class="em">⚡</span><div><div>Hammasi</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Maksimal samaradorlik</div></div></div>
     </div>
     <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
-    <div class="nav"><button class="skip" data-go="0">‹ Orqaga</button><button class="next" data-go="2">Keyingi ›</button></div>
+    <div class="nav"><button class="next" data-go="2">Keyingi ›</button></div>
   </div>
   <div class="step" data-step="2">
     <div class="em">🔥</div>
@@ -864,7 +864,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
       <div class="opt" id="commitOpt"><span class="em">✋</span><div><div>Men o'zimga va'da beraman</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Streak boshlash uchun bos</div></div></div>
     </div>
     <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
-    <div class="nav"><button class="skip" data-go="1">‹ Orqaga</button><button class="next" id="obFinish">Boshlash 🚀</button></div>
+    <div class="nav"><button class="next" id="obFinish">Boshlash 🚀</button></div>
   </div>
 </div>
 
@@ -1122,7 +1122,11 @@ function applyPremiumUI(s){
 function maybeShowOnboarding(){
   try{if(localStorage.getItem('iz_onboarded_v2'))return;}catch(_){}
   const ob=document.getElementById('onboarding');
-  if(ob)setTimeout(()=>ob.classList.add('show'),350);
+  if(ob){
+    // Umri davomida faqat BIR MARTA — ko'rsatish bilanoq belgilab qo'yamiz
+    try{localStorage.setItem('iz_onboarded_v2','1');}catch(_){}
+    setTimeout(()=>ob.classList.add('show'),350);
+  }
 }
 async function loadSubscription(){
   try{
@@ -1381,7 +1385,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#onboarding [data-go]').forEach(b=>b.onclick=()=>{const idx=+b.dataset.go;document.querySelectorAll('#onboarding .step').forEach(s=>s.classList.toggle('active',+s.dataset.step===idx));});
   document.querySelectorAll('#personaOpts .opt').forEach(o=>o.onclick=()=>{document.querySelectorAll('#personaOpts .opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');localStorage.setItem('iz_persona',o.dataset.p);});
   const _commitOpt=document.getElementById('commitOpt');if(_commitOpt)_commitOpt.onclick=()=>_commitOpt.classList.toggle('sel');
-  document.getElementById('obSkip').onclick=()=>{localStorage.setItem('iz_onboarded_v2','1');document.getElementById('onboarding').classList.remove('show');};
   document.getElementById('obFinish').onclick=()=>{localStorage.setItem('iz_onboarded_v2','1');document.getElementById('onboarding').classList.remove('show');confetti(60);toast('🚀 Boshlandi!');};
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
