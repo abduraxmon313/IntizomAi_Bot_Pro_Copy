@@ -13,8 +13,8 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="➕ Reja qo'shish"),
             ],
             [
-                KeyboardButton(text="💎 Obuna"),
-                KeyboardButton(text="📞 Admin bilan bog'lanish"),
+                KeyboardButton(text="💎 Premium"),
+                KeyboardButton(text="📞 Bog'lanish"),
             ],
         ],
         resize_keyboard=True,

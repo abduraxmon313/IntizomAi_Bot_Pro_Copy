@@ -2,7 +2,7 @@
 Obuna (premium) oqimi — to'lov tizimiga tayyorlangan.
 
 Foydalanuvchi yo'li:
-  1. "💎 Obuna" → tariflar ro'yxati + "🎟 Promokod kiritish" tugmasi
+  1. "💎 Premium" → tariflar ro'yxati + "🎟 Promokod kiritish" tugmasi
   2. (ixtiyoriy) Promokod kiritadi → agar admin yaratgan amaldagi kod bo'lsa,
      har bir tarifga promokoddagi bonus kunlar qo'shiladi ("1 oylik +15 kun")
   3. Tarifni tanlaydi → to'lov oynasi ochiladi
@@ -40,6 +40,7 @@ from bot.keyboards.subscribe_keys import (
     payment_keyboard,
     promocode_keyboard,
     premium_active_keyboard,
+    premium_promo_keyboard,
     PROVIDER_LABELS,
 )
 
@@ -137,10 +138,30 @@ async def _state_promo(state: FSMContext) -> tuple[int, str | None]:
 # ─────────────────────────────────────────────────────────────
 #  KIRISH NUQTALARI
 # ─────────────────────────────────────────────────────────────
-@router.message(F.text == "💎 Obuna")
+@router.message(F.text == "💎 Premium")
 async def subscription_button(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
-    await render_subscription(message, session, message.from_user.id)
+
+    user = await get_user_by_telegram_id(session, message.from_user.id)
+    if not user:
+        user = await get_or_create_user(
+            session, message.from_user.id,
+            message.from_user.full_name, message.from_user.username or "",
+        )
+
+    if user_is_premium(user):
+        # Faol obuna — joriy obuna ma'lumotini ko'rsatamiz.
+        await render_subscription(message, session, message.from_user.id)
+        return
+
+    # Obunasiz — qisqa promo + 2 variant (sotib olish / Premium haqida).
+    await message.answer(
+        "💎 <b>Premium</b>\n\n"
+        "Premium bilan Mini App (kalendar, statistika, AI Coach), cheksiz reja va "
+        "maqsadlar hamda boshqa imkoniyatlar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+        parse_mode="HTML",
+        reply_markup=premium_promo_keyboard(),
+    )
 
 
 @router.callback_query(F.data == "open_subscription")
@@ -416,7 +437,7 @@ async def cancel_subscription(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
         "❌ Obuna jarayoni bekor qilindi.\n\n"
-        "Istalgan vaqtda «💎 Obuna» tugmasi orqali qaytishingiz mumkin.",
+        "Istalgan vaqtda «💎 Premium» tugmasi orqali qaytishingiz mumkin.",
         parse_mode="HTML",
     )
     await callback.answer()

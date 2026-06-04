@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.main_menu import main_menu_keyboard
 from bot.keyboards.reply_keys import main_reply_keyboard
+from bot.keyboards.subscribe_keys import contact_keyboard, premium_promo_keyboard
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import user_is_premium, days_left
@@ -24,16 +25,14 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 
 def _webapp_kb(is_premium: bool) -> InlineKeyboardMarkup | None:
+    if not is_premium:
+        # Obunasiz — 2 tugmali promo (Obuna sotib olish + Premium haqida).
+        return premium_promo_keyboard()
     rows = []
     if WEBAPP_URL:
         rows.append([InlineKeyboardButton(
             text="✨ Mini App ochish",
             web_app=WebAppInfo(url=WEBAPP_URL),
-        )])
-    if not is_premium:
-        rows.append([InlineKeyboardButton(
-            text="💎 Obuna sotib olish",
-            callback_data="open_subscription",
         )])
     return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
@@ -93,8 +92,7 @@ async def start_handler(message: Message, session: AsyncSession):
         else:
             promo_text = (
                 "🚀 <b>Mini App</b> — kalendar, statistika va AI Coach bir joyda.\n\n"
-                "💎 Bu <b>Premium</b> imkoniyat. Ochish uchun obuna kerak.\n"
-                "Tugmani bossangiz, ichida obuna shartlari ko'rsatiladi 👇"
+                "💎 Bu <b>Premium</b> imkoniyat. Quyidagidan tanlang 👇"
             )
         await message.answer(
             promo_text,
@@ -107,14 +105,12 @@ async def start_handler(message: Message, session: AsyncSession):
         await session.commit()
 
 
-@router.message(F.text == "📞 Admin bilan bog'lanish")
+@router.message(F.text == "📞 Bog'lanish")
 async def contact_admin(message: Message):
     await message.answer(
-        "📞 <b>Admin bilan bog'lanish</b>\n\n"
-        "Savol, taklif yoki muammo bo'lsa — admin bilan bog'laning:\n"
-        "👉 @Dilshod_Toxirov_adminbot\n\n"
-        "Tugmani bosing yoki username'ni nusxalab yozing.",
+        "📞 <b>Bog'lanish</b>\n\nQuyidagidan birini tanlang 👇",
         parse_mode="HTML",
+        reply_markup=contact_keyboard(),
     )
 
 
