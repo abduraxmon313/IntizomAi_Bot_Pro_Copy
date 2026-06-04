@@ -223,13 +223,17 @@ async def process_webhook(payload: dict) -> dict:
         if order.status != "pending":
             return {"ok": True}
 
-        # Summa mosligini tekshiramiz (tamper himoyasi)
+        # Summa nomuvofiqligi — faqat OGOHLANTIRISH (BLOKLAMAYMIZ).
+        # Webhook imzosi (PAYLOV_WEBHOOK_SECRET) + taxmin qilib bo'lmaydigan
+        # external_id allaqachon haqiqiyligini kafolatlaydi. Provayder komissiyasi/
+        # yaxlitlash tufayli summa biroz farq qilishi mumkin (masalan 9900 o'rniga
+        # 9999), shuning uchun to'lagan foydalanuvchini premiumsiz qoldirmaymiz.
         if "amount" in payload and not _amounts_match(payload.get("amount"), order.amount):
-            logger.error(
-                f"Webhook: summa mos emas external_id={external_id} "
-                f"keldi={payload.get('amount')} kutilgan_tiyin={order.amount}"
+            logger.warning(
+                f"Webhook: summa biroz farq qilyapti (e'tiborga olinmadi) "
+                f"external_id={external_id} keldi={payload.get('amount')} "
+                f"kutilgan_tiyin={order.amount}"
             )
-            return {"ok": True}
 
         user = (await session.execute(
             select(User).where(User.id == order.user_id)
