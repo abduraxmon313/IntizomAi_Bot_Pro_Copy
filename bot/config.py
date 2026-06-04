@@ -113,7 +113,7 @@ PAYLOV_RETURN_URL = os.getenv("PAYLOV_RETURN_URL", "https://t.me/intizomAi_bot")
 _VALID_PROVIDERS = {"payme", "click", "uzum", "paylov"}
 PAYLOV_PROVIDERS = [
     p.strip().lower()
-    for p in os.getenv("PAYLOV_PROVIDERS", "payme,click,uzum,paylov").split(",")
+    for p in os.getenv("PAYLOV_PROVIDERS", "paylov").split(",")
     if p.strip().lower() in _VALID_PROVIDERS
 ] or ["paylov"]
 

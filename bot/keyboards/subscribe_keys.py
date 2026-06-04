@@ -12,7 +12,7 @@ PROVIDER_LABELS = {
     "payme": "Payme",
     "click": "Click",
     "uzum": "Uzum",
-    "paylov": "Paylov",
+    "paylov": "Karta orqali to'lash",
     "card": "Bank kartasi",
 }
 

@@ -403,7 +403,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     prov_label = PROVIDER_LABELS.get(order.provider, order.provider.capitalize())
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"💳 {prov_label} orqali to'lash", url=checkout_url)],
+        [InlineKeyboardButton(text=f"💳 {prov_label}", url=checkout_url)],
         [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
     ])
     await callback.message.edit_text(
@@ -413,7 +413,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         f"🏦 To'lov usuli: <b>{prov_label}</b>\n"
         f"📅 Muddat: <b>{total_days} kun</b>\n"
         f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
-        f"Quyidagi <b>«💳 {prov_label} orqali to'lash»</b> tugmasi orqali to'lovni yakunlang.\n"
+        f"Quyidagi <b>«💳 {prov_label}»</b> tugmasi orqali to'lovni yakunlang.\n"
         "To'lov muvaffaqiyatli bo'lgach, <b>premium avtomatik ochiladi</b> va "
         "sizga xabar keladi 🔔",
         parse_mode="HTML",
