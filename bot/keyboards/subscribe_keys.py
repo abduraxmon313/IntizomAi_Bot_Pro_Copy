@@ -93,6 +93,22 @@ def buy_subscription_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
+def premium_promo_keyboard() -> InlineKeyboardMarkup:
+    """Obunasiz foydalanuvchi uchun 2 variant: sotib olish yoki Premium haqida (kanal)."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💳 Obuna sotib olish", callback_data="open_subscription")],
+        [InlineKeyboardButton(text="ℹ️ Premium haqida", url="https://t.me/Intizom_AI")],
+    ])
+
+
+def contact_keyboard() -> InlineKeyboardMarkup:
+    """Bog'lanish: admin + kanal."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👨‍💻 Admin bilan bog'lanish", url="https://t.me/Dilshod_Toxirov_adminbot")],
+        [InlineKeyboardButton(text="📢 IntizomAI kanali", url="https://t.me/Intizom_AI")],
+    ])
+
+
 def premium_active_keyboard() -> InlineKeyboardMarkup:
     """Faol obunaga ega foydalanuvchi uchun (Mini App ochish)."""
     rows = []
