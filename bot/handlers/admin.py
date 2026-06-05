@@ -35,6 +35,8 @@ class AdminState(StatesGroup):
     premium_grant = State()           # "ID plan" kutish
     premium_revoke = State()          # ID kutish
     promo_create = State()            # promokod yaratish
+    # To'lovni qo'lda faollashtirish (external_id yoki payment_id orqali)
+    payment_activate = State()
 
 
 def broadcast_type_keyboard():
@@ -88,6 +90,74 @@ async def admin_panel_callback(callback: CallbackQuery, state: FSMContext, sessi
         reply_markup=admin_main_keyboard()
     )
     await callback.answer()
+
+
+# ===================== TO'LOVNI QO'LDA FAOLLASHTIRISH =====================
+# Summa mos kelmagani uchun (provayder komissiyasi) webhook premiumni avtomatik
+# ochmaydi — admin shu yerda external_id yoki payment_id orqali qo'lda ochadi.
+
+@router.callback_query(F.data == "admin_activate_payment")
+async def admin_activate_payment_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    await callback.message.edit_text(
+        "💳 <b>To'lovni faollashtirish</b>\n\n"
+        "Buyurtmaning <code>external_id</code> yoki <code>payment_id</code> sini yuboring.\n\n"
+        "(To'lov bo'lgan, lekin premium ochilmagan holatda ishlating.)",
+        parse_mode="HTML",
+        reply_markup=back_to_admin_keyboard(),
+    )
+    await state.set_state(AdminState.payment_activate)
+    await callback.answer()
+
+
+@router.message(AdminState.payment_activate)
+async def admin_activate_payment_process(message: Message, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, message.from_user.id):
+        return
+
+    from bot.services.payment_service import find_order, activate_order
+
+    ref = (message.text or "").strip()
+    order = await find_order(session, ref)
+    if order is None:
+        await message.answer(
+            "❌ Bunday buyurtma topilmadi.",
+            reply_markup=back_to_admin_keyboard(),
+        )
+        await state.clear()
+        return
+
+    ok = await activate_order(session, order)
+    if not ok and order.status == "paid":
+        await message.answer(
+            "ℹ️ Bu to'lov allaqachon faollashtirilgan.",
+            reply_markup=back_to_admin_keyboard(),
+        )
+    elif not ok:
+        await message.answer(
+            "❌ Faollashtirib bo'lmadi (user topilmadi).",
+            reply_markup=back_to_admin_keyboard(),
+        )
+    else:
+        from sqlalchemy import select
+        from bot.models.user import User
+        from bot.config import SUBSCRIPTION_PLANS
+        user = (await session.execute(
+            select(User).where(User.id == order.user_id)
+        )).scalar_one_or_none()
+        tg = user.telegram_id if user else "—"
+        plan_title = SUBSCRIPTION_PLANS.get(order.plan_key, {}).get("title", order.plan_key)
+        await message.answer(
+            "✅ Faollashtirildi! Foydalanuvchiga premium ochildi va xabar yuborildi.\n\n"
+            f"👤 User TG ID: <code>{tg}</code>\n"
+            f"📦 Tarif: <b>{plan_title}</b>",
+            parse_mode="HTML",
+            reply_markup=back_to_admin_keyboard(),
+        )
+
+    await state.clear()
 
 
 # ===================== WLCM TO'LOV KALITLARI (ONBOARDING) =====================
