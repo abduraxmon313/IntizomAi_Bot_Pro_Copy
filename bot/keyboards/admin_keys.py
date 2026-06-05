@@ -17,6 +17,9 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🔑 To'lov kalitlari (WLCM)", callback_data="admin_keys"),
         ],
         [
+            InlineKeyboardButton(text="💳 To'lovni faollashtirish", callback_data="admin_activate_payment"),
+        ],
+        [
             InlineKeyboardButton(text="🚪 Chiqish", callback_data="home"),
         ]
     ])
