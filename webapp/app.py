@@ -25,6 +25,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 # (bir token bilan ko'p polling) muammosini oldini olish mumkin.
 RUN_BOT = os.getenv("RUN_BOT", "true").strip().lower() in ("1", "true", "yes")
 
+# Ikkinchi (Dilshodbek) botni shu jarayonda ishga tushirish. Default = true,
+# lekin token bo'lmasa baribir ishga tushmaydi (bot_dilshodbek.main o'zi tekshiradi).
+RUN_DILSHODBEK_BOT = os.getenv("RUN_DILSHODBEK_BOT", "true").strip().lower() in ("1", "true", "yes")
+
 
 async def run_bot():
     try:
@@ -37,21 +41,42 @@ async def run_bot():
         logger.error(f"❌ Bot xatosi: {e}")
 
 
+async def run_dilshodbek_bot():
+    try:
+        from bot_dilshodbek.main import main as dilshodbek_main
+        logger.info("🤖 Dilshodbek bot ishga tushmoqda...")
+        await dilshodbek_main()
+    except asyncio.CancelledError:
+        logger.info("🛑 Dilshodbek bot to'xtatildi")
+    except Exception as e:
+        logger.error(f"❌ Dilshodbek bot xatosi: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bot_task = None
+    dilshodbek_task = None
     if RUN_BOT:
         bot_task = asyncio.create_task(run_bot())
     else:
         logger.info("ℹ️ RUN_BOT=false — bot bu jarayonda ishga tushirilmadi")
+
+    from bot.config import DILSHODBEK_BOT_TOKEN
+    if RUN_DILSHODBEK_BOT and DILSHODBEK_BOT_TOKEN:
+        dilshodbek_task = asyncio.create_task(run_dilshodbek_bot())
+    elif RUN_DILSHODBEK_BOT and not DILSHODBEK_BOT_TOKEN:
+        logger.info("ℹ️ DILSHODBEK_BOT_TOKEN yo'q — Dilshodbek bot ishga tushirilmadi")
+
     logger.info("🌐 FastAPI server tayyor")
     yield
-    if bot_task is not None:
-        bot_task.cancel()
-        try:
-            await bot_task
-        except asyncio.CancelledError:
-            pass
+
+    for task in (bot_task, dilshodbek_task):
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(

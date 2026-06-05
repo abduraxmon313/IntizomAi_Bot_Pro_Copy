@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sqlalchemy import text
@@ -29,6 +30,11 @@ AsyncSessionLocal = async_sessionmaker(
 
 class Base(DeclarativeBase):
     pass
+
+
+# Jadvallar tayyorligini bir martalik qilish uchun (ko'p bot bitta jarayonda).
+_tables_ready = False
+_tables_lock = asyncio.Lock()
 
 
 async def get_db() -> AsyncSession:
@@ -113,10 +119,19 @@ async def _run_migrations(conn):
 
 
 async def create_tables():
-    async with engine.begin() as conn:
-        from bot.models import (  # noqa
-            user, plan, score_log, admin, goal, achievement, checkin,
-            subscription, payment_order, referral,
-        )
-        await conn.run_sync(Base.metadata.create_all)
-        await _run_migrations(conn)
+    # Bir necha bot (asosiy + Dilshodbek) bitta jarayonda ishlaganda, bu funksiya
+    # bir nechta task'dan chaqirilishi mumkin. Lock + flag bilan jadval yaratish
+    # va migratsiyalar FAQAT BIR MARTA, ketma-ket bajarilishini kafolatlaymiz
+    # (bir vaqtda ikkita DDL → "already exists" xatosi bo'lmasligi uchun).
+    global _tables_ready
+    async with _tables_lock:
+        if _tables_ready:
+            return
+        async with engine.begin() as conn:
+            from bot.models import (  # noqa
+                user, plan, score_log, admin, goal, achievement, checkin,
+                subscription, payment_order, referral,
+            )
+            await conn.run_sync(Base.metadata.create_all)
+            await _run_migrations(conn)
+        _tables_ready = True

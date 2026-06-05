@@ -7,6 +7,14 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# ─────────────────────────────────────────────────────────────
+#  IKKINCHI BOT (Dilshodbek) — eski "IntizomAI_bot"
+# ─────────────────────────────────────────────────────────────
+# Bu tokenga tegishli bot loyihaga qo'shimcha ulanadi (bot_dilshodbek paketi).
+# Token Railway env yoki .env da DILSHODBEK_BOT_TOKEN nomi bilan beriladi.
+# Bo'sh bo'lsa — ikkinchi bot ishga tushmaydi (asosiy bot ishlashda davom etadi).
+DILSHODBEK_BOT_TOKEN = os.getenv("DILSHODBEK_BOT_TOKEN", "").strip()
+
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "productivity_bot")
