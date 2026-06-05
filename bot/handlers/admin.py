@@ -161,8 +161,9 @@ async def admin_activate_payment_process(message: Message, state: FSMContext, se
 
 
 # ===================== WLCM TO'LOV KALITLARI (ONBOARDING) =====================
-# Faqat super admin (ADMIN_ID) ko'radi va boshqaradi — bu bo'lim maxfiy
-# api_key/api_secret ni ochib beradi va cheklangan martalik tokenni sarflaydi.
+# Barcha adminlar (ADMIN_ID va qo'shilgan adminlar) ko'radi va boshqaradi — bu
+# bo'lim maxfiy api_key/api_secret ni ochib beradi va cheklangan martalik
+# tokenni sarflaydi.
 
 def _mask(value: str, head: int = 6, tail: int = 4) -> str:
     value = value or ""
@@ -173,20 +174,18 @@ def _mask(value: str, head: int = 6, tail: int = 4) -> str:
     return f"{value[:head]}…{value[-tail:]}"
 
 
-async def _is_super_admin(callback: CallbackQuery) -> bool:
-    from bot.config import ADMIN_ID
-    if callback.from_user.id != ADMIN_ID:
-        await callback.answer(
-            "❌ Bu bo'lim faqat bosh admin (super admin) uchun.",
-            show_alert=True,
-        )
+async def _is_super_admin(callback: CallbackQuery, session: AsyncSession) -> bool:
+    # Barcha adminlar TENG: ADMIN_ID ham, /admin orqali qo'shilgan adminlar ham
+    # bu bo'limga (maxfiy to'lov kalitlari) kira oladi.
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
         return False
     return True
 
 
 @router.callback_query(F.data == "admin_keys")
 async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
-    if not await _is_super_admin(callback):
+    if not await _is_super_admin(callback, session):
         return
     await state.clear()
 
@@ -243,7 +242,7 @@ async def admin_keys_menu(callback: CallbackQuery, state: FSMContext, session: A
 
 @router.callback_query(F.data == "admin_keys_check")
 async def admin_keys_check(callback: CallbackQuery, session: AsyncSession):
-    if not await _is_super_admin(callback):
+    if not await _is_super_admin(callback, session):
         return
 
     from bot.services.onboarding import validate_token, OnboardingError
@@ -274,7 +273,7 @@ async def admin_keys_check(callback: CallbackQuery, session: AsyncSession):
 @router.callback_query(F.data == "admin_keys_test")
 async def admin_keys_test(callback: CallbackQuery, session: AsyncSession):
     """Joriy API_KEY/API_SECRET bilan GET /me chaqiradi — kalitlar ishlashini tasdiqlaydi."""
-    if not await _is_super_admin(callback):
+    if not await _is_super_admin(callback, session):
         return
 
     from bot.config import PAYLOV_ENABLED
@@ -321,7 +320,7 @@ async def admin_keys_test(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data == "admin_keys_confirm")
 async def admin_keys_confirm(callback: CallbackQuery, session: AsyncSession):
-    if not await _is_super_admin(callback):
+    if not await _is_super_admin(callback, session):
         return
     await callback.message.edit_text(
         "⚠️ <b>Diqqat — tokenni sarflaysiz!</b>\n\n"
@@ -338,7 +337,7 @@ async def admin_keys_confirm(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data == "admin_keys_generate")
 async def admin_keys_generate(callback: CallbackQuery, session: AsyncSession):
-    if not await _is_super_admin(callback):
+    if not await _is_super_admin(callback, session):
         return
 
     from bot.services.onboarding import complete_onboarding, OnboardingError
