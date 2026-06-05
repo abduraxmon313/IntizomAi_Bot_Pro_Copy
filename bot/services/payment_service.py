@@ -145,10 +145,31 @@ async def _notify(telegram_id: int, text: str) -> None:
 
 
 async def _notify_admin(text: str) -> None:
-    """Adminni (ADMIN_ID) xabardor qiladi."""
+    """
+    BARCHA adminlarni xabardor qiladi: ADMIN_ID (bosh admin) + /admin orqali
+    qo'shilgan adminlar. Shu tariqa to'lov bildirishnomalari har bir adminga
+    yetib boradi (adminlar darajasi teng).
+    """
     from bot.config import ADMIN_ID
+
+    admin_ids: set[int] = set()
     if ADMIN_ID:
-        await _notify(ADMIN_ID, text)
+        admin_ids.add(int(ADMIN_ID))
+
+    # Bazadagi qo'shimcha adminlar.
+    try:
+        from database.db import AsyncSessionLocal
+        from bot.models.admin import Admin
+        async with AsyncSessionLocal() as session:
+            rows = (await session.execute(select(Admin.telegram_id))).scalars().all()
+            for tid in rows:
+                if tid:
+                    admin_ids.add(int(tid))
+    except Exception as e:
+        logger.warning(f"Adminlar ro'yxatini olishda xato: {e}")
+
+    for tid in admin_ids:
+        await _notify(tid, text)
 
 
 async def _delete_message(telegram_id: int, message_id: int) -> None:
