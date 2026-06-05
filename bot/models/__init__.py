@@ -7,8 +7,10 @@ from .achievement import Achievement
 from .checkin import DailyCheckin
 from .subscription import Subscription, Promocode
 from .payment_order import PaymentOrder
+from .referral import Referral
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
     "Achievement", "DailyCheckin", "Subscription", "Promocode", "PaymentOrder",
+    "Referral",
 ]

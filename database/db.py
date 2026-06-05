@@ -56,6 +56,9 @@ USER_NEW_COLUMNS = [
     ("avatar_emoji", "VARCHAR(8) DEFAULT '🌱'"),
     ("ai_msgs_date", "DATE"),
     ("ai_msgs_count", "INTEGER DEFAULT 0"),
+    ("referred_by", "BIGINT"),
+    ("referral_count", "INTEGER DEFAULT 0"),
+    ("referral_rewards_given", "INTEGER DEFAULT 0"),
 ]
 
 # payment_orders jadvali uchun yangi ustunlar.
@@ -113,7 +116,7 @@ async def create_tables():
     async with engine.begin() as conn:
         from bot.models import (  # noqa
             user, plan, score_log, admin, goal, achievement, checkin,
-            subscription, payment_order,
+            subscription, payment_order, referral,
         )
         await conn.run_sync(Base.metadata.create_all)
         await _run_migrations(conn)

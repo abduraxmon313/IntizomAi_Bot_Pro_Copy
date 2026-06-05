@@ -41,7 +41,14 @@ from bot.keyboards.subscribe_keys import (
     promocode_keyboard,
     premium_active_keyboard,
     premium_promo_keyboard,
+    free_premium_keyboard,
+    referral_share_keyboard,
     PROVIDER_LABELS,
+)
+from bot.services.referral_service import (
+    get_bot_username,
+    build_referral_link,
+    get_referral_stats,
 )
 
 router = Router()
@@ -173,6 +180,125 @@ async def open_subscription_cb(callback: CallbackQuery, state: FSMContext, sessi
         bonus_days=bonus_days, promo_code=promo_code,
     )
     await callback.answer()
+
+
+# ─────────────────────────────────────────────────────────────
+#  BEPUL PREMIUM — DO'ST TAKLIF QILISH (REFERRAL)
+# ─────────────────────────────────────────────────────────────
+# Do'stlar bilan ulashish uchun reklama matni. Bu xabar foydalanuvchi tomonidan
+# forward qilinadi; tagidagi tugma botga taklif havolasi orqali olib o'tadi.
+REFERRAL_SHARE_TEXT = (
+    "Siz Intizomlimisiz ⁉️\n\n"
+    "📚 Kitob o'qish bilim beradi.\n\n"
+    "💡Lekin bilimni natijaga aylantiradigan narsa — intizom.\n\n"
+    "Ko'pchilik:\n"
+    "❌ Maqsad qo'yadi\n"
+    "❌ Reja tuzadi\n"
+    "❌ Lekin oxirigacha yetib bormaydi\n\n"
+    "⌛️ IntizomAi esa sizning maqsadlaringiz, rejalaringiz va odatlaringizni "
+    "kuzatib boradi.\n\n"
+    "🧠 AI vaqt o'tishi bilan sizni o'rganadi:\n"
+    "✅ Progressingizni kuzatadi\n"
+    "✅ Odatlaringizni tahlil qiladi\n"
+    "✅ Sizga mos tavsiyalar beradi\n\n"
+    "📊 Statistika\n"
+    "⚡️ Maqsadlar\n"
+    "⌛️ Eslatmalar\n"
+    "🤖 AI mentor\n\n"
+    "🌐 Hammasi bitta qulay Web App ichida.\n\n"
+    "<b>\"Intizom\"</b> promokodi yordamida siz qo'shimcha <b>30 kun bepul</b> "
+    "foydalanish imkoniga ega bo'lasiz.\n\n"
+    "⭐️ Bilim + Intizom = Natija"
+)
+
+
+@router.callback_query(F.data == "premium_menu")
+async def premium_menu_cb(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    """«Bepul premium» ekranidan «💎 Premium» menyusiga qaytish."""
+    await state.clear()
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user and user_is_premium(user):
+        status = await get_status(session, user)
+        await callback.message.edit_text(
+            "💎 <b>Premium faol!</b>\n\n"
+            f"📅 Tugaydi: <b>{_fmt_date(status.premium_until)}</b>\n"
+            f"⏳ Qolgan kun: <b>{status.days_left} kun</b>\n\n"
+            "Do'st taklif qilib premiumingizni uzaytiring yoki Mini App'ni oching 👇",
+            parse_mode="HTML",
+            reply_markup=premium_active_keyboard(),
+        )
+    else:
+        await callback.message.edit_text(
+            "💎 <b>Premium</b>\n\n"
+            "Premium bilan Mini App (kalendar, statistika, AI Coach), cheksiz reja va "
+            "maqsadlar hamda boshqa imkoniyatlar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+            parse_mode="HTML",
+            reply_markup=premium_promo_keyboard(),
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "free_premium")
+async def free_premium_cb(callback: CallbackQuery, session: AsyncSession):
+    """Bepul premium ekranini ko'rsatadi (taklif qilib mukofot olish)."""
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if not user:
+        user = await get_or_create_user(
+            session, callback.from_user.id,
+            callback.from_user.full_name, callback.from_user.username or "",
+        )
+
+    stats = await get_referral_stats(session, user)
+
+    text = (
+        "🎁 <b>Bepul Premium olish</b>\n\n"
+        "Taklif havolangizni do'stlaringiz bilan bo'lishing va <b>bepul premium</b> "
+        "qo'lga kiriting! 🎉\n\n"
+        f"👥 <b>{stats.threshold} ta</b> do'stingizni taklif qiling — sizga "
+        f"<b>1 haftalik (7 kun) Premium</b> sovg'a qilinadi!\n\n"
+        f"📊 Hozirgi takliflaringiz: <b>{stats.total} ta</b>\n"
+        f"🎯 Keyingi bepul premiumgacha: <b>{stats.remaining} ta</b> do'st qoldi\n"
+    )
+    if stats.rewards_count > 0:
+        text += f"🏆 Olingan bepul premiumlar: <b>{stats.rewards_count} ta</b>\n"
+    text += (
+        "\nQuyidagi tugma orqali shaxsiy havolangizni oling va ulashing 👇"
+    )
+
+    try:
+        await callback.message.edit_text(
+            text, parse_mode="HTML", reply_markup=free_premium_keyboard(),
+        )
+    except Exception:
+        await callback.message.answer(
+            text, parse_mode="HTML", reply_markup=free_premium_keyboard(),
+        )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "referral_link")
+async def referral_link_cb(callback: CallbackQuery, session: AsyncSession):
+    """Shaxsiy taklif havolasini va ulashish uchun tayyor xabarni yuboradi."""
+    username = await get_bot_username(callback.bot)
+    link = build_referral_link(username, callback.from_user.id)
+
+    # 1) Ko'rsatma + havola (foydalanuvchi uchun)
+    await callback.message.answer(
+        "🔗 <b>Sizning taklif havolangiz tayyor!</b>\n\n"
+        f"<code>{link}</code>\n\n"
+        "👇 Quyidagi xabarni do'stlaringizga <b>yo'llang (forward)</b> yoki "
+        "havolani nusxalab ulashing. Har 5 ta yangi do'st = <b>1 hafta bepul Premium</b>! 🎁",
+        parse_mode="HTML",
+    )
+
+    # 2) Ulashiladigan reklama xabari (forward qilish uchun) — tagida deep-link tugma
+    await callback.message.answer(
+        REFERRAL_SHARE_TEXT,
+        parse_mode="HTML",
+        reply_markup=referral_share_keyboard(link),
+        disable_web_page_preview=True,
+    )
+    await callback.answer("Havola tayyor! 🔗")
 
 
 # ─────────────────────────────────────────────────────────────

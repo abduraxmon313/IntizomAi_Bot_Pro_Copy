@@ -94,10 +94,29 @@ def buy_subscription_keyboard() -> InlineKeyboardMarkup:
 
 
 def premium_promo_keyboard() -> InlineKeyboardMarkup:
-    """Obunasiz foydalanuvchi uchun 2 variant: sotib olish yoki Premium haqida (kanal)."""
+    """Obunasiz foydalanuvchi uchun: sotib olish, bepul premium (taklif) yoki Premium haqida."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💳 Obuna sotib olish", callback_data="open_subscription")],
+        [InlineKeyboardButton(text="🎁 Bepul premium olish", callback_data="free_premium")],
         [InlineKeyboardButton(text="ℹ️ Premium haqida", url="https://t.me/Intizom_AI")],
+    ])
+
+
+def free_premium_keyboard() -> InlineKeyboardMarkup:
+    """«Bepul premium olish» ekrani — taklif havolasini olish tugmasi."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Taklif havolasi", callback_data="referral_link")],
+        [InlineKeyboardButton(text="🔙 Orqaga", callback_data="premium_menu")],
+    ])
+
+
+def referral_share_keyboard(link: str) -> InlineKeyboardMarkup:
+    """
+    Ulashiladigan taklif xabari tagidagi tugma — botga deep-link orqali o'tkazadi.
+    Bu xabar forward qilinganda tugma ham saqlanadi.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 IntizomAi'ni ochish", url=link)],
     ])
 
 
@@ -110,7 +129,7 @@ def contact_keyboard() -> InlineKeyboardMarkup:
 
 
 def premium_active_keyboard() -> InlineKeyboardMarkup:
-    """Faol obunaga ega foydalanuvchi uchun (Mini App ochish)."""
+    """Faol obunaga ega foydalanuvchi uchun (Mini App ochish + do'st taklif qilish)."""
     rows = []
     if WEBAPP_URL:
         rows.append([
@@ -119,6 +138,9 @@ def premium_active_keyboard() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=WEBAPP_URL),
             )
         ])
+    rows.append([
+        InlineKeyboardButton(text="🎁 Do'st taklif qilib +1 hafta olish", callback_data="free_premium")
+    ])
     rows.append([
         InlineKeyboardButton(text="🏠 Bosh sahifa", callback_data="home")
     ])

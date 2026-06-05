@@ -62,6 +62,26 @@ SUBSCRIPTION_PLANS = {
 PREMIUM_EXPIRY_REMINDER_DAYS = [3, 1]
 
 
+# ─────────────────────────────────────────────────────────────
+#  REFERRAL (TAKLIF) TIZIMI
+# ─────────────────────────────────────────────────────────────
+# Bot username (havola yasash uchun). Telegram'dan avtomatik olinadi, lekin
+# olinmasa shu qiymat ishlatiladi. '@' belgisisiz yoziladi.
+BOT_USERNAME = os.getenv("BOT_USERNAME", "intizomAi_bot").strip().lstrip("@")
+
+# Necha do'st taklif qilinsa mukofot beriladi.
+REFERRAL_THRESHOLD = int(os.getenv("REFERRAL_THRESHOLD", 5))
+
+# Mukofot sifatida beriladigan premium kunlari (har bir to'plam uchun).
+REFERRAL_REWARD_DAYS = int(os.getenv("REFERRAL_REWARD_DAYS", 7))
+
+# Mukofot premiumi yoziladigan tarif kaliti (Subscription tarixi uchun).
+REFERRAL_REWARD_PLAN = os.getenv("REFERRAL_REWARD_PLAN", "7d").strip()
+
+# Deep-link payload prefiksi: https://t.me/<bot>?start=ref_<telegram_id>
+REFERRAL_PAYLOAD_PREFIX = "ref_"
+
+
 
 # ─────────────────────────────────────────────────────────────
 #  PAYLOV / wlcm.uz TO'LOV TIZIMI

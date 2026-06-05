@@ -8,7 +8,7 @@ from aiogram.types import (
     Message,
     WebAppInfo,
 )
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.main_menu import main_menu_keyboard
@@ -17,6 +17,7 @@ from bot.keyboards.subscribe_keys import contact_keyboard, premium_promo_keyboar
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import user_is_premium, days_left
+from bot.services.referral_service import parse_referrer_id, register_referral
 
 router = Router()
 
@@ -38,13 +39,29 @@ def _webapp_kb(is_premium: bool) -> InlineKeyboardMarkup | None:
 
 
 @router.message(CommandStart())
-async def start_handler(message: Message, session: AsyncSession):
+async def start_handler(message: Message, command: CommandObject, session: AsyncSession):
+    # Foydalanuvchi avval mavjudmidi? (referral faqat YANGI userlar uchun)
+    existing = await get_user_by_telegram_id(session, message.from_user.id)
+    is_new = existing is None
+
     user = await get_or_create_user(
         session=session,
         telegram_id=message.from_user.id,
         full_name=message.from_user.full_name,
         username=message.from_user.username or "",
     )
+
+    # ── Referral (taklif havolasi) — yangi foydalanuvchini taklif qiluvchiga bog'lash
+    if is_new:
+        referrer_id = parse_referrer_id(command.args)
+        if referrer_id:
+            try:
+                await register_referral(
+                    session, referrer_id, user, bot=message.bot,
+                )
+            except Exception:
+                # Referral xatosi /start oqimini to'xtatmasin
+                pass
 
     if not user.onboarded:
         text = (

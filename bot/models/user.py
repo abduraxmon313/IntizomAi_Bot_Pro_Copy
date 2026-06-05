@@ -37,6 +37,14 @@ class User(Base):
     ai_msgs_date = Column(Date, nullable=True)       # oxirgi hisoblangan kun
     ai_msgs_count = Column(Integer, default=0)        # shu kungi AI xabarlar soni
 
+    # ── Referral (taklif) tizimi ─────────────────────────
+    # Kim tomonidan taklif qilingan (taklif qiluvchining telegram_id si).
+    referred_by = Column(BigInteger, nullable=True)
+    # Muvaffaqiyatli taklif qilingan (yangi start bosgan) do'stlar soni.
+    referral_count = Column(Integer, default=0)
+    # Allaqachon mukofotlangan takliflar soni (5 talik to'plamlar bo'yicha).
+    referral_rewards_given = Column(Integer, default=0)
+
     # ── System ───────────────────────────────────────────
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
