@@ -51,6 +51,19 @@ def format_price(price: int) -> str:
 
 
 # ─────────────────────────────────────────────────────────────
+#  FEATURE TIERS — Free vs Premium taqqoslash
+# ─────────────────────────────────────────────────────────────
+def feature_comparison_text() -> str:
+    """Paywall uchun Free vs Premium jadvali (HTML)."""
+    from bot.config import FEATURE_TIERS
+    lines = ["💎 <b>Free va Premium</b>\n", "<code>Imkoniyat        Free  Premium</code>"]
+    for icon, name, free_v, prem_v in FEATURE_TIERS:
+        lines.append(f"{icon} <b>{name}</b>\n   Free: {free_v} · Premium: {prem_v}")
+    lines.append("\n💡 Premium bilan IntizomAI'ning to'liq kuchidan foydalaning.")
+    return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────────────────────
 #  PREMIUM HOLAT
 # ─────────────────────────────────────────────────────────────
 def user_is_premium(user: User) -> bool:
@@ -160,6 +173,14 @@ async def activate_subscription(
 
     user.is_premium = True
     user.premium_until = expires_at
+
+    # Premiumga obuna bonus AI kreditlari (kunlik limitdan tashqari zaxira).
+    try:
+        from bot.config import PREMIUM_MONTHLY_AI_CREDITS
+        months = max(1, total_days // 30)
+        user.ai_credits = (user.ai_credits or 0) + PREMIUM_MONTHLY_AI_CREDITS * months
+    except Exception:
+        pass
 
     await session.commit()
     await session.refresh(sub)
@@ -394,6 +415,12 @@ async def check_and_consume_ai(session: AsyncSession, user: User) -> LimitCheck:
     used = user.ai_msgs_count or 0
 
     if used >= limit:
+        # Kunlik limit tugadi — bonus AI kreditlari bo'lsa, bittasini sarflaymiz.
+        if (user.ai_credits or 0) > 0:
+            user.ai_credits = user.ai_credits - 1
+            await session.commit()
+            return LimitCheck(allowed=True, used=used, limit=limit,
+                              remaining=0)
         await session.commit()  # kun reset bo'lgan bo'lsa saqlaymiz
         return LimitCheck(allowed=False, used=used, limit=limit, remaining=0)
 
@@ -405,6 +432,13 @@ async def check_and_consume_ai(session: AsyncSession, user: User) -> LimitCheck:
         limit=limit,
         remaining=max(0, limit - user.ai_msgs_count),
     )
+
+
+async def grant_ai_credits(session: AsyncSession, user: User, amount: int) -> int:
+    """Foydalanuvchiga bonus AI kreditlari beradi (challenge/referral mukofoti)."""
+    user.ai_credits = (user.ai_credits or 0) + max(0, amount)
+    await session.commit()
+    return user.ai_credits
 
 
 # ─────────────────────────────────────────────────────────────

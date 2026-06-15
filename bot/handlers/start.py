@@ -18,6 +18,9 @@ from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import user_is_premium, days_left
 from bot.services.referral_service import parse_referrer_id, register_referral
+from bot.services.analytics_service import track, track_once_per_day
+from bot.services.onboarding_flow import quickstart_keyboard, QUICKSTART_TEMPLATES
+from bot.services import onboarding_flow
 
 router = Router()
 
@@ -62,6 +65,19 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             except Exception:
                 # Referral xatosi /start oqimini to'xtatmasin
                 pass
+
+    # ── Analytics: signup (yangi) yoki kunlik open (DAU) ──
+    if is_new:
+        await track(message.from_user.id, "signup", user_id=user.id)
+    else:
+        await track_once_per_day(session, message.from_user.id, "open", user_id=user.id)
+
+    # ── Study group deep-link (grp_<code>) — taklif orqali guruhga qo'shilish
+    try:
+        from bot.services.group_service import handle_group_deeplink
+        await handle_group_deeplink(session, user, command.args, bot=message.bot)
+    except Exception:
+        pass
 
     if not user.onboarded:
         text = (
@@ -118,8 +134,62 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         )
 
     if not user.onboarded:
+        await message.answer(
+            "🚀 <b>Keling, hoziroq boshlaymiz!</b>\n\n"
+            "Quyidagilardan birini tanlang — men uni rejangizga qo'shaman, "
+            "siz esa bajarib, birinchi <b>ball</b> va <b>streak</b>ingizni oling 👇",
+            parse_mode="HTML",
+            reply_markup=quickstart_keyboard(),
+        )
+
+    if not user.onboarded:
         user.onboarded = True
         await session.commit()
+
+
+@router.callback_query(F.data.startswith("qs_"))
+async def quickstart_handler(callback: CallbackQuery, session: AsyncSession):
+    """Onboarding tezkor reja: bir tegishda namuna reja qo'shish va darhol bajarish."""
+    key = callback.data[3:]
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if not user:
+        await callback.answer("Iltimos /start bosing.", show_alert=True)
+        return
+
+    if key == "skip":
+        await callback.message.edit_text(
+            "✍️ <b>Zo'r!</b>\n\nBugun nima qilmoqchi ekanligingizni ovozli xabar "
+            "yoki matn bilan yuboring. Masalan:\n"
+            "<i>'Soat 7 da turaman, 9 da 5 km yuguraman, 21 da kitob o'qiyman'</i>",
+            parse_mode="HTML",
+        )
+        await callback.answer()
+        return
+
+    tpl = QUICKSTART_TEMPLATES.get(key)
+    if not tpl:
+        await callback.answer("Topilmadi.", show_alert=True)
+        return
+
+    from bot.services.plan_service import create_plan_single
+    from bot.keyboards.plan_keys import done_failed_keyboard
+
+    plan = await create_plan_single(
+        session, user,
+        title=tpl["title"], description=None,
+        scheduled_time=None, plan_date_str=None,
+        score_value=tpl["score"],
+    )
+    await track(callback.from_user.id, "plan_created", user_id=user.id, source="quickstart")
+    await track(callback.from_user.id, "first_plan", user_id=user.id)
+
+    await callback.message.edit_text(
+        f"✅ <b>Reja qo'shildi:</b> {tpl['emoji']} {plan.title}\n\n"
+        "Hoziroq bajaring va tugmani bosing — birinchi g'alabangizni oling! 👇",
+        parse_mode="HTML",
+        reply_markup=done_failed_keyboard(plan.id),
+    )
+    await callback.answer("Reja qo'shildi! Endi bajaring 💪")
 
 
 @router.message(F.text == "📞 Bog'lanish")

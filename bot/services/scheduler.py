@@ -119,6 +119,7 @@ async def send_morning_nudge(bot):
 
         blocked = False
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🌅 Ertalabki marosim", callback_data="ritual_morning")],
             [InlineKeyboardButton(text="📋 Bugungi rejam", callback_data="my_plans")],
             [InlineKeyboardButton(text="➕ Reja qo'sh", callback_data="add_plan")],
         ])
@@ -215,6 +216,7 @@ async def send_evening_reflection(bot):
 
         blocked = False
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🌙 Kechki marosim", callback_data="ritual_evening")],
             [InlineKeyboardButton(text="📊 Bugungi hisobot", callback_data="report")],
         ])
         for user in users:
@@ -443,6 +445,15 @@ async def premium_expiry_reminder(bot):
                 await session.rollback()
 
 
+async def materialize_recurring(bot=None):
+    """00:10 — bugungi takrorlanuvchi reja nusxalarini yaratadi."""
+    try:
+        from bot.services.recurring_service import materialize_for_day
+        await materialize_for_day()
+    except Exception as e:
+        logger.error(f"❌ Recurring materialize xato: {e}")
+
+
 # ─────────────────────────────────────────────────────────────
 def start_scheduler(bot):
     tz = str(TIMEZONE)
@@ -452,6 +463,12 @@ def start_scheduler(bot):
         send_plan_notifications,
         trigger=CronTrigger(minute="*", timezone=tz),
         args=[bot], id="plan_notifications",
+    )
+    # 00:10 — takrorlanuvchi rejalarni bugun uchun yaratish
+    scheduler.add_job(
+        materialize_recurring,
+        trigger=CronTrigger(hour=0, minute=10, timezone=tz),
+        args=[bot], id="materialize_recurring",
     )
     # 07:00 — morning nudge
     scheduler.add_job(
@@ -505,4 +522,46 @@ def start_scheduler(bot):
         trigger=CronTrigger(hour=10, minute=30, timezone=tz),
         args=[bot], id="premium_expiry_reminder",
     )
+    # Yakshanba 20:30 — haftalik recap
+    scheduler.add_job(
+        _send_weekly_recap,
+        trigger=CronTrigger(day_of_week="sun", hour=20, minute=30, timezone=tz),
+        args=[bot], id="weekly_recap",
+    )
+    # Oyning 1-kuni 10:00 — oylik hisobot kartasi
+    scheduler.add_job(
+        _send_monthly_card,
+        trigger=CronTrigger(day=1, hour=10, minute=0, timezone=tz),
+        args=[bot], id="monthly_card",
+    )
+    # 23:55 — mavsum (season) oxiri tekshiruvi (oy oxirida arxivlash + reset)
+    scheduler.add_job(
+        _rollover_season,
+        trigger=CronTrigger(hour=23, minute=55, timezone=tz),
+        args=[bot], id="season_rollover",
+    )
     scheduler.start()
+
+
+async def _send_weekly_recap(bot):
+    try:
+        from bot.services.recap_service import send_weekly_recap
+        await send_weekly_recap(bot)
+    except Exception as e:
+        logger.error(f"❌ Weekly recap xato: {e}")
+
+
+async def _send_monthly_card(bot):
+    try:
+        from bot.services.recap_service import send_monthly_card
+        await send_monthly_card(bot)
+    except Exception as e:
+        logger.error(f"❌ Monthly card xato: {e}")
+
+
+async def _rollover_season(bot):
+    try:
+        from bot.services.season_service import rollover_if_month_end
+        await rollover_if_month_end(bot)
+    except Exception as e:
+        logger.error(f"❌ Season rollover xato: {e}")

@@ -57,6 +57,26 @@ FREE_DAILY_PLAN_LIMIT = int(os.getenv("FREE_DAILY_PLAN_LIMIT", 5))
 # Free foydalanuvchi uchun kunlik AI Coach suhbat limiti (taste → premiumga undash).
 FREE_AI_DAILY_LIMIT = int(os.getenv("FREE_AI_DAILY_LIMIT", 3))
 
+# Premium foydalanuvchiga obuna faollashganda beriladigan bonus AI kreditlari
+# (kunlik limitdan tashqari "zaxira"). Free foydalanuvchilar bu kreditlarni
+# challenge/referral orqali ham topishi mumkin — shu "AI credits" mexanikasi.
+PREMIUM_MONTHLY_AI_CREDITS = int(os.getenv("PREMIUM_MONTHLY_AI_CREDITS", 200))
+
+# ─────────────────────────────────────────────────────────────
+#  FEATURE TIERS (Free vs Premium) — paywall taqqoslash uchun
+# ─────────────────────────────────────────────────────────────
+# Har bir element: (belgi, nomi, free_qiymat, premium_qiymat)
+FEATURE_TIERS = [
+    ("📝", "Kunlik rejalar", f"{FREE_DAILY_PLAN_LIMIT} ta/kun", "Cheksiz"),
+    ("🔁", "Takrorlanuvchi rejalar", "—", "✅"),
+    ("🤖", "AI Coach suhbati", f"{FREE_AI_DAILY_LIMIT} ta/kun", "Cheksiz"),
+    ("📱", "Mini App (kalendar, statistika)", "—", "✅"),
+    ("🧊", "Streak Freeze", "—", "✅"),
+    ("📊", "Chuqur tahlil & insight", "—", "✅"),
+    ("🎨", "Premium temalar", "—", "✅"),
+    ("👥", "Study group (kengaytirilgan)", "Asosiy", "To'liq"),
+]
+
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 SUBSCRIPTION_PLANS = {
     "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "sinov"},
@@ -85,6 +105,12 @@ REFERRAL_REWARD_DAYS = int(os.getenv("REFERRAL_REWARD_DAYS", 7))
 
 # Mukofot premiumi yoziladigan tarif kaliti (Subscription tarixi uchun).
 REFERRAL_REWARD_PLAN = os.getenv("REFERRAL_REWARD_PLAN", "7d").strip()
+
+# ── Mutual referral (ikki tomonlama mukofot) — Faza 4 ──
+# Har bir muvaffaqiyatli taklif uchun DARHOL beriladigan bonus AI kreditlari.
+# Bu taklifni "5 ta yig'gunча kut" emas, har safar foydali qiladi.
+REFERRAL_INVITER_CREDITS = int(os.getenv("REFERRAL_INVITER_CREDITS", 10))   # taklif qiluvchiga
+REFERRAL_INVITEE_CREDITS = int(os.getenv("REFERRAL_INVITEE_CREDITS", 20))   # yangi kelganga
 
 # Deep-link payload prefiksi: https://t.me/<bot>?start=ref_<telegram_id>
 REFERRAL_PAYLOAD_PREFIX = "ref_"
