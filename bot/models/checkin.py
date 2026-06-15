@@ -15,6 +15,11 @@ class DailyCheckin(Base):
     mood = Column(String(20), nullable=True)      # 🔥 / 💪 / 😐 / 😴 / 😞
     energy = Column(Integer, nullable=True)        # 1..5
 
+    # ── Faza 3: kechki refleksiya rituali ──
+    reflection = Column(String(2000), nullable=True)
+    win_of_day = Column(String(500), nullable=True)
+    gratitude = Column(String(500), nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="checkins")

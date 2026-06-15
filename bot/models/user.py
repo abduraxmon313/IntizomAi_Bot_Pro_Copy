@@ -45,6 +45,16 @@ class User(Base):
     # Allaqachon mukofotlangan takliflar soni (5 talik to'plamlar bo'yicha).
     referral_rewards_given = Column(Integer, default=0)
 
+    # ── Faza 3: Seasons (mavsumiy reyting) ───────────────
+    season_id = Column(String(16), nullable=True)     # "2026-06"
+    season_xp = Column(Integer, default=0)
+
+    # ── Faza 4: Study group (mas'uliyat guruhi) ──────────
+    group_id = Column(Integer, nullable=True)
+
+    # ── Premium bonus AI kreditlari (oylik) ──────────────
+    ai_credits = Column(Integer, default=0)
+
     # ── System ───────────────────────────────────────────
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

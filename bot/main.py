@@ -6,7 +6,11 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, plan, callback, report, admin, status, subscribe
+from bot.handlers import (
+    start, plan, callback, report, admin, status, subscribe,
+    analytics_admin, ritual, recap, challenge as challenge_h, templates as templates_h,
+    groups, search,
+)
 from bot.services.scheduler import start_scheduler
 from database.db import create_tables
 
@@ -20,6 +24,12 @@ logger = logging.getLogger(__name__)
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Botni boshlash"),
+        BotCommand(command="qidir", description="Reja/maqsad qidirish"),
+        BotCommand(command="shablon", description="Reja shablonlari"),
+        BotCommand(command="challenge", description="Chaqiruvlar (challenge)"),
+        BotCommand(command="mavsum", description="Mavsum reytingi"),
+        BotCommand(command="hafta", description="Haftalik hisobot"),
+        BotCommand(command="guruh", description="Study group"),
         BotCommand(command="admin", description="Admin panel"),
     ]
     await bot.set_my_commands(commands)
@@ -56,7 +66,14 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(status.router)
     dp.include_router(admin.router)
+    dp.include_router(analytics_admin.router)
     dp.include_router(subscribe.router)
+    dp.include_router(ritual.router)
+    dp.include_router(recap.router)
+    dp.include_router(challenge_h.router)
+    dp.include_router(templates_h.router)
+    dp.include_router(groups.router)
+    dp.include_router(search.router)
     dp.include_router(plan.router)
     dp.include_router(callback.router)
     dp.include_router(report.router)

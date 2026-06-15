@@ -12,7 +12,13 @@ from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.coach_service import (
     message_for_level_up, message_for_perfect_day, message_for_comeback,
 )
+from bot.services.analytics_service import track
+from bot.services.onboarding_flow import first_win_text
 from bot.keyboards.plan_keys import back_to_home_keyboard
+from bot.models.plan import Plan, PlanStatus
+from sqlalchemy import select, func, and_
+from datetime import datetime, timedelta
+from bot.config import TIMEZONE
 
 router = Router()
 
@@ -48,6 +54,33 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
         return
 
     reward = await process_plan_result_full(session, user, plan, is_done=True)
+
+    # ── Analytics + birinchi g'alaba (first win) aniqlash ──
+    is_first_win = False
+    try:
+        await track(callback.from_user.id, "plan_completed", user_id=user.id)
+        done_total = await session.scalar(
+            select(func.count(Plan.id)).where(
+                and_(Plan.user_id == user.id, Plan.status == PlanStatus.done)
+            )
+        ) or 0
+        # Mavsum XP (season) — best-effort
+        try:
+            from bot.services.season_service import add_season_xp
+            await add_season_xp(user.id, reward.xp_gained or 5)
+        except Exception:
+            pass
+        # Challenge taraqqiyoti (Faza 3) — best-effort
+        try:
+            from bot.services.challenge_service import on_plan_completed
+            await on_plan_completed(user.id, plan)
+        except Exception:
+            pass
+        if done_total == 1:
+            is_first_win = True
+            await track(callback.from_user.id, "first_win", user_id=user.id)
+    except Exception:
+        pass
 
     try:
         lines = [
@@ -90,6 +123,15 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
     except Exception:
         # Xabarni yangilashda xato bo'lsa ham — belgilash allaqachon saqlangan
         pass
+
+    # ── Birinchi g'alaba — alohida tabrik xabari (kuchli retention signali) ──
+    if is_first_win:
+        try:
+            await callback.message.answer(
+                first_win_text(user.full_name), parse_mode="HTML",
+            )
+        except Exception:
+            pass
 
     # Toast
     try:
@@ -175,3 +217,50 @@ async def continue_handler(callback: CallbackQuery, session: AsyncSession):
         reply_markup=back_to_home_keyboard(),
     )
     await callback.answer("Ertaga ham qo'shildi! 🔁")
+
+
+
+@router.callback_query(F.data.startswith("snooze_"))
+async def snooze_handler(callback: CallbackQuery, session: AsyncSession):
+    """Smart reminder — rejani N daqiqaga kechiktirish (qayta eslatish)."""
+    parts = callback.data.split("_")
+    try:
+        plan_id = int(parts[1])
+        minutes = int(parts[2])
+    except (IndexError, ValueError):
+        await callback.answer("Xatolik", show_alert=True)
+        return
+
+    plan = await get_plan_by_id(session, plan_id)
+    if not plan:
+        await callback.answer("Reja topilmadi!", show_alert=True)
+        return
+    if plan.status != PlanStatus.pending:
+        await callback.answer("Bu reja allaqachon belgilangan.", show_alert=True)
+        return
+
+    now = datetime.now(TIMEZONE)
+    new_dt = now + timedelta(minutes=minutes)
+    new_time = new_dt.strftime("%H:%M")
+
+    # Yangi vaqtga ko'chiramiz va qayta eslatishga ruxsat beramiz.
+    plan.scheduled_time = new_time
+    plan.plan_date = new_dt.date()
+    plan.notified_at = None
+    plan.snoozed_count = (plan.snoozed_count or 0) + 1
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+
+    try:
+        await callback.message.edit_text(
+            f"😴 <b>Kechiktirildi</b>\n\n"
+            f"📌 <b>{plan.title}</b>\n"
+            f"🔔 Yangi eslatma: <b>{new_time}</b> da\n\n"
+            f"<i>O'sha vaqtda yana eslataman 💪</i>",
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass
+    await callback.answer(f"{minutes} daqiqaga kechiktirildi 😴")

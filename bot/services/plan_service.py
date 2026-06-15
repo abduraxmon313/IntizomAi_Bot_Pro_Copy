@@ -48,7 +48,8 @@ async def create_plans(session: AsyncSession, user: User, plans_data: list[dict]
     for p in plans_data:
         # Agar ertaga uchun bo'lsa
         plan_date = today + timedelta(days=1) if p.get("for_tomorrow") else today
-        
+
+        from bot.services.search_service import guess_category
         plan = Plan(
             user_id=user.id,
             title=p["title"],
@@ -56,6 +57,7 @@ async def create_plans(session: AsyncSession, user: User, plans_data: list[dict]
             scheduled_time=p.get("scheduled_time"),
             plan_date=plan_date,
             score_value=p.get("score_value", 5),
+            category=p.get("category") or guess_category(p["title"]),
         )
         session.add(plan)
         plans.append(plan)
@@ -67,14 +69,15 @@ async def create_plans(session: AsyncSession, user: User, plans_data: list[dict]
 
 
 async def get_today_plans(session: AsyncSession, user: User) -> list[Plan]:
-    """Bugungi barcha rejalarni qaytaradi"""
+    """Bugungi barcha rejalarni qaytaradi (takrorlanish shablonlari bundan mustasno)"""
     today = datetime.now(TIMEZONE).date()
-    
+
     result = await session.execute(
         select(Plan).where(
             and_(
                 Plan.user_id == user.id,
-                Plan.plan_date == today
+                Plan.plan_date == today,
+                Plan.is_template == False,  # noqa: E712
             )
         ).order_by(Plan.scheduled_time)
     )
@@ -112,6 +115,7 @@ async def create_plan_single(
             pd = datetime.now(TIMEZONE).date()
     else:
         pd = datetime.now(TIMEZONE).date()
+    from bot.services.search_service import guess_category
     plan = Plan(
         user_id=user.id,
         title=title,
@@ -119,6 +123,7 @@ async def create_plan_single(
         scheduled_time=scheduled_time,
         plan_date=pd,
         score_value=score_value,
+        category=guess_category(title),
     )
     session.add(plan)
     await session.commit()
@@ -201,7 +206,8 @@ async def get_pending_plans_to_notify(session: AsyncSession) -> list[Plan]:
                 Plan.scheduled_time == now_time,
                 Plan.status == PlanStatus.pending,
                 Plan.notified_at == None,
-                Plan.plan_date == today
+                Plan.plan_date == today,
+                Plan.is_template == False,  # noqa: E712
             )
         )
     )
@@ -216,7 +222,8 @@ async def get_all_pending_plans_today(session: AsyncSession) -> list[Plan]:
         select(Plan).where(
             and_(
                 Plan.status == PlanStatus.pending,
-                Plan.plan_date == today
+                Plan.plan_date == today,
+                Plan.is_template == False,  # noqa: E712
             )
         )
     )

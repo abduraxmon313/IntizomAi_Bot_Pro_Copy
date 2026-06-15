@@ -14,6 +14,9 @@ class Goal(Base):
     goal_type = Column(String(20), nullable=False)   # yearly | monthly | weekly | daily
     period = Column(String(30), nullable=False)       # 2026 | 2026-05 | 2026-W21 | 2026-05-22
     completed = Column(Boolean, default=False)
+    category = Column(String(40), nullable=True)
+    tags = Column(String(255), nullable=True)
+    notes = Column(String(2000), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="goals")

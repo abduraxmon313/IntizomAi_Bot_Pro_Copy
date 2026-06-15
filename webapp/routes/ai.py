@@ -251,6 +251,13 @@ async def ai_chat(
     history = [{"role": m.role, "content": m.content} for m in body.messages]
     reply = await chat_with_coach(context_block, history)
 
+    try:
+        from bot.services.analytics_service import track
+        await track(telegram_id, "ai_chat", user_id=user.id,
+                    premium=user_is_premium(user))
+    except Exception:
+        pass
+
     return ChatOut(
         reply=reply,
         is_premium=user_is_premium(user),

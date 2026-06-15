@@ -102,6 +102,12 @@ async def render_subscription(
     # Bepul foydalanuvchi — planlarni taklif qilamiz
     free = bool(promo_code) and bonus_days == 0
 
+    try:
+        from bot.services.analytics_service import track
+        await track(user.telegram_id, "paywall_view", user_id=user.id)
+    except Exception:
+        pass
+
     text = (
         "💎 <b>Intizom AI Premium</b>\n\n"
         "Premium bilan to'liq imkoniyatlar ochiladi:\n"
@@ -304,6 +310,26 @@ async def referral_link_cb(callback: CallbackQuery, session: AsyncSession):
 # ─────────────────────────────────────────────────────────────
 #  PROMOKOD KIRITISH
 # ─────────────────────────────────────────────────────────────
+@router.callback_query(F.data == "premium_features")
+async def premium_features_cb(callback: CallbackQuery, session: AsyncSession):
+    """Free vs Premium taqqoslash jadvalini ko'rsatadi."""
+    from bot.services.premium_service import feature_comparison_text
+    from bot.keyboards.subscribe_keys import buy_subscription_keyboard
+    try:
+        await callback.message.edit_text(
+            feature_comparison_text(),
+            parse_mode="HTML",
+            reply_markup=buy_subscription_keyboard(),
+        )
+    except Exception:
+        await callback.message.answer(
+            feature_comparison_text(),
+            parse_mode="HTML",
+            reply_markup=buy_subscription_keyboard(),
+        )
+    await callback.answer()
+
+
 @router.callback_query(F.data == "sub_promo_enter")
 async def promo_enter_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     user = await get_user_by_telegram_id(session, callback.from_user.id)
@@ -373,6 +399,13 @@ async def _finalize_subscription(callback, state, session, user, plan, plan_key,
         head = "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>"
         extra = f" (+{bonus_days} kun promokod)" if bonus_days > 0 else ""
 
+    try:
+        from bot.services.analytics_service import track
+        await track(user.telegram_id, "subscribe_success", user_id=user.id,
+                    plan=plan_key, source=source)
+    except Exception:
+        pass
+
     await callback.message.edit_text(
         f"{head}\n\n"
         f"📦 Tarif: <b>{plan['title']}</b>{extra}\n"
@@ -408,6 +441,12 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
         return
 
     bonus_days, promo_code = await _state_promo(state)
+
+    try:
+        from bot.services.analytics_service import track
+        await track(user.telegram_id, "subscribe_start", user_id=user.id, plan=plan_key)
+    except Exception:
+        pass
 
     # Promokod hali ham amaldami — qayta tekshiramiz
     if promo_code:
