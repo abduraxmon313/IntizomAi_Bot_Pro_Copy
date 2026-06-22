@@ -869,6 +869,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
   <div class="ss-bar"><i id="ssBar"></i></div>
 </div>
+<div class="section-title"><h2>Do'stlarni taklif qil 🎁</h2></div>
+<div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Har taklif uchun ikkalangizga ham Premium</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
 <div class="section-title"><h2>Hisob</h2></div>
 <div class="setting" id="editNameSetting"><div class="ic">✏️</div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Yutuqlar 🏆</h2></div>
@@ -901,30 +903,38 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
     <div class="em">🎯</div>
     <h1>Salom!<br>Men Intizom AI</h1>
     <p>Sening shaxsiy intizom OS'ing. Maqsadlaringni rejaga aylantiraman, streakingni saqlayman.</p>
-    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     <div class="nav"><button class="next" data-go="1">Davom etish ›</button></div>
   </div>
   <div class="step" data-step="1">
     <div class="em">🧭</div>
     <h1>Sen kimsan?</h1>
-    <p>Bu seni shaxsan tushunishimga yordam beradi.</p>
+    <p>Bu senga mos odatlarni taklif qilishimga yordam beradi.</p>
     <div class="opts" id="personaOpts">
       <div class="opt" data-p="student"><span class="em">📚</span><div><div>Talaba</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Imtihon, dars, tartib</div></div></div>
       <div class="opt" data-p="pro"><span class="em">💼</span><div><div>Mutaxassis</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Ish, loyiha, o'sish</div></div></div>
       <div class="opt" data-p="self"><span class="em">🌱</span><div><div>O'zimni rivojlantirish</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Sport, kitob, odat</div></div></div>
       <div class="opt" data-p="mixed"><span class="em">⚡</span><div><div>Hammasi</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Maksimal samaradorlik</div></div></div>
     </div>
-    <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+    <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
     <div class="nav"><button class="next" data-go="2">Keyingi ›</button></div>
   </div>
   <div class="step" data-step="2">
     <div class="em">🔥</div>
     <h1>Va'da</h1>
-    <p>Har kuni kamida 1 ta reja bajarish — sen va sening kelajagingga aytilgan va'da.</p>
+    <p>Har kuni kamida 1 ta narsa bajarish — sen va sening kelajagingga aytilgan va'da.</p>
     <div class="opts">
       <div class="opt" id="commitOpt"><span class="em">✋</span><div><div>Men o'zimga va'da beraman</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Streak boshlash uchun bos</div></div></div>
     </div>
-    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+    <div class="nav"><button class="next" data-go="3">Keyingi ›</button></div>
+  </div>
+  <div class="step" data-step="3">
+    <div class="em">✅</div>
+    <h1>Birinchi odatlaring</h1>
+    <p>Bittasini tanla — bir tap bilan boshlaymiz. Keyin xohlagancha o'zgartirasan.</p>
+    <div class="opts" id="obHabitOpts"></div>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
     <div class="nav"><button class="next" id="obFinish">Boshlash 🚀</button></div>
   </div>
 </div>
@@ -1033,6 +1043,9 @@ document.getElementById('profUn').textContent=State.user.username?'@'+State.user
 
 async function api(path,opts={}){const url=API+path+(path.includes('?')?'&':'?')+'telegram_id='+State.telegramId;const headers={'Content-Type':'application/json',...(opts.headers||{})};try{if(tg&&tg.initData)headers['X-Telegram-Init-Data']=tg.initData;}catch(_){}const res=await fetch(url,{headers,...opts});if(!res.ok)throw new Error('API '+res.status);return res.json();}
 
+// Analitika hodisasi (best-effort — xato bo'lsa ham UI'ga ta'sir qilmaydi)
+function logEvent(ev,props){try{api('/api/webapp/event',{method:'POST',body:JSON.stringify({event:ev,props:props||null})}).catch(()=>{});}catch(_){}}
+
 async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
 // Tanlangan kun uchun rejalarni yuklash (bugun yoki o'tgan/kelajak kun)
@@ -1096,7 +1109,36 @@ const apiHabitUpdate=(id,p)=>api('/api/webapp/habits/'+id,{method:'PUT',body:JSO
 const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
 const apiHabitToggle=(id,done)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done})});
 const apiProfileUpdate=(name,notif)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
-async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);}catch(_){}}
+async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' do\'st taklif qilingan · ikkalangizga Premium'):'Har taklif uchun ikkalangizga ham Premium';}}catch(_){}}
+
+// ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
+function shareInvite(){
+  const link=State.profile&&State.profile.referral_link;
+  logEvent('share_clicked');
+  const snap=State.snap||{};const streak=snap.streak||0;
+  const txt=streak>0
+    ? ('Men IntizomAI bilan '+streak+' kun streak yig\'dim 🔥 Sen ham intizomli bo\'l — qo\'shil:')
+    : 'IntizomAI — har kuni intizomli bo\'lishga yordam beradigan bot. Qo\'shil:';
+  if(!link){toast('Havola tayyorlanmoqda…');return;}
+  const url='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(txt);
+  try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(url);else window.open(url,'_blank');}catch(_){try{window.open(url,'_blank');}catch(__){}}
+}
+
+// ── Onboarding: persona bo'yicha tavsiya etilgan odatlar ─────────────────
+const OB_HABITS={
+  student:[['📚','Kuniga 1 soat o\'qish'],['🌅','Erta turish'],['💧','Suv ichish'],['🧘','10 daqiqa meditatsiya']],
+  pro:[['🌅','Erta turish'],['✍️','Kunlik reja tuzish'],['🏃','Sport / mashq'],['📵','Telefon detoks']],
+  self:[['🏃','Sport / mashq'],['📚','Kitob o\'qish'],['🧘','Meditatsiya'],['💧','Suv ichish']],
+  mixed:[['🌅','Erta turish'],['🏃','Sport / mashq'],['📚','Kitob o\'qish'],['💧','Suv ichish']],
+};
+function renderObHabits(){
+  const persona=localStorage.getItem('iz_persona')||'mixed';
+  const list=OB_HABITS[persona]||OB_HABITS.mixed;
+  State.obHabits=list.map((x,i)=>({icon:x[0],title:x[1],sel:i<2}));
+  const el=document.getElementById('obHabitOpts');if(!el)return;
+  el.innerHTML=State.obHabits.map((h,i)=>`<div class="opt ${h.sel?'sel':''}" data-i="${i}"><span class="em">${h.icon}</span><div><div>${esc(h.title)}</div></div></div>`).join('');
+  el.querySelectorAll('.opt').forEach(o=>o.onclick=()=>{const i=+o.dataset.i;State.obHabits[i].sel=!State.obHabits[i].sel;o.classList.toggle('sel');});
+}
 
 const HABIT_ICONS=['✅','🏃','📚','💧','🧘','💪','🌅','🛏️','🙏','🚭','🥗','✍️','🎯','💸','🧠','😴'];
 const WD_SHORT=['Du','Se','Cho','Pa','Ju','Sha','Ya'];
@@ -1231,7 +1273,7 @@ async function loadCheckin(){try{const c=await api('/api/webapp/checkin');if(!c)
 async function saveCheckin(payload){try{await api('/api/webapp/checkin',{method:'POST',body:JSON.stringify(payload)});}catch(_){toast('Saqlashda xato',true);}}
 
 // ── Premium / paywall ───────────────────────────────────────────────────
-function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
+function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');logEvent('paywall_view');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
 function closePaywall(){const ov=document.getElementById('paywall');if(ov)ov.classList.remove('show');}
 // Peak-moment upsell: streak milestone'ida (3,7,14,30,50,100) bepul foydalanuvchiga
 // bir marta (har milestone uchun) yumshoq premium taklifi ko'rsatamiz — eng kuchli
@@ -1548,6 +1590,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{if(localStorage.getItem('iz_premium')==='1')closePaywall();}catch(_){}
   loadSubscription();
   loadProfileMeta();
+  logEvent('miniapp_open');
   loadPlansAPI().then(()=>{loadGoalsAPI();loadSnapshot();loadQuest();});
 
   // ── AI page wiring ─────────────────────────────────────────────────
@@ -1566,10 +1609,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   // ── Onboarding ─────────────────────────────────────────────────────
   // Onboarding faqat PREMIUM foydalanuvchiga (loadSubscription tasdiqlagach)
   // ko'rsatiladi — maybeShowOnboarding() orqali.
-  document.querySelectorAll('#onboarding [data-go]').forEach(b=>b.onclick=()=>{const idx=+b.dataset.go;document.querySelectorAll('#onboarding .step').forEach(s=>s.classList.toggle('active',+s.dataset.step===idx));});
+  document.querySelectorAll('#onboarding [data-go]').forEach(b=>b.onclick=()=>{const idx=+b.dataset.go;document.querySelectorAll('#onboarding .step').forEach(s=>s.classList.toggle('active',+s.dataset.step===idx));if(idx===3)renderObHabits();});
   document.querySelectorAll('#personaOpts .opt').forEach(o=>o.onclick=()=>{document.querySelectorAll('#personaOpts .opt').forEach(x=>x.classList.remove('sel'));o.classList.add('sel');localStorage.setItem('iz_persona',o.dataset.p);});
   const _commitOpt=document.getElementById('commitOpt');if(_commitOpt)_commitOpt.onclick=()=>_commitOpt.classList.toggle('sel');
-  document.getElementById('obFinish').onclick=()=>{localStorage.setItem('iz_onboarded_v2','1');document.getElementById('onboarding').classList.remove('show');confetti(60);toast('🚀 Boshlandi!');};
+  document.getElementById('obFinish').onclick=async()=>{
+    const fin=document.getElementById('obFinish');if(fin)fin.disabled=true;
+    const chosen=(State.obHabits||[]).filter(h=>h.sel);
+    let added=0;
+    for(const h of chosen){try{const nh=await apiHabitCreate({title:h.title,icon:h.icon,frequency:'daily',duration_type:'permanent'});State.habits.push(nh);added++;}catch(_){}}
+    localStorage.setItem('iz_onboarded_v2','1');
+    document.getElementById('onboarding').classList.remove('show');
+    confetti(60);toast(added?('🚀 '+added+' ta odat qo\'shildi!'):'🚀 Boshlandi!');
+    logEvent('onboarding_done',(localStorage.getItem('iz_persona')||'')+':'+added);
+    try{renderHabits();renderHabitSummary();}catch(_){}
+    if(fin)fin.disabled=false;
+  };
+  const _shareCard=document.getElementById('shareCard');if(_shareCard)_shareCard.onclick=shareInvite;
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
 });

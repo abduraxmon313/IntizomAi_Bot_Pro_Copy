@@ -167,6 +167,57 @@ async def activate_subscription(
         f"✅ Obuna faollashdi: user={user.telegram_id} plan={plan_key} "
         f"until={expires_at} source={source}"
     )
+    try:
+        from bot.services.analytics_service import log_event
+        await log_event(
+            "premium_activated", telegram_id=user.telegram_id, user_id=user.id,
+            props=f"{source}:{plan_key}",
+        )
+    except Exception:
+        pass
+    return sub
+
+
+async def grant_bonus_premium(
+    session: AsyncSession,
+    user: User,
+    days: int,
+    source: str = "trial",
+    label: str = "Bonus",
+) -> Optional[Subscription]:
+    """
+    Tarif katalogiga bog'lanmagan bonus premium beradi (trial yoki referral invitee).
+    Premium muddatini ADDITIV uzaytiradi (mavjud premium ustiga qo'shiladi).
+    """
+    if days <= 0:
+        return None
+    now = datetime.utcnow()
+    base = user.premium_until if (user.premium_until and user.premium_until > now) else now
+    expires_at = base + timedelta(days=days)
+
+    sub = Subscription(
+        user_id=user.id,
+        plan=source,            # "trial" | "referral_invitee"
+        days=days,
+        price=0,
+        source=source,
+        promocode=None,
+        started_at=now,
+        expires_at=expires_at,
+        is_active=True,
+    )
+    session.add(sub)
+    user.is_premium = True
+    user.premium_until = expires_at
+    await session.commit()
+    await session.refresh(sub)
+    logger.info(f"🎁 Bonus premium: user={user.telegram_id} +{days}d source={source}")
+    try:
+        from bot.services.analytics_service import log_event
+        ev = "trial_granted" if source == "trial" else "premium_activated"
+        await log_event(ev, telegram_id=user.telegram_id, user_id=user.id, props=f"{source}:{days}d")
+    except Exception:
+        pass
     return sub
 
 

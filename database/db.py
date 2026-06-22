@@ -67,6 +67,7 @@ USER_NEW_COLUMNS = [
     ("referral_rewards_given", "INTEGER DEFAULT 0"),
     ("display_name", "VARCHAR(255)"),
     ("notifications_enabled", "BOOLEAN DEFAULT TRUE"),
+    ("trial_used", "BOOLEAN DEFAULT FALSE"),
 ]
 
 # habits jadvali uchun yangi ustunlar (avvalgi versiyada yaratilgan bo'lsa).
@@ -157,7 +158,7 @@ async def create_tables():
         async with engine.begin() as conn:
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
-                subscription, payment_order, referral, habit,
+                subscription, payment_order, referral, habit, analytics_event,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)
