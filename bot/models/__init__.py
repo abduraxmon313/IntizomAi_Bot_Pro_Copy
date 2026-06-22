@@ -9,9 +9,10 @@ from .subscription import Subscription, Promocode
 from .payment_order import PaymentOrder
 from .referral import Referral
 from .habit import Habit, HabitLog
+from .analytics_event import AnalyticsEvent
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
     "Achievement", "DailyCheckin", "Subscription", "Promocode", "PaymentOrder",
-    "Referral", "Habit", "HabitLog",
+    "Referral", "Habit", "HabitLog", "AnalyticsEvent",
 ]

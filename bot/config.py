@@ -67,6 +67,10 @@ FREE_HABIT_LIMIT = int(os.getenv("FREE_HABIT_LIMIT", 3))
 HABIT_REMINDER_HOUR = int(os.getenv("HABIT_REMINDER_HOUR", 19))
 HABIT_REMINDER_MINUTE = int(os.getenv("HABIT_REMINDER_MINUTE", 0))
 
+# Yangi foydalanuvchiga avtomatik beriladigan Premium sinov (trial) kunlari.
+# 0 bo'lsa — trial berilmaydi. Loss-aversion: 3 kun premiumdan keyin limitlar.
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", 3))
+
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 SUBSCRIPTION_PLANS = {
     "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "sinov"},
@@ -89,6 +93,10 @@ BOT_USERNAME = os.getenv("BOT_USERNAME", "intizomAi_bot").strip().lstrip("@")
 
 # Necha do'st taklif qilinsa mukofot beriladi.
 REFERRAL_THRESHOLD = int(os.getenv("REFERRAL_THRESHOLD", 5))
+
+# Taklif qilingan (yangi) do'stning O'ZIGA beriladigan premium kunlari
+# (ikki tomonlama mukofot — taklif qilingan ham yutadi). 0 = berilmaydi.
+REFERRAL_INVITEE_REWARD_DAYS = int(os.getenv("REFERRAL_INVITEE_REWARD_DAYS", 3))
 
 # Mukofot sifatida beriladigan premium kunlari (har bir to'plam uchun).
 REFERRAL_REWARD_DAYS = int(os.getenv("REFERRAL_REWARD_DAYS", 7))

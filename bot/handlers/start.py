@@ -14,9 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards.main_menu import main_menu_keyboard
 from bot.keyboards.reply_keys import main_reply_keyboard
 from bot.keyboards.subscribe_keys import contact_keyboard, premium_promo_keyboard
+from bot.config import TRIAL_DAYS
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
-from bot.services.premium_service import user_is_premium, days_left
+from bot.services.premium_service import user_is_premium, days_left, grant_bonus_premium
 from bot.services.referral_service import parse_referrer_id, register_referral
 
 router = Router()
@@ -73,6 +74,28 @@ async def start_handler(message: Message, command: CommandObject, session: Async
                 # Referral xatosi /start oqimini to'xtatmasin
                 pass
 
+    # ── Analitika: start / signup
+    try:
+        from bot.services.analytics_service import log_event
+        await log_event("start", telegram_id=user.telegram_id, user_id=user.id)
+        if is_new:
+            await log_event("signup", telegram_id=user.telegram_id, user_id=user.id)
+    except Exception:
+        pass
+
+    # ── Yangi foydalanuvchiga avtomatik Premium sinov (trial) — loss aversion.
+    #    Referral orqali kelgan bo'lsa allaqachon premium bo'lishi mumkin (invitee
+    #    bonusi) — bunday holda trial o'tkazib yuboriladi.
+    trial_days_granted = 0
+    if is_new and TRIAL_DAYS > 0 and not user.trial_used and not user_is_premium(user):
+        try:
+            await grant_bonus_premium(session, user, TRIAL_DAYS, source="trial")
+            user.trial_used = True
+            await session.commit()
+            trial_days_granted = TRIAL_DAYS
+        except Exception:
+            await session.rollback()
+
     if not user.onboarded:
         text = (
             "🎯 <b>Intizom AI</b> ga xush kelibsiz!\n\n"
@@ -86,6 +109,11 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             "ovozli xabar yoki matn yuboring!\n\n"
             "<i>Masalan: 'Soat 6 da turaman, 9 da kitob o'qiyman'</i>"
         )
+        if trial_days_granted:
+            text += (
+                f"\n\n🎁 <b>Sovg'a:</b> sizga <b>{trial_days_granted} kunlik Premium</b> "
+                "berildi — Mini App, cheksiz reja va AI Coach ochiq!"
+            )
     else:
         lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
         rank, emoji = rank_for_level(lvl)

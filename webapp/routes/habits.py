@@ -105,6 +105,11 @@ async def add_habit(
         frequency=body.frequency, weekdays=body.weekdays,
         duration_type=body.duration_type, target_days=body.target_days,
     )
+    try:
+        from bot.services.analytics_service import log_event
+        await log_event("habit_created", telegram_id=user.telegram_id, user_id=user.id)
+    except Exception:
+        pass
     return await habit_snapshot(session, habit)
 
 

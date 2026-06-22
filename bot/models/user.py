@@ -34,6 +34,8 @@ class User(Base):
     # ── Identity / monetization ──────────────────────────
     is_premium = Column(Boolean, default=False)
     premium_until = Column(DateTime, nullable=True)
+    # Avtomatik sinov (trial) berilganmi — bir foydalanuvchiga faqat bir marta.
+    trial_used = Column(Boolean, default=False)
     onboarded = Column(Boolean, default=False)
     rank_title = Column(String(40), nullable=True)
     avatar_emoji = Column(String(8), default="🌱")

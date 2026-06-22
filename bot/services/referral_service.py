@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import (
     BOT_USERNAME,
+    REFERRAL_INVITEE_REWARD_DAYS,
     REFERRAL_PAYLOAD_PREFIX,
     REFERRAL_REWARD_DAYS,
     REFERRAL_REWARD_PLAN,
@@ -34,7 +35,7 @@ from bot.config import (
 )
 from bot.models.referral import Referral
 from bot.models.user import User
-from bot.services.premium_service import activate_subscription, days_left
+from bot.services.premium_service import activate_subscription, days_left, grant_bonus_premium
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +191,32 @@ async def register_referral(
 
     await session.refresh(referrer)
     total = int(referrer.referral_count or 0)
+
+    # 4b) IKKI TOMONLAMA: taklif qilingan yangi do'stga ham bonus premium beramiz.
+    if REFERRAL_INVITEE_REWARD_DAYS > 0:
+        try:
+            await grant_bonus_premium(
+                session, new_user, REFERRAL_INVITEE_REWARD_DAYS,
+                source="referral_invitee",
+            )
+            if bot is not None:
+                try:
+                    await bot.send_message(
+                        new_user.telegram_id,
+                        (
+                            "🎁 <b>Sovg'a!</b>\n\n"
+                            f"Do'stingiz havolasi orqali qo'shilganingiz uchun sizga "
+                            f"<b>{REFERRAL_INVITEE_REWARD_DAYS} kunlik Premium</b> berildi!\n\n"
+                            "✨ Mini App, cheksiz reja va AI Coach — bahridan foydalaning."
+                        ),
+                        parse_mode="HTML",
+                    )
+                except TelegramForbiddenError:
+                    pass
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Invitee mukofotini berishda xato: {e}")
 
     # 5) Mukofot tekshiruvi — har THRESHOLD ta uchun bir marta premium
     rewarded = False

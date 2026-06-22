@@ -17,6 +17,8 @@ class ProfileOut(BaseModel):
     full_name: str
     username: Optional[str] = None
     notifications_enabled: bool = True
+    referral_link: Optional[str] = None
+    referral_count: int = 0
 
 
 class ProfileUpdate(BaseModel):
@@ -33,6 +35,19 @@ def _effective_name(user) -> str:
     return (user.display_name or user.full_name or "Foydalanuvchi").strip() or "Foydalanuvchi"
 
 
+def _profile_payload(user) -> ProfileOut:
+    from bot.config import BOT_USERNAME
+    from bot.services.referral_service import build_referral_link
+    return ProfileOut(
+        telegram_id=user.telegram_id,
+        full_name=_effective_name(user),
+        username=user.username,
+        notifications_enabled=bool(user.notifications_enabled),
+        referral_link=build_referral_link(BOT_USERNAME, user.telegram_id),
+        referral_count=int(user.referral_count or 0),
+    )
+
+
 @router.get("/profile", response_model=ProfileOut)
 async def get_profile(
     telegram_id: int = Depends(resolve_telegram_id),
@@ -41,12 +56,7 @@ async def get_profile(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
-    return ProfileOut(
-        telegram_id=user.telegram_id,
-        full_name=_effective_name(user),
-        username=user.username,
-        notifications_enabled=bool(user.notifications_enabled),
-    )
+    return _profile_payload(user)
 
 
 @router.put("/profile", response_model=ProfileOut)
@@ -75,9 +85,4 @@ async def update_profile(
     await session.commit()
     await session.refresh(user)
 
-    return ProfileOut(
-        telegram_id=user.telegram_id,
-        full_name=_effective_name(user),
-        username=user.username,
-        notifications_enabled=bool(user.notifications_enabled),
-    )
+    return _profile_payload(user)
