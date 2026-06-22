@@ -66,6 +66,18 @@ USER_NEW_COLUMNS = [
     ("referral_count", "INTEGER DEFAULT 0"),
     ("referral_rewards_given", "INTEGER DEFAULT 0"),
     ("display_name", "VARCHAR(255)"),
+    ("notifications_enabled", "BOOLEAN DEFAULT TRUE"),
+]
+
+# habits jadvali uchun yangi ustunlar (avvalgi versiyada yaratilgan bo'lsa).
+HABIT_NEW_COLUMNS = [
+    ("frequency", "VARCHAR(12) DEFAULT 'daily'"),
+    ("weekdays", "VARCHAR(20)"),
+    ("duration_type", "VARCHAR(12) DEFAULT 'permanent'"),
+    ("target_days", "INTEGER"),
+    ("start_date", "DATE"),
+    ("sort_order", "INTEGER DEFAULT 0"),
+    ("archived", "BOOLEAN DEFAULT FALSE"),
 ]
 
 # payment_orders jadvali uchun yangi ustunlar.
@@ -111,6 +123,17 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip payment_orders.{col}: {e}")
+
+    # habits uchun yangi ustunlar (frequency/weekdays/duration/start_date...).
+    # Jadval shu transaksiyada create_all bilan yaratilgani uchun yangi DB'da
+    # ustunlar allaqachon mavjud (no-op); eski DB'da esa qo'shiladi.
+    for col, ddl in HABIT_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE habits ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip habits.{col}: {e}")
 
     # Ko'lamlilik (scalability) uchun indekslar — userlar/rejalar ko'payganda
     # so'rovlar full-scan qilmasligi uchun. CREATE INDEX IF NOT EXISTS idempotent

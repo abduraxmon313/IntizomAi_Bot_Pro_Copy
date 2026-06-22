@@ -374,6 +374,36 @@ async def check_plan_limit(
     return LimitCheck(allowed=allowed, used=used, limit=limit, remaining=remaining)
 
 
+async def check_goal_limit(session: AsyncSession, user: User, adding: int = 1) -> LimitCheck:
+    """Free foydalanuvchi uchun jami maqsad limiti (premium — cheksiz)."""
+    if user_is_premium(user):
+        return LimitCheck(allowed=True, used=0, limit=-1, remaining=-1)
+    from bot.config import FREE_GOAL_LIMIT
+    from bot.models.goal import Goal
+    used = await session.scalar(
+        select(func.count(Goal.id)).where(Goal.user_id == user.id)
+    ) or 0
+    limit = FREE_GOAL_LIMIT
+    remaining = max(0, limit - used)
+    return LimitCheck(allowed=(used + adding) <= limit, used=used, limit=limit, remaining=remaining)
+
+
+async def check_habit_limit(session: AsyncSession, user: User, adding: int = 1) -> LimitCheck:
+    """Free foydalanuvchi uchun faol odat limiti (premium — cheksiz)."""
+    if user_is_premium(user):
+        return LimitCheck(allowed=True, used=0, limit=-1, remaining=-1)
+    from bot.config import FREE_HABIT_LIMIT
+    from bot.models.habit import Habit
+    used = await session.scalar(
+        select(func.count(Habit.id)).where(
+            and_(Habit.user_id == user.id, Habit.archived == False)  # noqa: E712
+        )
+    ) or 0
+    limit = FREE_HABIT_LIMIT
+    remaining = max(0, limit - used)
+    return LimitCheck(allowed=(used + adding) <= limit, used=used, limit=limit, remaining=remaining)
+
+
 async def check_and_consume_ai(session: AsyncSession, user: User) -> LimitCheck:
     """
     AI Coach suhbati uchun kunlik limitni tekshiradi va (free bo'lsa) 1 ta sarflaydi.

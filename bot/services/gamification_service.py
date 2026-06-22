@@ -347,7 +347,7 @@ async def _run_gamification(user_id: int, became_done: bool) -> CompletionReward
                         and_(Plan.user_id == u.id, Plan.plan_date == today)
                     )
                 ) or 0
-                if total_today >= 2 and pending_today == 0:
+                if total_today >= 1 and pending_today == 0:
                     out.perfect_day = True
                     u.perfect_days = (u.perfect_days or 0) + 1
                     existing = await s.scalar(

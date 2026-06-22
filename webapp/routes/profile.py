@@ -16,10 +16,12 @@ class ProfileOut(BaseModel):
     telegram_id: int
     full_name: str
     username: Optional[str] = None
+    notifications_enabled: bool = True
 
 
 class ProfileUpdate(BaseModel):
-    full_name: str
+    full_name: Optional[str] = None
+    notifications_enabled: Optional[bool] = None
 
 
 async def get_session():
@@ -43,6 +45,7 @@ async def get_profile(
         telegram_id=user.telegram_id,
         full_name=_effective_name(user),
         username=user.username,
+        notifications_enabled=bool(user.notifications_enabled),
     )
 
 
@@ -56,14 +59,18 @@ async def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
-    name = (body.full_name or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Ism bo'sh bo'lishi mumkin emas")
-    if len(name) > 60:
-        name = name[:60]
+    if body.full_name is not None:
+        name = (body.full_name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Ism bo'sh bo'lishi mumkin emas")
+        if len(name) > 60:
+            name = name[:60]
+        # display_name — Telegram sinxronizatsiyasi o'chirib yubormaydigan maxsus ism.
+        user.display_name = name
 
-    # display_name — Telegram sinxronizatsiyasi o'chirib yubormaydigan maxsus ism.
-    user.display_name = name
+    if body.notifications_enabled is not None:
+        user.notifications_enabled = bool(body.notifications_enabled)
+
     user.last_active = datetime.utcnow()
     await session.commit()
     await session.refresh(user)
@@ -72,4 +79,5 @@ async def update_profile(
         telegram_id=user.telegram_id,
         full_name=_effective_name(user),
         username=user.username,
+        notifications_enabled=bool(user.notifications_enabled),
     )

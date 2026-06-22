@@ -52,6 +52,8 @@ class User(Base):
 
     # ── System ───────────────────────────────────────────
     is_active = Column(Boolean, default=True)
+    # Push eslatmalarni yoqish/o'chirish (Mini App sozlamalari orqali).
+    notifications_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)
 

@@ -11,18 +11,21 @@ import logging
 from datetime import datetime, timedelta
 
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 
 from bot.config import (
+    HABIT_REMINDER_HOUR,
+    HABIT_REMINDER_MINUTE,
     PENDING_CHECK_HOUR,
     PENDING_CHECK_MINUTE,
     PREMIUM_EXPIRY_REMINDER_DAYS,
     SUMMARY_HOUR,
     SUMMARY_MINUTE,
     TIMEZONE,
+    WEBAPP_URL,
 )
 from bot.models.plan import Plan, PlanStatus
 from bot.models.subscription import Subscription
@@ -42,6 +45,9 @@ scheduler = AsyncIOScheduler(timezone=str(TIMEZONE))
 # Telegram global limiti ~30 msg/sek. Xavfsizlik uchun har yuborish orasida
 # kichik pauza qo'yamiz (~20 msg/sek).
 SEND_DELAY = 0.05
+
+# Bildirishnoma yoqilgan foydalanuvchilar filtri (NULL ham yoqilgan deb hisoblanadi).
+NOTIF_ON = or_(User.notifications_enabled == True, User.notifications_enabled.is_(None))  # noqa: E712
 
 
 async def _deliver(bot, user, text, reply_markup=None) -> str:
@@ -114,7 +120,7 @@ async def send_morning_nudge(bot):
     """07:00 — energising, identity-affirming."""
     async with AsyncSessionLocal() as session:
         users = (await session.execute(
-            select(User).where(User.is_active == True)
+            select(User).where(and_(User.is_active == True, NOTIF_ON))
         )).scalars().all()
 
         blocked = False
@@ -143,7 +149,7 @@ async def send_streak_warning(bot):
 
         users = (await session.execute(
             select(User).where(
-                and_(User.is_active == True, User.streak > 1)
+                and_(User.is_active == True, User.streak > 1, NOTIF_ON)
             )
         )).scalars().all()
 
@@ -173,7 +179,7 @@ async def send_inactivity_comeback(bot):
         today = datetime.now(TIMEZONE).date()
 
         users = (await session.execute(
-            select(User).where(User.is_active == True)
+            select(User).where(and_(User.is_active == True, NOTIF_ON))
         )).scalars().all()
 
         blocked = False
@@ -241,6 +247,16 @@ async def send_daily_summary(bot):
         )).scalars().all()
 
         for user in users:
+            # ── Oylik "grace": oyning 1-kunida har bir faol foydalanuvchiga
+            #    1 ta streak freeze beriladi (maks. 2 ta to'planadi). Bu engaged
+            #    foydalanuvchining bitta yomon kunini kechiradi (P1).
+            if today.day == 1 and (user.streak_freezes or 0) < 2:
+                user.streak_freezes = (user.streak_freezes or 0) + 1
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+
             plans = (await session.execute(
                 select(Plan).where(
                     and_(Plan.user_id == user.id, Plan.plan_date == today)
@@ -271,6 +287,11 @@ async def send_daily_summary(bot):
                 await session.commit()
             except Exception:
                 await session.rollback()
+
+            # Streak settlement har doim bajariladi; xabar esa faqat bildirishnoma
+            # yoqilgan bo'lsa yuboriladi (P1 notification budget).
+            if user.notifications_enabled is False:
+                continue
 
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="📊 Batafsil hisobot", callback_data="report")]
@@ -327,6 +348,8 @@ async def check_pending_plans(bot):
                 select(User).where(User.id == user_id)
             )).scalar_one_or_none()
             if not user:
+                continue
+            if user.notifications_enabled is False:
                 continue
 
             lines = []
@@ -444,6 +467,58 @@ async def premium_expiry_reminder(bot):
 
 
 # ─────────────────────────────────────────────────────────────
+async def send_habit_reminders(bot):
+    """19:00 — bugun rejalashtirilgan, lekin hali belgilanmagan odatlar eslatmasi."""
+    from bot.services.habit_service import get_due_unchecked_habits
+    async with AsyncSessionLocal() as session:
+        users = (await session.execute(
+            select(User).where(and_(User.is_active == True, NOTIF_ON))
+        )).scalars().all()
+
+        blocked = False
+        for user in users:
+            try:
+                due = await get_due_unchecked_habits(session, user)
+            except Exception:
+                due = []
+            if not due:
+                continue
+
+            lines = []
+            for h in due[:12]:
+                lines.append(f"{h.icon or '✅'} <b>{h.title}</b>")
+            extra = f"\n…va yana {len(due) - 12} ta" if len(due) > 12 else ""
+
+            kb = None
+            if WEBAPP_URL:
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(
+                        text="✅ Odatlarni belgilash",
+                        web_app=WebAppInfo(url=WEBAPP_URL),
+                    )],
+                ])
+            st = await _deliver(
+                bot, user,
+                (
+                    f"✅ <b>Bugungi odatlaring</b>\n\n"
+                    f"Quyidagi <b>{len(due)} ta</b> odat hali belgilanmagan:\n\n"
+                    + "\n".join(lines) + extra +
+                    "\n\nKichik qadam — katta natija. Streakingni saqla 🔥"
+                ),
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+
+
+# ─────────────────────────────────────────────────────────────
 def start_scheduler(bot):
     tz = str(TIMEZONE)
 
@@ -471,12 +546,16 @@ def start_scheduler(bot):
         trigger=CronTrigger(hour=20, minute=0, timezone=tz),
         args=[bot], id="streak_warning",
     )
-    # 21:00 — evening reflection prompt
+    # 19:00 — odat (habit) eslatmasi (bugun belgilanmaganlar)
     scheduler.add_job(
-        send_evening_reflection,
-        trigger=CronTrigger(hour=21, minute=0, timezone=tz),
-        args=[bot], id="evening_reflection",
+        send_habit_reminders,
+        trigger=CronTrigger(
+            hour=HABIT_REMINDER_HOUR, minute=HABIT_REMINDER_MINUTE, timezone=tz,
+        ),
+        args=[bot], id="habit_reminders",
     )
+    # Eslatma: 21:00 "evening_reflection" jo'natmasi olib tashlandi — kunlik
+    # bildirishnoma yukini kamaytirish uchun (20:00 streak + 23:00 pending yetarli).
     # 23:00 — pending plan check
     scheduler.add_job(
         check_pending_plans,

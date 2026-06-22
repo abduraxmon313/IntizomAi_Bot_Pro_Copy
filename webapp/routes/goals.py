@@ -162,6 +162,17 @@ async def add_goal(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+    # Free-tier maqsad limiti (premium — cheksiz)
+    from bot.services.premium_service import check_goal_limit
+    lim = await check_goal_limit(session, user, adding=1)
+    if not lim.allowed:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Bepul maqsad limiti tugadi ({lim.used}/{lim.limit}). "
+                "Cheksiz maqsadlar uchun Premium oling."
+            ),
+        )
     goal = await create_goal(
         session, user, body.title, body.description, body.goal_type, body.period
     )
