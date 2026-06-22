@@ -10,6 +10,11 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegram_id = Column(BigInteger, unique=True, nullable=False)
     full_name = Column(String(255), nullable=True)
+    # Foydalanuvchi o'zi tahrirlagan ism (Mini App sozlamalari orqali).
+    # full_name har /start da Telegram'dan yangilanadi — shuning uchun maxsus ism
+    # alohida ustunda saqlanadi va ustunlik beriladi (Telegram sinxronizatsiyasi
+    # uni o'chirib yubormaydi).
+    display_name = Column(String(255), nullable=True)
     username = Column(String(255), nullable=True)
 
     # Core score (legacy — kept for back-compat)
@@ -56,3 +61,4 @@ class User(Base):
     achievements = relationship("Achievement", back_populates="user", cascade="all, delete")
     checkins = relationship("DailyCheckin", back_populates="user", cascade="all, delete")
     subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete")
+    habits = relationship("Habit", back_populates="user", cascade="all, delete")

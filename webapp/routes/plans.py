@@ -93,7 +93,7 @@ async def get_user_plans(
     return PlansResponse(
         user=UserOut(
             telegram_id=user.telegram_id,
-            full_name=user.full_name or "Foydalanuvchi",
+            full_name=(user.display_name or user.full_name or "Foydalanuvchi"),
             username=user.username,
             streak=user.streak,
             total_score=user.total_score,

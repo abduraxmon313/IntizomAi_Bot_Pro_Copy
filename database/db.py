@@ -65,6 +65,7 @@ USER_NEW_COLUMNS = [
     ("referred_by", "BIGINT"),
     ("referral_count", "INTEGER DEFAULT 0"),
     ("referral_rewards_given", "INTEGER DEFAULT 0"),
+    ("display_name", "VARCHAR(255)"),
 ]
 
 # payment_orders jadvali uchun yangi ustunlar.
@@ -87,6 +88,9 @@ NEW_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_users_premium_until ON users (premium_until)",
     "CREATE INDEX IF NOT EXISTS ix_users_last_active ON users (last_active)",
     "CREATE INDEX IF NOT EXISTS ix_users_is_active ON users (is_active)",
+    "CREATE INDEX IF NOT EXISTS ix_habits_user_id ON habits (user_id)",
+    "CREATE INDEX IF NOT EXISTS ix_habit_logs_habit_date ON habit_logs (habit_id, log_date)",
+    "CREATE INDEX IF NOT EXISTS ix_habit_logs_user_date ON habit_logs (user_id, log_date)",
 ]
 
 
@@ -130,7 +134,7 @@ async def create_tables():
         async with engine.begin() as conn:
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
-                subscription, payment_order, referral,
+                subscription, payment_order, referral, habit,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)

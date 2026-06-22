@@ -8,9 +8,10 @@ from .checkin import DailyCheckin
 from .subscription import Subscription, Promocode
 from .payment_order import PaymentOrder
 from .referral import Referral
+from .habit import Habit, HabitLog
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
     "Achievement", "DailyCheckin", "Subscription", "Promocode", "PaymentOrder",
-    "Referral",
+    "Referral", "Habit", "HabitLog",
 ]
