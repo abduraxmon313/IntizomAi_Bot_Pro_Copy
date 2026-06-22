@@ -98,7 +98,6 @@ def premium_promo_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💳 Obuna sotib olish", callback_data="open_subscription")],
         [InlineKeyboardButton(text="🎁 Bepul premium olish", callback_data="free_premium")],
-        [InlineKeyboardButton(text="📊 Free vs Premium", callback_data="premium_features")],
         [InlineKeyboardButton(text="ℹ️ Premium haqida", url="https://t.me/Intizom_AI")],
     ])
 
