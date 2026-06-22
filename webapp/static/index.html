@@ -635,14 +635,53 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .sub-status .ss-cta{position:relative;z-index:1;background:var(--grad);color:#fff;border:none;padding:11px 15px;border-radius:13px;font-weight:800;font-size:12.5px;cursor:pointer;box-shadow:var(--glow);flex-shrink:0;white-space:nowrap;transition:transform .15s}
 .sub-status .ss-cta:active{transform:scale(.95)}
 
+/* ── Header user (avatar + name) ────────────────────────────────────────── */
+.hdr-user{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+.hdr-av{width:46px;height:46px;border-radius:14px;flex-shrink:0;background:var(--grad);background-size:cover;background-position:center;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:800;box-shadow:var(--glow);border:2px solid var(--surface-2);cursor:pointer;transition:transform .25s}
+.hdr-av:active{transform:scale(.9)}
+.hdr-greet{min-width:0}
+.hdr-greet h1{font-size:21px;font-weight:800;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Habit cards ────────────────────────────────────────────────────────── */
+.habit-summary{display:flex;gap:10px;margin-bottom:14px}
+.habit-summary .hs-card{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;text-align:center;box-shadow:var(--shadow-sm)}
+.habit-summary .hs-card .v{font-size:22px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.habit-summary .hs-card .l{font-size:10.5px;color:var(--text-2);margin-top:2px;font-weight:600}
+.habit{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;margin-bottom:9px;animation:slideIn .4s ease both;transition:transform .2s,background .3s}
+.habit:active{transform:scale(.985)}
+.habit.done{background:var(--grad-soft);border-color:var(--primary)}
+.habit .hcheck{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:grid;place-items:center;font-size:20px;cursor:pointer;border:2px solid var(--border);background:var(--surface-2);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.habit.done .hcheck{background:var(--grad);border-color:transparent;color:#fff;box-shadow:var(--glow);animation:checkPop .55s cubic-bezier(.34,1.56,.64,1)}
+.habit .hbody{flex:1;min-width:0}
+.habit .hbody .ttl{font-size:14.5px;font-weight:700}
+.habit .hbody .meta{font-size:11.5px;color:var(--text-2);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.habit .hstreak{display:inline-flex;align-items:center;gap:3px;color:var(--primary);font-weight:700;background:var(--primary-soft);padding:2px 8px;border-radius:999px;font-size:11px}
+.habit .hactions{display:flex;gap:2px;flex-shrink:0}
+.habit .hactions button{width:28px;height:28px;border-radius:8px;background:transparent;border:none;color:var(--text-3);cursor:pointer;display:grid;place-items:center;transition:all .2s}
+.habit .hactions button:active{transform:scale(.85)}
+.habit .hactions .edit:active{color:var(--primary)}
+.habit .hactions .del:active{color:var(--danger)}
+
+/* ── Emoji picker (habit modal) ─────────────────────────────────────────── */
+.emoji-pick{display:flex;flex-wrap:wrap;gap:7px}
+.emoji-pick .em{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:21px;background:var(--surface);border:1.5px solid var(--border);cursor:pointer;transition:all .2s}
+.emoji-pick .em:active{transform:scale(.9)}
+.emoji-pick .em.sel{background:var(--grad-soft);border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+
 </style>
 </head>
 <body>
 <div class="app">
 <section class="page active" data-page="home">
 <div class="hdr">
-  <div class="hdr-greet"><h1>Assalom, <span id="userName">Foydalanuvchi</span> <span class="wave">👋</span></h1><p id="todayDate">Bugun</p></div>
-  <div class="hdr-actions"><button class="mode-btn" id="modeBtn" aria-label="Rejim"><span class="ic" id="modeIcon">☀️</span></button></div>
+  <div class="hdr-user" id="hdrUser">
+    <div class="hdr-av" id="hdrAv">A</div>
+    <div class="hdr-greet"><h1 id="userName">Foydalanuvchi</h1><p id="todayDate">Bugun</p></div>
+  </div>
+  <div class="hdr-actions">
+    <button class="mode-btn" id="modeBtn" aria-label="Rejim"><span class="ic" id="modeIcon">☀️</span></button>
+    <button class="mode-btn" id="settingsBtn" aria-label="Sozlamalar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
 </div>
 
 <div class="hero-v2" id="heroV2">
@@ -795,6 +834,13 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="chart-card"><div class="hist-list" id="histList"></div></div>
 </section>
 
+<section class="page" data-page="habits">
+<div class="hdr"><div class="hdr-greet"><h1>Odatlar ✅</h1><p>Har kuni takrorla, streak yig'</p></div></div>
+<div class="habit-summary" id="habitSummary"></div>
+<button class="add-btn ripple" id="addHabitBtn" type="button" aria-label="Odat qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Odat qo'shish</span></button>
+<div id="habitsList"></div>
+</section>
+
 <section class="page" data-page="profile">
 <div class="hdr"><div class="hdr-greet"><h1>Profil 👤</h1><p>Sozlamalar</p></div></div>
 <div class="prof-hero"><div class="av" id="profAv">A</div><div class="nm" id="profName">Foydalanuvchi</div><div class="un" id="profUn">@username</div><div class="stx"><div class="it"><div class="v" id="pfStreak">0</div><div class="l">Streak</div></div><div class="it"><div class="v" id="pfScore">0</div><div class="l">Ball</div></div><div class="it"><div class="v" id="pfDone">0</div><div class="l">Bajarilgan</div></div></div></div>
@@ -810,6 +856,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
   <div class="ss-bar"><i id="ssBar"></i></div>
 </div>
+<div class="section-title"><h2>Hisob</h2></div>
+<div class="setting" id="editNameSetting"><div class="ic">✏️</div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Yutuqlar 🏆</h2></div>
 <div class="achs" id="achs"></div>
 <div class="section-title"><h2>🎨 Tema</h2></div>
@@ -892,8 +940,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="nav-item active" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Asosiy</span></div>
 <div class="nav-item" data-nav="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Maqsad</span></div>
 <div class="nav-ai" data-nav="ai" aria-label="AI"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l1.9 4.8a2.5 2.5 0 0 0 1.4 1.4L20 10.6l-4.7 1.9a2.5 2.5 0 0 0-1.4 1.4L12 18.7l-1.9-4.8a2.5 2.5 0 0 0-1.4-1.4L4 10.6l4.7-1.9a2.5 2.5 0 0 0 1.4-1.4L12 2.5z" opacity=".95"/><circle cx="19" cy="5" r="1.4" opacity=".85"/><circle cx="5.5" cy="18.5" r="1" opacity=".7"/></svg></div>
+<div class="nav-item" data-nav="habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Odat</span></div>
 <div class="nav-item" data-nav="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Statistika</span></div>
-<div class="nav-item" data-nav="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></div>
 </nav>
 
 <div class="modal-back" id="modalBack"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3><div class="fld"><label>Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh..."></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel">Bekor</button><button class="btn" id="mSave">Saqlash</button></div></div></div>
@@ -905,6 +953,16 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="row gap-12 mt-8"><button class="btn btn-ghost" id="pCancel">Bekor</button><button class="btn" id="pSave">Saqlash</button></div></div></div>
 
 <div class="modal-back" id="dayModalBack"><div class="modal"><div class="grab"></div><h3 id="dayModalTitle">Kun maqsadlari</h3><div id="dayModalList"></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="dayClose">Yopish</button><button class="btn" id="dayAdd">+ Qo'shish</button></div></div></div>
+
+<div class="modal-back" id="habitModalBack"><div class="modal"><div class="grab"></div><h3 id="habitModalTitle">Yangi odat</h3>
+<div class="fld"><label>Belgi</label><div class="emoji-pick" id="habitIconPick"></div></div>
+<div class="fld"><label>Sarlavha</label><input id="hTitle" placeholder="Masalan: Erta turish"></div>
+<div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="hDesc" placeholder="Qisqacha izoh..."></textarea></div>
+<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="hCancel">Bekor</button><button class="btn" id="hSave">Saqlash</button></div></div></div>
+
+<div class="modal-back" id="nameModalBack"><div class="modal"><div class="grab"></div><h3>Ismni tahrirlash</h3>
+<div class="fld"><label>Ismingiz</label><input id="nName" maxlength="60" placeholder="Ismingizni kiriting"></div>
+<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="nCancel">Bekor</button><button class="btn" id="nSave">Saqlash</button></div></div></div>
 
 <div class="confirm-back" id="confirmBack">
   <div class="confirm-box">
@@ -923,7 +981,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <script>
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const UZ_MONTHS_SHORT=['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -940,13 +998,27 @@ function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 const formatDateLong=d=>UZ_DOW_FULL[(d.getDay()+6)%7]+', '+d.getDate()+' '+UZ_MONTHS_SHORT[d.getMonth()].toLowerCase();
 const formatRange=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'–'+b.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]:a.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+UZ_MONTHS_SHORT[b.getMonth()];
 
-function initUser(){const u=tg?.initDataUnsafe?.user;if(u){State.telegramId=u.id;State.user=u;}else{State.telegramId=parseInt(localStorage.getItem('iz_demo_id')||'12345',10);State.user={id:State.telegramId,first_name:'Foydalanuvchi',username:'demo'};}
-const nm=State.user.first_name||'Foydalanuvchi';const ini=(nm[0]||'A').toUpperCase();
-document.getElementById('userName').textContent=nm;document.getElementById('profName').textContent=nm;document.getElementById('profAv').textContent=ini;document.getElementById('profUn').textContent=State.user.username?'@'+State.user.username:'';document.getElementById('todayDate').textContent=formatDateLong(new Date());}
+function applyUserName(nm){
+  nm=(nm||'Foydalanuvchi').trim()||'Foydalanuvchi';
+  if(State.user)State.user.first_name=nm;
+  State.displayName=nm;
+  const ini=(nm[0]||'A').toUpperCase();
+  setText('userName',nm);setText('profName',nm);
+  const hav=document.getElementById('hdrAv');const pav=document.getElementById('profAv');
+  // Profil rasmi (Telegram bergan bo'lsa) — bo'lmasa ism birinchi harfi
+  const photo=State.photoUrl;
+  if(hav){if(photo){hav.style.backgroundImage='url("'+photo+'")';hav.textContent='';}else{hav.style.backgroundImage='';hav.textContent=ini;}}
+  if(pav){if(photo){pav.style.backgroundImage='url("'+photo+'")';pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';pav.textContent='';}else{pav.style.backgroundImage='';pav.textContent=ini;}}
+  const dsc=document.getElementById('editNameDsc');if(dsc)dsc.textContent='Joriy: '+nm;
+}
+function initUser(){const u=tg?.initDataUnsafe?.user;if(u){State.telegramId=u.id;State.user=u;State.photoUrl=u.photo_url||null;}else{State.telegramId=parseInt(localStorage.getItem('iz_demo_id')||'12345',10);State.user={id:State.telegramId,first_name:'Foydalanuvchi',username:'demo'};State.photoUrl=null;}
+const nm=State.user.first_name||'Foydalanuvchi';
+applyUserName(nm);
+document.getElementById('profUn').textContent=State.user.username?'@'+State.user.username:'';document.getElementById('todayDate').textContent=formatDateLong(new Date());}
 
 async function api(path,opts={}){const url=API+path+(path.includes('?')?'&':'?')+'telegram_id='+State.telegramId;const headers={'Content-Type':'application/json',...(opts.headers||{})};try{if(tg&&tg.initData)headers['X-Telegram-Init-Data']=tg.initData;}catch(_){}const res=await fetch(url,{headers,...opts});if(!res.ok)throw new Error('API '+res.status);return res.json();}
 
-async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
+async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
 // Tanlangan kun uchun rejalarni yuklash (bugun yoki o'tgan/kelajak kun)
 function isSameDay(ymdStr,dateObj){try{return ymdStr===ymd(dateObj||new Date());}catch(_){return false;}}
@@ -1002,6 +1074,37 @@ const apiGoalDelete=id=>api('/api/webapp/goals/'+id,{method:'DELETE'});
 const apiPlanCreate=p=>api('/api/webapp/plans',{method:'POST',body:JSON.stringify(p)});
 const apiPlanUpdate=(id,p)=>api('/api/webapp/plans/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiPlanDelete=id=>api('/api/webapp/plans/'+id,{method:'DELETE'});
+
+// ── Odatlar (habits) API ────────────────────────────────────────────────
+const apiHabitCreate=p=>api('/api/webapp/habits',{method:'POST',body:JSON.stringify(p)});
+const apiHabitUpdate=(id,p)=>api('/api/webapp/habits/'+id,{method:'PUT',body:JSON.stringify(p)});
+const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
+const apiHabitToggle=(id,done)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done})});
+const apiProfileUpdate=name=>api('/api/webapp/profile',{method:'PUT',body:JSON.stringify({full_name:name})});
+
+const HABIT_ICONS=['✅','🏃','📚','💧','🧘','💪','🌅','🛏️','🙏','🚭','🥗','✍️','🎯','💸','🧠','😴'];
+
+async function loadHabitsAPI(){try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];}renderHabits();renderHabitSummary();}
+
+function renderHabitSummary(){const el=document.getElementById('habitSummary');if(!el)return;const tot=State.habits.length;const doneToday=State.habits.filter(h=>h.done_today).length;const best=State.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);if(!tot){el.innerHTML='';return;}el.innerHTML=`<div class="hs-card"><div class="v">${doneToday}/${tot}</div><div class="l">Bugun bajarildi</div></div><div class="hs-card"><div class="v">${best}</div><div class="l">Eng uzun streak</div></div><div class="hs-card"><div class="v">${tot}</div><div class="l">Jami odat</div></div>`;}
+
+function renderHabits(){const w=document.getElementById('habitsList');if(!w)return;if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}w.innerHTML=State.habits.map((h,i)=>`<div class="habit ${h.done_today?'done':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="Bugun bajarildi">${h.done_today?'✓':esc(h.icon||'✅')}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta"><span class="hstreak">🔥 ${h.streak||0} kun</span>${h.description?'<span>'+esc(h.description)+'</span>':''}</div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`).join('');bindHabitActions();}
+
+function bindHabitActions(){document.querySelectorAll('#habitsList .habit').forEach(row=>{const id=+row.dataset.id;
+  row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){confetti(28);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}}catch(err){toast('Xato!',true);}};
+  row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(h)openHabitModal(h);};
+  row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Odatni o\'chirish',message:'Bu odat va uning tarixi o\'chiriladi. Davom etasizmi?'}))return;try{await apiHabitDelete(id);State.habits=State.habits.filter(x=>x.id!==id);renderHabits();renderHabitSummary();toast('🗑 O\'chirildi');}catch(_){toast('Xato!',true);}};});}
+
+function renderHabitIconPick(){const el=document.getElementById('habitIconPick');if(!el)return;el.innerHTML=HABIT_ICONS.map(em=>`<div class="em ${em===State.habitIcon?'sel':''}" data-em="${em}">${em}</div>`).join('');el.querySelectorAll('.em').forEach(b=>b.onclick=()=>{State.habitIcon=b.dataset.em;el.querySelectorAll('.em').forEach(x=>x.classList.toggle('sel',x.dataset.em===State.habitIcon));});}
+
+function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';renderHabitIconPick();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
+function closeHabitModal(){const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');}
+async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();const body={title:t,description:desc||null,icon:State.habitIcon||'✅'};try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabits();renderHabitSummary();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
+
+// ── Ism tahrirlash ──────────────────────────────────────────────────────
+function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
+function closeNameModal(){const b=document.getElementById('nameModalBack');if(b)b.classList.remove('show');}
+async function saveNameModal(){const nm=(document.getElementById('nName')?.value||'').trim();if(!nm){toast('Ism bo\'sh',true);return;}try{const res=await apiProfileUpdate(nm);applyUserName(res.full_name||nm);closeNameModal();toast('✓ Ism saqlandi');}catch(e){toast('Xato: '+String(e&&e.message||''),true);}}
 
 // Sarlavhadagi bosh emoji-ni olib tashlaydi (rankEmoji alohida ko'rsatilgani uchun
 // "🌱 🌱 Boshlovchi" kabi takror chiqmasligi uchun)
@@ -1334,7 +1437,7 @@ function fabAction(){const ap=document.querySelector('.page.active').dataset.pag
 
 function updateFabVisibility(){/* inline add buttons now live inside sections */}
 
-function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='ai'){loadCoach();loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
+function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCoach();loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
 
 function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
 
@@ -1343,6 +1446,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>switchPage(n.dataset.nav));
   const _ap=document.getElementById('addPlanBtn');if(_ap)_ap.onclick=e=>{ripple(e);openPlanModal(null);};document.querySelectorAll('.add-goal-trigger').forEach(b=>{b.onclick=e=>{ripple(e);const gp=b.dataset.gp||State.goalPeriod;let pk;if(gp==='yearly')pk=String(State.selectedYear);else if(gp==='monthly')pk=State.selectedYear+'-'+pad(State.selectedMonth+1);else if(gp==='weekly')pk=weekKey(addDays(new Date(),State.weekOffset*7));else pk=ymd(State.selectedDate);openModal(gp,pk);};});
   document.getElementById('modeBtn').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
+  // Settings (sozlamalar) tugmasi va profil rasmi -> Profil sahifasi
+  const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
+  const _hdrAv=document.getElementById('hdrAv');if(_hdrAv)_hdrAv.onclick=()=>switchPage('profile');
+  // Odat (habit) wiring
+  const _ah=document.getElementById('addHabitBtn');if(_ah)_ah.onclick=e=>{ripple(e);openHabitModal(null);};
+  const _hc=document.getElementById('hCancel');if(_hc)_hc.onclick=closeHabitModal;
+  const _hs=document.getElementById('hSave');if(_hs)_hs.onclick=saveHabitModal;
+  const _hmb=document.getElementById('habitModalBack');if(_hmb)_hmb.onclick=e=>{if(e.target.id==='habitModalBack')closeHabitModal();};
+  // Ism tahrirlash wiring
+  const _ens=document.getElementById('editNameSetting');if(_ens)_ens.onclick=openNameModal;
+  const _nc=document.getElementById('nCancel');if(_nc)_nc.onclick=closeNameModal;
+  const _ns=document.getElementById('nSave');if(_ns)_ns.onclick=saveNameModal;
+  const _nmb=document.getElementById('nameModalBack');if(_nmb)_nmb.onclick=e=>{if(e.target.id==='nameModalBack')closeNameModal();};
   document.querySelectorAll('#goalSeg .seg-item').forEach(s=>s.onclick=()=>{document.querySelectorAll('#goalSeg .seg-item').forEach(x=>x.classList.remove('active'));s.classList.add('active');State.goalPeriod=s.dataset.gp;moveGoalSegInd();renderGoalsView();});
   document.querySelectorAll('#dvToggle .dv-toggle-item').forEach(it=>it.onclick=()=>{State.dailyView=it.dataset.dv;renderDaily();});
   document.getElementById('diaryPrev').onclick=()=>{State.diaryWeekStart=addDays(State.diaryWeekStart||startOfWeek(new Date()),-7);renderDiary();};
