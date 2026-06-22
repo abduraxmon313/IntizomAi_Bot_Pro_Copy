@@ -23,6 +23,15 @@ class HabitOut(BaseModel):
     title: str
     description: Optional[str] = None
     icon: str = "✅"
+    frequency: str = "daily"
+    weekdays: list[int] = []
+    duration_type: str = "permanent"
+    target_days: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    days_left: Optional[int] = None
+    finished: bool = False
+    due_today: bool = True
     done_today: bool = False
     streak: int = 0
     total_done: int = 0
@@ -33,12 +42,20 @@ class HabitCreate(BaseModel):
     title: str
     description: Optional[str] = None
     icon: Optional[str] = None
+    frequency: Optional[str] = None          # "daily" | "weekly"
+    weekdays: Optional[list[int]] = None      # 0=Mon .. 6=Sun
+    duration_type: Optional[str] = None       # "permanent" | "days"
+    target_days: Optional[int] = None
 
 
 class HabitUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
+    frequency: Optional[str] = None
+    weekdays: Optional[list[int]] = None
+    duration_type: Optional[str] = None
+    target_days: Optional[int] = None
 
 
 class HabitToggle(BaseModel):
@@ -72,7 +89,22 @@ async def add_habit(
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
     if not (body.title or "").strip():
         raise HTTPException(status_code=400, detail="Sarlavha bo'sh bo'lishi mumkin emas")
-    habit = await create_habit(session, user, body.title, body.description, body.icon)
+    # Free-tier odat limiti (premium — cheksiz)
+    from bot.services.premium_service import check_habit_limit
+    lim = await check_habit_limit(session, user, adding=1)
+    if not lim.allowed:
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                f"Bepul odat limiti tugadi ({lim.used}/{lim.limit}). "
+                "Cheksiz odatlar uchun Premium oling."
+            ),
+        )
+    habit = await create_habit(
+        session, user, body.title, body.description, body.icon,
+        frequency=body.frequency, weekdays=body.weekdays,
+        duration_type=body.duration_type, target_days=body.target_days,
+    )
     return await habit_snapshot(session, habit)
 
 
@@ -87,7 +119,9 @@ async def edit_habit(
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
     habit = await update_habit(
-        session, habit_id, user.id, body.title, body.description, body.icon
+        session, habit_id, user.id, body.title, body.description, body.icon,
+        frequency=body.frequency, weekdays=body.weekdays,
+        duration_type=body.duration_type, target_days=body.target_days,
     )
     if not habit:
         raise HTTPException(status_code=404, detail="Odat topilmadi")

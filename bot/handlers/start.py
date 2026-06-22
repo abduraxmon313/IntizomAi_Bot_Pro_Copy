@@ -26,15 +26,25 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 
 def _webapp_kb(is_premium: bool) -> InlineKeyboardMarkup | None:
-    if not is_premium:
-        # Obunasiz — 2 tugmali promo (Obuna sotib olish + Premium haqida).
-        return premium_promo_keyboard()
+    """
+    Mini App tugmasi HAMMAGA ko'rsatiladi (bepul foydalanuvchi ham ochib,
+    qiymatini ko'rishi → premiumga undash). Obunasizlarga qo'shimcha "Obuna"
+    promo tugmalari ham qo'shiladi.
+    """
     rows = []
     if WEBAPP_URL:
         rows.append([InlineKeyboardButton(
             text="✨ Mini App ochish",
             web_app=WebAppInfo(url=WEBAPP_URL),
         )])
+    if not is_premium:
+        # Obuna promo tugmalarini ham qo'shamiz (Mini App ichidagi premium
+        # imkoniyatlar uchun).
+        promo = premium_promo_keyboard()
+        try:
+            rows.extend(promo.inline_keyboard)
+        except Exception:
+            pass
     return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
 
@@ -108,8 +118,9 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             )
         else:
             promo_text = (
-                "🚀 <b>Mini App</b> — kalendar, statistika va AI Coach bir joyda.\n\n"
-                "💎 Bu <b>Premium</b> imkoniyat. Quyidagidan tanlang 👇"
+                "🚀 <b>Mini App</b> — kalendar, statistika, odatlar va AI Coach bir joyda.\n\n"
+                "Bepul ochib ko'ring 👇 Cheksiz reja, AI Coach va premium imkoniyatlar uchun "
+                "💎 <b>Premium</b> oling."
             )
         await message.answer(
             promo_text,

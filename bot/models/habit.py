@@ -30,6 +30,22 @@ class Habit(Base):
     title = Column(String(200), nullable=False)
     description = Column(String(500), nullable=True)
     icon = Column(String(8), default="✅")           # emoji belgi
+
+    # ── Takrorlanish (frequency) ─────────────────────────
+    # "daily"  — har kuni
+    # "weekly" — faqat tanlangan hafta kunlari (weekdays)
+    frequency = Column(String(12), default="daily")
+    # Hafta kunlari (faqat frequency="weekly" uchun): vergulli indekslar
+    # Dushanba=0 ... Yakshanba=6, masalan "0,2,4".
+    weekdays = Column(String(20), nullable=True)
+
+    # ── Davomiylik (duration) ────────────────────────────
+    # "permanent" — doimiy (tugamaydi)
+    # "days"      — muddatli: start_date dan target_days kun davom etadi
+    duration_type = Column(String(12), default="permanent")
+    target_days = Column(Integer, nullable=True)
+    start_date = Column(Date, default=_today_tashkent)
+
     sort_order = Column(Integer, default=0)            # ro'yxatdagi tartib
     archived = Column(Boolean, default=False)          # arxivlangan (yashirilgan)
     created_at = Column(DateTime, default=datetime.utcnow)

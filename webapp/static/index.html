@@ -668,6 +668,19 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .emoji-pick .em:active{transform:scale(.9)}
 .emoji-pick .em.sel{background:var(--grad-soft);border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
 
+/* ── Habit modal: repeat (frequency) + duration segments ────────────────── */
+.hseg{display:flex;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;gap:4px}
+.hseg-item{flex:1;text-align:center;padding:9px 4px;font-size:12.5px;font-weight:600;color:var(--text-2);border-radius:9px;cursor:pointer;transition:all .25s}
+.hseg-item.active{background:var(--grad);color:#fff;box-shadow:var(--glow)}
+.hseg-item:active{transform:scale(.96)}
+.weekday-pick{display:flex;gap:6px;margin-top:10px}
+.weekday-pick .wdc{flex:1;aspect-ratio:1;display:grid;place-items:center;font-size:12px;font-weight:700;border-radius:10px;background:var(--surface);border:1.5px solid var(--border);color:var(--text-2);cursor:pointer;transition:all .2s}
+.weekday-pick .wdc:active{transform:scale(.9)}
+.weekday-pick .wdc.sel{background:var(--grad);color:#fff;border-color:transparent;box-shadow:var(--glow)}
+.habit .hbadge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--text-2);background:var(--border);padding:2px 7px;border-radius:999px}
+.habit.finished{opacity:.6}
+.habit.finished .hcheck{filter:grayscale(.5)}
+
 </style>
 </head>
 <body>
@@ -916,8 +929,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
 </div>
 
-<!-- Premium paywall (obunasiz foydalanuvchi uchun) -->
-<div class="paywall show" id="paywall" aria-hidden="false">
+<!-- Premium paywall (faqat limit oshganda yoki premium funksiya bosilganda ochiladi) -->
+<div class="paywall" id="paywall" aria-hidden="true">
   <div class="pw-orbs"><span></span><span></span><span></span></div>
   <div class="pw-inner">
     <div class="pw-crown">👑</div>
@@ -958,6 +971,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="fld"><label>Belgi</label><div class="emoji-pick" id="habitIconPick"></div></div>
 <div class="fld"><label>Sarlavha</label><input id="hTitle" placeholder="Masalan: Erta turish"></div>
 <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="hDesc" placeholder="Qisqacha izoh..."></textarea></div>
+<div class="fld"><label>Takrorlanish</label><div class="hseg" id="hFreqSeg"><div class="hseg-item active" data-f="daily">Har kuni</div><div class="hseg-item" data-f="weekly">Tanlangan kunlar</div></div><div class="weekday-pick" id="hWeekdays" style="display:none"></div></div>
+<div class="fld"><label>Davomiylik</label><div class="hseg" id="hDurSeg"><div class="hseg-item active" data-d="permanent">Doimiy</div><div class="hseg-item" data-d="days">Muddatli</div></div><div id="hDaysWrap" style="display:none;margin-top:10px"><input id="hTargetDays" type="number" min="1" max="365" inputmode="numeric" placeholder="Necha kun davom etadi? (masalan 30)"></div></div>
 <div class="row gap-12 mt-8"><button class="btn btn-ghost" id="hCancel">Bekor</button><button class="btn" id="hSave">Saqlash</button></div></div></div>
 
 <div class="modal-back" id="nameModalBack"><div class="modal"><div class="grab"></div><h3>Ismni tahrirlash</h3>
@@ -981,7 +996,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <script>
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const UZ_MONTHS_SHORT=['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -1080,26 +1095,57 @@ const apiHabitCreate=p=>api('/api/webapp/habits',{method:'POST',body:JSON.string
 const apiHabitUpdate=(id,p)=>api('/api/webapp/habits/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
 const apiHabitToggle=(id,done)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done})});
-const apiProfileUpdate=name=>api('/api/webapp/profile',{method:'PUT',body:JSON.stringify({full_name:name})});
+const apiProfileUpdate=(name,notif)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
+async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);}catch(_){}}
 
 const HABIT_ICONS=['✅','🏃','📚','💧','🧘','💪','🌅','🛏️','🙏','🚭','🥗','✍️','🎯','💸','🧠','😴'];
+const WD_SHORT=['Du','Se','Cho','Pa','Ju','Sha','Ya'];
+
+function habitMetaLabel(h){
+  // Takrorlanish
+  let rep;
+  if((h.frequency||'daily')==='weekly'&&Array.isArray(h.weekdays)&&h.weekdays.length&&h.weekdays.length<7){
+    rep=h.weekdays.map(i=>WD_SHORT[i]).join(', ');
+  }else{rep='Har kuni';}
+  // Davomiylik
+  let dur='Doimiy';
+  if((h.duration_type||'permanent')==='days'&&h.target_days){
+    if(h.finished)dur='Tugadi';
+    else if(h.days_left!=null)dur=h.days_left+' kun qoldi';
+    else dur=h.target_days+' kun';
+  }
+  return {rep,dur};
+}
 
 async function loadHabitsAPI(){try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];}renderHabits();renderHabitSummary();}
 
-function renderHabitSummary(){const el=document.getElementById('habitSummary');if(!el)return;const tot=State.habits.length;const doneToday=State.habits.filter(h=>h.done_today).length;const best=State.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);if(!tot){el.innerHTML='';return;}el.innerHTML=`<div class="hs-card"><div class="v">${doneToday}/${tot}</div><div class="l">Bugun bajarildi</div></div><div class="hs-card"><div class="v">${best}</div><div class="l">Eng uzun streak</div></div><div class="hs-card"><div class="v">${tot}</div><div class="l">Jami odat</div></div>`;}
+function renderHabitSummary(){const el=document.getElementById('habitSummary');if(!el)return;const tot=State.habits.length;const dueToday=State.habits.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;const best=State.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);if(!tot){el.innerHTML='';return;}el.innerHTML=`<div class="hs-card"><div class="v">${doneToday}/${dueToday.length}</div><div class="l">Bugun bajarildi</div></div><div class="hs-card"><div class="v">${best}</div><div class="l">Eng uzun streak</div></div><div class="hs-card"><div class="v">${tot}</div><div class="l">Jami odat</div></div>`;}
 
-function renderHabits(){const w=document.getElementById('habitsList');if(!w)return;if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}w.innerHTML=State.habits.map((h,i)=>`<div class="habit ${h.done_today?'done':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="Bugun bajarildi">${h.done_today?'✓':esc(h.icon||'✅')}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta"><span class="hstreak">🔥 ${h.streak||0} kun</span>${h.description?'<span>'+esc(h.description)+'</span>':''}</div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`).join('');bindHabitActions();}
+function renderHabits(){const w=document.getElementById('habitsList');if(!w)return;if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}w.innerHTML=State.habits.map((h,i)=>{const m=habitMetaLabel(h);const notDue=!h.due_today||h.finished;const checkInner=h.finished?'🏁':(h.done_today?'✓':esc(h.icon||'✅'));return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta"><span class="hstreak">🔥 ${h.streak||0} kun</span><span class="hbadge">🔁 ${esc(m.rep)}</span><span class="hbadge">⏳ ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;}).join('');bindHabitActions();}
 
 function bindHabitActions(){document.querySelectorAll('#habitsList .habit').forEach(row=>{const id=+row.dataset.id;
-  row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){confetti(28);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}}catch(err){toast('Xato!',true);}};
+  row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;if(h.finished){toast('🏁 Bu odat muddati tugagan',true);return;}if(!h.due_today){toast('📅 Bu odat bugun rejada yo\'q',true);return;}const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){confetti(28);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}}catch(err){toast('Xato!',true);}};
   row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(h)openHabitModal(h);};
   row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Odatni o\'chirish',message:'Bu odat va uning tarixi o\'chiriladi. Davom etasizmi?'}))return;try{await apiHabitDelete(id);State.habits=State.habits.filter(x=>x.id!==id);renderHabits();renderHabitSummary();toast('🗑 O\'chirildi');}catch(_){toast('Xato!',true);}};});}
 
 function renderHabitIconPick(){const el=document.getElementById('habitIconPick');if(!el)return;el.innerHTML=HABIT_ICONS.map(em=>`<div class="em ${em===State.habitIcon?'sel':''}" data-em="${em}">${em}</div>`).join('');el.querySelectorAll('.em').forEach(b=>b.onclick=()=>{State.habitIcon=b.dataset.em;el.querySelectorAll('.em').forEach(x=>x.classList.toggle('sel',x.dataset.em===State.habitIcon));});}
 
-function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';renderHabitIconPick();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
+function renderHabitWeekdays(){const el=document.getElementById('hWeekdays');if(!el)return;el.innerHTML=WD_SHORT.map((n,i)=>`<div class="wdc ${State.habitWeekdays.includes(i)?'sel':''}" data-wd="${i}">${n}</div>`).join('');el.querySelectorAll('.wdc').forEach(c=>c.onclick=()=>{const i=+c.dataset.wd;if(State.habitWeekdays.includes(i))State.habitWeekdays=State.habitWeekdays.filter(x=>x!==i);else State.habitWeekdays.push(i);c.classList.toggle('sel');});}
+
+function applyHabitFreqUI(){document.querySelectorAll('#hFreqSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.f===State.habitFreq));const wd=document.getElementById('hWeekdays');if(wd)wd.style.display=State.habitFreq==='weekly'?'flex':'none';}
+function applyHabitDurUI(){document.querySelectorAll('#hDurSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.d===State.habitDur));const dw=document.getElementById('hDaysWrap');if(dw)dw.style.display=State.habitDur==='days'?'block':'none';}
+
+function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';State.habitFreq=(habit&&habit.frequency)||'daily';State.habitDur=(habit&&habit.duration_type)||'permanent';State.habitWeekdays=(habit&&Array.isArray(habit.weekdays))?habit.weekdays.slice():[];setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';const td=document.getElementById('hTargetDays');if(td)td.value=(habit&&habit.target_days)?habit.target_days:'';renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
 function closeHabitModal(){const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');}
-async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();const body={title:t,description:desc||null,icon:State.habitIcon||'✅'};try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabits();renderHabitSummary();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
+async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();
+  const freq=State.habitFreq||'daily';
+  let weekdays=null;
+  if(freq==='weekly'){weekdays=(State.habitWeekdays||[]).slice().sort((a,b)=>a-b);if(!weekdays.length){toast('⏰ Kamida bitta kun tanlang',true);return;}}
+  const dur=State.habitDur||'permanent';
+  let targetDays=null;
+  if(dur==='days'){targetDays=parseInt(document.getElementById('hTargetDays')?.value||'0',10);if(!targetDays||targetDays<1){toast('⏰ Necha kun davom etishini kiriting',true);return;}}
+  const body={title:t,description:desc||null,icon:State.habitIcon||'✅',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays};
+  try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabits();renderHabitSummary();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
@@ -1135,7 +1181,7 @@ function renderHero(){
   setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const C=2*Math.PI*42;const ring=document.getElementById('dsRing');if(ring)ring.setAttribute('stroke-dashoffset',String(C*(1-ds/100)));countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');const dv=document.getElementById('dsValue');if(dv){dv.classList.remove('pop');void dv.offsetWidth;dv.classList.add('pop');}},120);
 }
 
-async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
+async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
 
 async function loadQuest(){try{const q=await api('/api/webapp/quest');const c=document.getElementById('questCard');if(!c)return;c.style.display='flex';c.classList.toggle('done',!!q.completed);setText('qIcon',q.icon||'🎯');setText('qTitle',q.title||'');setText('qSub',q.subtitle||'');const pct=q.target?Math.round((q.progress||0)*100/q.target):0;setTimeout(()=>{const qp=document.getElementById('qProg');if(qp)qp.style.width=pct+'%';},150);setText('qMetaProg',(q.progress||0)+'/'+(q.target||0));setText('qReward',q.reward_xp?('+'+q.reward_xp+' XP'):'✓');}catch(e){console.warn('quest',e);}}
 
@@ -1187,6 +1233,23 @@ async function saveCheckin(payload){try{await api('/api/webapp/checkin',{method:
 // ── Premium / paywall ───────────────────────────────────────────────────
 function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
 function closePaywall(){const ov=document.getElementById('paywall');if(ov)ov.classList.remove('show');}
+// Peak-moment upsell: streak milestone'ida (3,7,14,30,50,100) bepul foydalanuvchiga
+// bir marta (har milestone uchun) yumshoq premium taklifi ko'rsatamiz — eng kuchli
+// emotsional onda (P1). Premium foydalanuvchiga ko'rsatilmaydi.
+function maybePeakUpsell(snap){
+  try{
+    if(!snap)return;
+    if(State.sub&&State.sub.is_premium)return;
+    const streak=snap.streak||0;
+    const milestones=[3,7,14,30,50,100];
+    if(!milestones.includes(streak))return;
+    const key='iz_peak_ms_'+streak;
+    if(localStorage.getItem(key))return;
+    localStorage.setItem(key,'1');
+    setTimeout(()=>toast('🔥 '+streak+' kunlik streak — zo\'r ketyapsan!'),500);
+    setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
+  }catch(_){}
+}
 function renderPaywallPlans(plans){const el=document.getElementById('pwPlans');if(!el)return;if(!plans||!plans.length){el.innerHTML='';return;}el.innerHTML=plans.map(p=>`<div class="pw-plan"><span class="pn">${esc(p.title)}</span><span class="pp">${esc(p.price_label)} so'm</span></div>`).join('');}
 function applyPremiumUI(s){
   const box=document.getElementById('subStatus');
@@ -1238,14 +1301,16 @@ async function loadSubscription(){
     try{localStorage.setItem('iz_premium',s.is_premium?'1':'0');}catch(_){}
     renderPaywallPlans(s.plans);
     applyPremiumUI(s);
-    if(s.is_premium){closePaywall();maybeShowOnboarding();}
-    else{const ob=document.getElementById('onboarding');if(ob)ob.classList.remove('show');openPaywall();}
+    // Bepul foydalanuvchi ham Mini App'ni to'liq KO'RA oladi (read/limited).
+    // Paywall faqat limit oshganda yoki premium funksiya bosilganda ochiladi.
+    closePaywall();
+    maybeShowOnboarding();
     return !!s.is_premium;
   }catch(e){
     console.warn('subscription',e);
-    // fail-closed: xato bo'lsa obunani himoya qilib paywall ko'rsatamiz
+    // Xato bo'lsa ham foydalanuvchini bloklamaymiz — bepul ko'rishda davom etadi.
     State.sub={is_premium:false};
-    openPaywall();
+    closePaywall();
     return false;
   }
 }
@@ -1437,7 +1502,7 @@ function fabAction(){const ap=document.querySelector('.page.active').dataset.pag
 
 function updateFabVisibility(){/* inline add buttons now live inside sections */}
 
-function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCoach();loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
+function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCoach();loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();loadProfileMeta();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
 
 function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
 
@@ -1454,6 +1519,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _hc=document.getElementById('hCancel');if(_hc)_hc.onclick=closeHabitModal;
   const _hs=document.getElementById('hSave');if(_hs)_hs.onclick=saveHabitModal;
   const _hmb=document.getElementById('habitModalBack');if(_hmb)_hmb.onclick=e=>{if(e.target.id==='habitModalBack')closeHabitModal();};
+  document.querySelectorAll('#hFreqSeg .hseg-item').forEach(it=>it.onclick=()=>{State.habitFreq=it.dataset.f;if(State.habitFreq==='weekly'&&!State.habitWeekdays.length){const wd=(new Date().getDay()+6)%7;State.habitWeekdays=[wd];renderHabitWeekdays();}applyHabitFreqUI();});
+  document.querySelectorAll('#hDurSeg .hseg-item').forEach(it=>it.onclick=()=>{State.habitDur=it.dataset.d;applyHabitDurUI();});
   // Ism tahrirlash wiring
   const _ens=document.getElementById('editNameSetting');if(_ens)_ens.onclick=openNameModal;
   const _nc=document.getElementById('nCancel');if(_nc)_nc.onclick=closeNameModal;
@@ -1473,13 +1540,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('planModalBack').onclick=e=>{if(e.target.id==='planModalBack')closePlanModal();};
   document.getElementById('dayModalBack').onclick=e=>{if(e.target.id==='dayModalBack')document.getElementById('dayModalBack').classList.remove('show');};
   document.getElementById('darkToggle').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
-  document.getElementById('notifToggle').onclick=e=>e.currentTarget.classList.toggle('on');
+  document.getElementById('notifToggle').onclick=async e=>{const el=e.currentTarget;el.classList.toggle('on');const on=el.classList.contains('on');try{await apiProfileUpdate(null,on);toast(on?'🔔 Bildirishnomalar yoqildi':'🔕 Bildirishnomalar o\'chirildi');}catch(_){el.classList.toggle('on');toast('Xato!',true);}};
   document.getElementById('animToggle').onclick=e=>e.currentTarget.classList.toggle('on');
   updateFabVisibility();
   // Optimistik: oldingi seansda premium bo'lsa, paywallni darhol yopamiz
   // (teskari "flash" bo'lmasligi uchun). loadSubscription keyin tasdiqlaydi.
   try{if(localStorage.getItem('iz_premium')==='1')closePaywall();}catch(_){}
   loadSubscription();
+  loadProfileMeta();
   loadPlansAPI().then(()=>{loadGoalsAPI();loadSnapshot();loadQuest();});
 
   // ── AI page wiring ─────────────────────────────────────────────────

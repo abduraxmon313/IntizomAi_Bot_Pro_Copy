@@ -57,6 +57,16 @@ FREE_DAILY_PLAN_LIMIT = int(os.getenv("FREE_DAILY_PLAN_LIMIT", 5))
 # Free foydalanuvchi uchun kunlik AI Coach suhbat limiti (taste → premiumga undash).
 FREE_AI_DAILY_LIMIT = int(os.getenv("FREE_AI_DAILY_LIMIT", 3))
 
+# Free (bepul) foydalanuvchi uchun maqsad va odat limitlari (premiumga undash).
+# Bepul user Mini App'ni to'liq KO'RA oladi, lekin shu limitdan oshsa — paywall.
+FREE_GOAL_LIMIT = int(os.getenv("FREE_GOAL_LIMIT", 3))
+FREE_HABIT_LIMIT = int(os.getenv("FREE_HABIT_LIMIT", 3))
+
+# Odat (habit) eslatmasi yuboriladigan soat (Tashkent vaqti) — bugun belgilanmagan
+# odatlar uchun bitta jamlangan eslatma.
+HABIT_REMINDER_HOUR = int(os.getenv("HABIT_REMINDER_HOUR", 19))
+HABIT_REMINDER_MINUTE = int(os.getenv("HABIT_REMINDER_MINUTE", 0))
+
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 SUBSCRIPTION_PLANS = {
     "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "sinov"},
