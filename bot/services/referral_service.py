@@ -31,12 +31,10 @@ from bot.config import (
     REFERRAL_REWARD_DAYS,
     REFERRAL_REWARD_PLAN,
     REFERRAL_THRESHOLD,
-    REFERRAL_INVITER_CREDITS,
-    REFERRAL_INVITEE_CREDITS,
 )
 from bot.models.referral import Referral
 from bot.models.user import User
-from bot.services.premium_service import activate_subscription, days_left, grant_ai_credits
+from bot.services.premium_service import activate_subscription, days_left
 
 logger = logging.getLogger(__name__)
 
@@ -192,30 +190,6 @@ async def register_referral(
 
     await session.refresh(referrer)
     total = int(referrer.referral_count or 0)
-
-    # ── Mutual mukofot — DARHOL ikki tomonga bonus AI kreditlari ──
-    # (Audit: taklif qiluvchi VA yangi kelgan — ikkalasi ham mukofot olsin.)
-    try:
-        if REFERRAL_INVITEE_CREDITS > 0:
-            await grant_ai_credits(session, new_user, REFERRAL_INVITEE_CREDITS)
-        if REFERRAL_INVITER_CREDITS > 0:
-            await grant_ai_credits(session, referrer, REFERRAL_INVITER_CREDITS)
-    except Exception as e:
-        logger.debug(f"mutual referral bonus skip: {e}")
-
-    # Yangi kelgan foydalanuvchiga xabar (best-effort)
-    if bot is not None and REFERRAL_INVITEE_CREDITS > 0:
-        try:
-            await bot.send_message(
-                new_user.telegram_id,
-                f"🎁 <b>Xush kelibsiz sovg'asi!</b>\n\n"
-                f"Do'stingiz havolasi orqali keldingiz — sizga "
-                f"<b>{REFERRAL_INVITEE_CREDITS} ta bonus AI suhbat</b> berildi! 🤖\n"
-                "AI Coach bilan xohlagancha suhbatlashing.",
-                parse_mode="HTML",
-            )
-        except Exception:
-            pass
 
     # 5) Mukofot tekshiruvi — har THRESHOLD ta uchun bir marta premium
     rewarded = False

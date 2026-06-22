@@ -72,40 +72,6 @@ PAYMENT_ORDER_NEW_COLUMNS = [
     ("pay_message_id", "BIGINT"),
 ]
 
-# plans jadvali uchun yangi ustunlar (Faza 2: recurring, tags, notes; Faza 3: snooze).
-PLAN_NEW_COLUMNS = [
-    ("category", "VARCHAR(40)"),
-    ("tags", "VARCHAR(255)"),
-    ("notes", "VARCHAR(2000)"),
-    ("recurrence", "VARCHAR(20) DEFAULT 'none'"),   # none|daily|weekdays|weekly
-    ("recurrence_days", "VARCHAR(20)"),             # "0,2,4" (Mon=0)
-    ("recurrence_parent_id", "INTEGER"),            # qaysi template'dan yaratilgan
-    ("is_template", "BOOLEAN DEFAULT FALSE"),       # takrorlanuvchi shablon (ko'rinmas)
-    ("snoozed_count", "INTEGER DEFAULT 0"),         # smart reminder snooze soni
-]
-
-# goals jadvali uchun yangi ustunlar (Faza 2: tags, notes).
-GOAL_NEW_COLUMNS = [
-    ("category", "VARCHAR(40)"),
-    ("tags", "VARCHAR(255)"),
-    ("notes", "VARCHAR(2000)"),
-]
-
-# daily_checkins jadvali uchun yangi ustunlar (Faza 3: kechki refleksiya rituali).
-CHECKIN_NEW_COLUMNS = [
-    ("reflection", "VARCHAR(2000)"),    # kechki refleksiya matni
-    ("win_of_day", "VARCHAR(500)"),     # kunning eng yaxshi yutug'i
-    ("gratitude", "VARCHAR(500)"),      # minnatdorchilik
-]
-
-# users jadvali uchun yangi ustunlar (Faza 3: seasons; Faza 4: guruh).
-USER_EXTRA_COLUMNS = [
-    ("season_id", "VARCHAR(16)"),               # "2026-06"
-    ("season_xp", "INTEGER DEFAULT 0"),
-    ("group_id", "INTEGER"),                    # joriy study-group id
-    ("ai_credits", "INTEGER DEFAULT 0"),        # premium oylik AI kreditlari (bonus)
-]
-
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -121,13 +87,6 @@ NEW_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_users_premium_until ON users (premium_until)",
     "CREATE INDEX IF NOT EXISTS ix_users_last_active ON users (last_active)",
     "CREATE INDEX IF NOT EXISTS ix_users_is_active ON users (is_active)",
-    "CREATE INDEX IF NOT EXISTS ix_analytics_tid_date ON analytics_events (telegram_id, event_date)",
-    "CREATE INDEX IF NOT EXISTS ix_analytics_event_date2 ON analytics_events (event, event_date)",
-    "CREATE INDEX IF NOT EXISTS ix_subtasks_plan ON subtasks (plan_id)",
-    "CREATE INDEX IF NOT EXISTS ix_challenges_user ON challenges (user_id, status)",
-    "CREATE INDEX IF NOT EXISTS ix_group_members_group ON group_members (group_id)",
-    "CREATE INDEX IF NOT EXISTS ix_group_members_tid ON group_members (telegram_id)",
-    "CREATE INDEX IF NOT EXISTS ix_plans_template ON plans (is_template, recurrence)",
 ]
 
 
@@ -148,22 +107,6 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip payment_orders.{col}: {e}")
-
-    # Faza 2/3/4 — yangi ustunlar (idempotent). Jadval -> ustunlar ro'yxati.
-    _extra_table_columns = [
-        ("plans", PLAN_NEW_COLUMNS),
-        ("goals", GOAL_NEW_COLUMNS),
-        ("daily_checkins", CHECKIN_NEW_COLUMNS),
-        ("users", USER_EXTRA_COLUMNS),
-    ]
-    for table, cols in _extra_table_columns:
-        for col, ddl in cols:
-            try:
-                await conn.execute(
-                    text(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {ddl}')
-                )
-            except Exception as e:
-                logger.warning(f"Migration skip {table}.{col}: {e}")
 
     # Ko'lamlilik (scalability) uchun indekslar — userlar/rejalar ko'payganda
     # so'rovlar full-scan qilmasligi uchun. CREATE INDEX IF NOT EXISTS idempotent
@@ -187,8 +130,7 @@ async def create_tables():
         async with engine.begin() as conn:
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
-                subscription, payment_order, referral, analytics_event,
-                subtask, challenge, season_log, study_group,
+                subscription, payment_order, referral,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)

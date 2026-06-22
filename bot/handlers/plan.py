@@ -12,8 +12,7 @@ from bot.services.premium_service import user_is_premium
 from bot.utils.ratelimit import allow_ai_analysis, seconds_until_reset
 from bot.keyboards.plan_keys import (
     confirm_plans_keyboard, plans_list_keyboard,
-    plan_actions_keyboard, plan_list_actions_keyboard,
-    recurrence_choice_keyboard, habits_keyboard, habit_actions_keyboard,
+    plan_actions_keyboard, plan_list_actions_keyboard
 )
 from bot.utils.formatters import format_plan_confirm, format_plan_list
 
@@ -52,8 +51,6 @@ class PlanState(StatesGroup):
     asking_time = State()        # Vaqt so'rash
     confirming_plans = State()
     editing_plan = State()
-    adding_subtask = State()     # Faza 2: qadam (subtask) qo'shish
-    adding_note = State()        # Faza 2: izoh (note) qo'shish
 
 
 def no_time_keyboard() -> InlineKeyboardMarkup:
@@ -260,14 +257,6 @@ async def handle_text_any(message: Message, state: FSMContext, session: AsyncSes
     if current_state == PlanState.editing_plan.state:
         return
 
-    # Faza 2: qadam / izoh kiritish holatlari
-    if current_state == PlanState.adding_subtask.state:
-        await _process_subtask_input(message, state, session)
-        return
-    if current_state == PlanState.adding_note.state:
-        await _process_note_input(message, state, session)
-        return
-
     # Vaqt so'rash holatida
     if current_state == PlanState.asking_time.state:
         await process_time_input(message, state, message.text)
@@ -369,11 +358,6 @@ async def confirm_plans_handler(callback: CallbackQuery, state: FSMContext, sess
     limit = await check_plan_limit(session, user, adding=len(plans_data))
     if not limit.allowed:
         await state.clear()
-        try:
-            from bot.services.analytics_service import track
-            await track(callback.from_user.id, "paywall_view", user_id=user.id, source="plan_limit")
-        except Exception:
-            pass
         await callback.message.edit_text(
             "🔒 <b>Bugungi bepul limit tugadi</b>\n\n"
             f"Bepul rejimda kuniga <b>{limit.limit} tagacha</b> reja qo'shasiz.\n"
@@ -395,20 +379,6 @@ async def confirm_plans_handler(callback: CallbackQuery, state: FSMContext, sess
 
     await create_plans(session, user, plans_data)
     await state.clear()
-
-    # ── Analytics: reja yaratildi (+ birinchi reja) ──
-    try:
-        from bot.services.analytics_service import track
-        from sqlalchemy import select, func
-        from bot.models.plan import Plan as _Plan
-        await track(callback.from_user.id, "plan_created", user_id=user.id, count=len(plans_data))
-        total_plans = await session.scalar(
-            select(func.count(_Plan.id)).where(_Plan.user_id == user.id)
-        ) or 0
-        if total_plans <= len(plans_data):
-            await track(callback.from_user.id, "first_plan", user_id=user.id)
-    except Exception:
-        pass
 
     all_plans = await get_today_plans(session, user)
 
@@ -507,20 +477,11 @@ async def plan_detail_handler(callback: CallbackQuery, session: AsyncSession):
     )
     if plan.description:
         text += f"\n📝 {plan.description}"
-    if getattr(plan, "category", None):
-        from bot.services.search_service import CATEGORY_LABELS
-        text += f"\n🏷 {CATEGORY_LABELS.get(plan.category, plan.category)}"
-    if getattr(plan, "notes", None):
-        text += f"\n🗒 <i>{plan.notes}</i>"
-
-    from bot.services.subtask_service import list_subtasks, render_subtasks
-    subtasks = await list_subtasks(session, plan_id)
-    text += render_subtasks(subtasks)
 
     await callback.message.edit_text(
         text,
         parse_mode="HTML",
-        reply_markup=plan_actions_keyboard(plan_id, subtasks)
+        reply_markup=plan_actions_keyboard(plan_id)
     )
     await callback.answer()
 
@@ -550,251 +511,3 @@ async def delete_plan_handler(callback: CallbackQuery, session: AsyncSession):
         )
     else:
         await callback.message.edit_text("📭 Bugun hech qanday reja yo'q.", reply_markup=None)
-
-
-
-# ─────────────────────────────────────────
-#  TAKRORLANUVCHI REJALAR (ODATLAR) — Faza 2
-# ─────────────────────────────────────────
-
-@router.callback_query(F.data.startswith("recur_make_"))
-async def recur_make_handler(callback: CallbackQuery, session: AsyncSession):
-    """Rejani takrorlanuvchi odatga aylantirish — tur tanlash."""
-    plan_id = int(callback.data.replace("recur_make_", ""))
-    plan = await get_plan_by_id(session, plan_id)
-    if not plan:
-        await callback.answer("Reja topilmadi!", show_alert=True)
-        return
-    await callback.message.edit_text(
-        f"🔁 <b>{plan.title}</b>\n\nQanchalik tez-tez takrorlansin?",
-        parse_mode="HTML",
-        reply_markup=recurrence_choice_keyboard(plan_id),
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("recur_set_"))
-async def recur_set_handler(callback: CallbackQuery, session: AsyncSession):
-    """Tanlangan takrorlanish turi bilan shablon yaratadi."""
-    raw = callback.data.replace("recur_set_", "")
-    plan_id_str, _, rec = raw.rpartition("_")
-    try:
-        plan_id = int(plan_id_str)
-    except ValueError:
-        await callback.answer("Xatolik", show_alert=True)
-        return
-
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    plan = await get_plan_by_id(session, plan_id)
-    if not user or not plan:
-        await callback.answer("Topilmadi!", show_alert=True)
-        return
-
-    # Premium tekshiruvi — takrorlanuvchi rejalar premium imkoniyat
-    if not user_is_premium(user):
-        from bot.keyboards.subscribe_keys import buy_subscription_keyboard
-        try:
-            from bot.services.analytics_service import track
-            await track(callback.from_user.id, "paywall_view", user_id=user.id, source="recurring")
-        except Exception:
-            pass
-        await callback.message.edit_text(
-            "🔒 <b>Takrorlanuvchi rejalar — Premium imkoniyat</b>\n\n"
-            "Bir marta sozlang — har kuni avtomatik paydo bo'ladi. "
-            "Qo'lda qayta yozish shart emas!\n\n"
-            "💎 Premium bilan ochiladi.",
-            parse_mode="HTML",
-            reply_markup=buy_subscription_keyboard(),
-        )
-        await callback.answer()
-        return
-
-    from bot.services.recurring_service import create_recurring_template
-    await create_recurring_template(
-        session, user,
-        title=plan.title,
-        scheduled_time=plan.scheduled_time,
-        recurrence=rec,
-        score_value=plan.score_value or 5,
-        category=getattr(plan, "category", None),
-    )
-    try:
-        from bot.services.analytics_service import track
-        await track(callback.from_user.id, "recurring_created", user_id=user.id, recurrence=rec)
-    except Exception:
-        pass
-
-    rec_label = {"daily": "har kuni", "weekdays": "ish kunlari (Du–Ju)"}.get(rec, rec)
-    await callback.message.edit_text(
-        f"✅ <b>Odat yaratildi!</b>\n\n"
-        f"🔁 <b>{plan.title}</b> endi <b>{rec_label}</b> avtomatik qo'shiladi.\n"
-        f"{f'🕐 {plan.scheduled_time}' if plan.scheduled_time else ''}\n\n"
-        "Odatlaringizni «🔁 Odatlarim» orqali boshqarasiz.",
-        parse_mode="HTML",
-        reply_markup=habit_actions_keyboard(0),
-    )
-    await callback.answer("Odat yaratildi! 🔁")
-
-
-@router.callback_query(F.data == "my_habits")
-async def my_habits_handler(callback: CallbackQuery, session: AsyncSession):
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    from bot.services.recurring_service import list_templates
-    templates = await list_templates(session, user)
-    if not templates:
-        await callback.message.edit_text(
-            "🔁 <b>Odatlar yo'q</b>\n\n"
-            "Istalgan rejani ochib, «🔁 Kunlik odatga aylantirish» tugmasini bossangiz, "
-            "u har kuni avtomatik qo'shiladi.",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="📋 Rejalarim", callback_data="my_plans")]
-            ]),
-        )
-        await callback.answer()
-        return
-    await callback.message.edit_text(
-        f"🔁 <b>Mening odatlarim ({len(templates)} ta)</b>\n\n"
-        "Bular har kuni/belgilangan kunlarda avtomatik qo'shiladi 👇",
-        parse_mode="HTML",
-        reply_markup=habits_keyboard(templates),
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data.startswith("habit_stop_"))
-async def habit_stop_handler(callback: CallbackQuery, session: AsyncSession):
-    template_id = int(callback.data.replace("habit_stop_", ""))
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
-    from bot.services.recurring_service import stop_recurrence
-    ok = await stop_recurrence(session, template_id, user.id)
-    await callback.answer("To'xtatildi 🛑" if ok else "Topilmadi", show_alert=not ok)
-    await my_habits_handler(callback, session)
-
-
-@router.callback_query(F.data.startswith("habit_") & ~F.data.startswith("habit_stop_"))
-async def habit_detail_handler(callback: CallbackQuery, session: AsyncSession):
-    template_id = int(callback.data.replace("habit_", ""))
-    plan = await get_plan_by_id(session, template_id)
-    if not plan:
-        await callback.answer("Topilmadi!", show_alert=True)
-        return
-    rec_label = {"daily": "Har kuni", "weekdays": "Ish kunlari (Du–Ju)", "weekly": "Haftalik"}
-    await callback.message.edit_text(
-        f"🔁 <b>{plan.title}</b>\n\n"
-        f"📅 Takrorlanish: <b>{rec_label.get(plan.recurrence, plan.recurrence)}</b>\n"
-        f"{f'🕐 Vaqt: {plan.scheduled_time}' if plan.scheduled_time else '🕐 Vaqtsiz'}\n"
-        f"⭐️ Ball: <b>{plan.score_value}</b>",
-        parse_mode="HTML",
-        reply_markup=habit_actions_keyboard(template_id),
-    )
-    await callback.answer()
-
-
-
-# ─────────────────────────────────────────
-#  SUBTASK (QADAM) + IZOH — Faza 2
-# ─────────────────────────────────────────
-
-async def _reopen_plan_detail(message: Message, session: AsyncSession, plan_id: int):
-    """Reja detalini qayta ko'rsatadi (qadam/izoh qo'shilgach)."""
-    plan = await get_plan_by_id(session, plan_id)
-    if not plan:
-        await message.answer("Reja topilmadi.")
-        return
-    from bot.services.subtask_service import list_subtasks, render_subtasks
-    from bot.services.search_service import CATEGORY_LABELS
-    status_text = {"pending": "⏳ Kutilmoqda", "done": "✅ Bajarildi", "failed": "❌ Bajarilmadi"}
-    time_str = f"🕐 {plan.scheduled_time}" if plan.scheduled_time else "🕐 Eslatmasiz"
-    text = (
-        f"📌 <b>{plan.title}</b>\n\n{time_str}\n"
-        f"⭐️ Ball: <b>{plan.score_value}</b>\n"
-        f"📊 Holat: <b>{status_text.get(plan.status.value, '⏳')}</b>"
-    )
-    if getattr(plan, "category", None):
-        text += f"\n🏷 {CATEGORY_LABELS.get(plan.category, plan.category)}"
-    if getattr(plan, "notes", None):
-        text += f"\n🗒 <i>{plan.notes}</i>"
-    subtasks = await list_subtasks(session, plan_id)
-    text += render_subtasks(subtasks)
-    await message.answer(text, parse_mode="HTML",
-                         reply_markup=plan_actions_keyboard(plan_id, subtasks))
-
-
-@router.callback_query(F.data.startswith("st_add_"))
-async def subtask_add_start(callback: CallbackQuery, state: FSMContext):
-    plan_id = int(callback.data.replace("st_add_", ""))
-    await state.set_state(PlanState.adding_subtask)
-    await state.update_data(subtask_plan_id=plan_id)
-    await callback.message.answer(
-        "➕ <b>Yangi qadam</b>\n\nQadam matnini yuboring "
-        "(masalan: «1-bobni o'qish»).",
-        parse_mode="HTML",
-    )
-    await callback.answer()
-
-
-async def _process_subtask_input(message: Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
-    plan_id = data.get("subtask_plan_id")
-    await state.clear()
-    if not plan_id:
-        return
-    from bot.services.subtask_service import add_subtask
-    await add_subtask(session, plan_id, message.text)
-    await message.answer("✅ Qadam qo'shildi!")
-    await _reopen_plan_detail(message, session, plan_id)
-
-
-@router.callback_query(F.data.startswith("st_toggle_"))
-async def subtask_toggle(callback: CallbackQuery, session: AsyncSession):
-    subtask_id = int(callback.data.replace("st_toggle_", ""))
-    from bot.services.subtask_service import toggle_subtask, list_subtasks, render_subtasks
-    st = await toggle_subtask(session, subtask_id)
-    if not st:
-        await callback.answer("Topilmadi", show_alert=True)
-        return
-    plan = await get_plan_by_id(session, st.plan_id)
-    subtasks = await list_subtasks(session, st.plan_id)
-    status_text = {"pending": "⏳ Kutilmoqda", "done": "✅ Bajarildi", "failed": "❌ Bajarilmadi"}
-    time_str = f"🕐 {plan.scheduled_time}" if plan.scheduled_time else "🕐 Eslatmasiz"
-    text = (
-        f"📌 <b>{plan.title}</b>\n\n{time_str}\n"
-        f"⭐️ Ball: <b>{plan.score_value}</b>\n"
-        f"📊 Holat: <b>{status_text.get(plan.status.value, '⏳')}</b>"
-    )
-    if getattr(plan, "notes", None):
-        text += f"\n🗒 <i>{plan.notes}</i>"
-    text += render_subtasks(subtasks)
-    try:
-        await callback.message.edit_text(
-            text, parse_mode="HTML", reply_markup=plan_actions_keyboard(plan.id, subtasks)
-        )
-    except Exception:
-        pass
-    await callback.answer("✅" if st.completed else "⬜️")
-
-
-@router.callback_query(F.data.startswith("note_add_"))
-async def note_add_start(callback: CallbackQuery, state: FSMContext):
-    plan_id = int(callback.data.replace("note_add_", ""))
-    await state.set_state(PlanState.adding_note)
-    await state.update_data(note_plan_id=plan_id)
-    await callback.message.answer(
-        "📝 <b>Izoh qo'shish</b>\n\nReja uchun izoh matnini yuboring.",
-        parse_mode="HTML",
-    )
-    await callback.answer()
-
-
-async def _process_note_input(message: Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
-    plan_id = data.get("note_plan_id")
-    await state.clear()
-    if not plan_id:
-        return
-    user = await get_user_by_telegram_id(session, message.from_user.id)
-    from bot.services.subtask_service import set_plan_note
-    await set_plan_note(session, plan_id, user.id, message.text)
-    await message.answer("✅ Izoh saqlandi!")
-    await _reopen_plan_detail(message, session, plan_id)
