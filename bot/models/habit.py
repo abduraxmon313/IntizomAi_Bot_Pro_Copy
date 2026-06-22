@@ -31,6 +31,10 @@ class Habit(Base):
     description = Column(String(500), nullable=True)
     icon = Column(String(8), default="✅")           # emoji belgi
 
+    # Ixtiyoriy kunlik eslatma vaqti ("HH:MM"). Bo'lsa — har kuni shu vaqtda
+    # "odatni bajardingmi?" eslatmasi yuboriladi.
+    reminder_time = Column(String(5), nullable=True)
+
     # ── Takrorlanish (frequency) ─────────────────────────
     # "daily"  — har kuni
     # "weekly" — faqat tanlangan hafta kunlari (weekdays)

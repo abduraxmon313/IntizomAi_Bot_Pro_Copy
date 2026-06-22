@@ -26,6 +26,23 @@ router = Router()
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 
+def _persona_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📚 Talaba", callback_data="ob_persona:student")],
+        [InlineKeyboardButton(text="💼 Mutaxassis / ishchi", callback_data="ob_persona:pro")],
+        [InlineKeyboardButton(text="🌱 O'zimni rivojlantiraman", callback_data="ob_persona:self")],
+        [InlineKeyboardButton(text="⚡ Hammasi", callback_data="ob_persona:mixed")],
+    ])
+
+
+PERSONA_EXAMPLE = {
+    "student": "Masalan: «Soat 7 da turaman, 2 soat dars qilaman, 21 da kitob o'qiyman»",
+    "pro": "Masalan: «8 da sport, 10 da eng muhim vazifa, 18 da kunlik reja»",
+    "self": "Masalan: «6 da turaman, 7 da yugurish, 22 da kitob o'qish»",
+    "mixed": "Masalan: «Erta turish, sport, kitob, suv ichish»",
+}
+
+
 def _webapp_kb(is_premium: bool) -> InlineKeyboardMarkup | None:
     """
     Mini App tugmasi HAMMAGA ko'rsatiladi (bepul foydalanuvchi ham ochib,
@@ -96,69 +113,119 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         except Exception:
             await session.rollback()
 
-    if not user.onboarded:
-        text = (
-            "🎯 <b>Intizom AI</b> ga xush kelibsiz!\n\n"
-            "Men sizning shaxsiy intizom yordamchingizman.\n\n"
-            "📌 <b>Nima qila olaman:</b>\n"
-            "• Ovoz yoki matn orqali reja tuzish\n"
-            "• Vaqti kelganda eslatish\n"
-            "• Bajargan ishlaringiz uchun ball berish\n"
-            "• Streak, daraja va kunlik hisobot yuritish\n\n"
-            "💡 <b>Boshlash uchun</b> — bugun nima qilmoqchi ekanligingizni "
-            "ovozli xabar yoki matn yuboring!\n\n"
-            "<i>Masalan: 'Soat 6 da turaman, 9 da kitob o'qiyman'</i>"
+    name = (user.display_name or user.full_name or "do'st")
+
+    # ── YANGI yoki onboarding tugatmagan foydalanuvchi: bot ichida onboarding ──
+    if is_new or not user.onboarded:
+        welcome = (
+            f"🎯 <b>Salom, {name}!</b>\n\n"
+            "Men <b>Intizom AI</b> — shaxsiy intizom yordamchingizman. "
+            "Rejalaringizni eslatib, har bir bajarilgan ish uchun ball, streak va "
+            "daraja beraman."
         )
         if trial_days_granted:
-            text += (
-                f"\n\n🎁 <b>Sovg'a:</b> sizga <b>{trial_days_granted} kunlik Premium</b> "
-                "berildi — Mini App, cheksiz reja va AI Coach ochiq!"
+            welcome += (
+                f"\n\n🎁 Sizga <b>{trial_days_granted} kunlik Premium</b> sovg'a qilindi!"
             )
-    else:
-        lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
-        rank, emoji = rank_for_level(lvl)
-        bar_filled = "▰" * round(pct / 10)
-        bar_empty = "▱" * (10 - len(bar_filled))
-        name = user.full_name or "do'st"
-        text = (
-            f"🎯 <b>Xush kelibsiz, {name}!</b>\n\n"
-            f"{emoji} <b>{rank}</b> · {lvl}-daraja\n"
-            f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
-            f"🔥 Streak: <b>{user.streak or 0} kun</b>\n"
-            f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
-            f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n\n"
-            "Bugun nima qilamiz? 👇"
+        await message.answer(welcome, parse_mode="HTML", reply_markup=main_reply_keyboard())
+        await message.answer(
+            "🧭 <b>Avval bitta savol — siz kimsiz?</b>\n\n"
+            "Bu sizga mos maslahat va eslatmalar berishimga yordam beradi 👇",
+            parse_mode="HTML",
+            reply_markup=_persona_kb(),
         )
+        try:
+            from bot.services.analytics_service import log_event
+            await log_event("onboarding_started", telegram_id=user.telegram_id, user_id=user.id)
+        except Exception:
+            pass
+        return
 
-    await message.answer(
-        text,
-        parse_mode="HTML",
-        reply_markup=main_reply_keyboard(),
+    # ── Mavjud (onboarding tugatgan) foydalanuvchi ──
+    lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
+    rank, emoji = rank_for_level(lvl)
+    text = (
+        f"🎯 <b>Xush kelibsiz, {name}!</b>\n\n"
+        f"{emoji} <b>{rank}</b>  ·  {lvl}-daraja\n"
+        f"🔥 Streak: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
+        f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
+        "Bugun nima qilamiz? 👇"
     )
+    await message.answer(text, parse_mode="HTML", reply_markup=main_reply_keyboard())
 
     is_premium = user_is_premium(user)
     webapp_kb = _webapp_kb(is_premium)
     if webapp_kb:
         if is_premium:
             promo_text = (
-                "🚀 <b>Mini App</b> — kalendar, statistika va shaxsiy AI Coach.\n"
-                f"💎 Premium faol — <b>{days_left(user)} kun</b> qoldi. Bahridan to'liq foydalaning!"
+                "🚀 <b>Mini App</b> — kalendar, statistika, odatlar va AI Coach.\n"
+                f"💎 Premium faol — <b>{days_left(user)} kun</b> qoldi."
             )
         else:
             promo_text = (
                 "🚀 <b>Mini App</b> — kalendar, statistika, odatlar va AI Coach bir joyda.\n\n"
-                "Bepul ochib ko'ring 👇 Cheksiz reja, AI Coach va premium imkoniyatlar uchun "
-                "💎 <b>Premium</b> oling."
+                "Bepul ochib ko'ring 👇 Cheksiz imkoniyat uchun 💎 <b>Premium</b>."
             )
-        await message.answer(
-            promo_text,
-            parse_mode="HTML",
-            reply_markup=webapp_kb,
-        )
+        await message.answer(promo_text, parse_mode="HTML", reply_markup=webapp_kb)
 
-    if not user.onboarded:
+
+@router.callback_query(F.data.startswith("ob_persona:"))
+async def ob_persona_handler(callback: CallbackQuery, session: AsyncSession):
+    persona = callback.data.split(":", 1)[1]
+    try:
+        from bot.services.analytics_service import log_event
+        await log_event("persona_selected", telegram_id=callback.from_user.id, props=persona)
+    except Exception:
+        pass
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✋ Va'da beraman", callback_data=f"ob_commit:{persona}")],
+    ])
+    try:
+        await callback.message.edit_text(
+            "🔥 <b>Bitta va'da</b>\n\n"
+            "Har kuni kamida <b>1 ta</b> narsa bajarish — o'zingizga va kelajagingizga "
+            "bergan va'da. Kichik qadamlar katta natijaga olib boradi.\n\n"
+            "Tayyormisiz? 👇",
+            parse_mode="HTML",
+            reply_markup=kb,
+        )
+    except Exception:
+        pass
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("ob_commit:"))
+async def ob_commit_handler(callback: CallbackQuery, session: AsyncSession):
+    persona = callback.data.split(":", 1)[1]
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if user and not user.onboarded:
         user.onboarded = True
-        await session.commit()
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+    try:
+        from bot.services.analytics_service import log_event
+        await log_event(
+            "onboarding_done",
+            telegram_id=callback.from_user.id,
+            user_id=(user.id if user else None),
+            props=persona,
+        )
+    except Exception:
+        pass
+
+    example = PERSONA_EXAMPLE.get(persona, PERSONA_EXAMPLE["mixed"])
+    is_premium = user_is_premium(user) if user else False
+    await callback.message.edit_text(
+        "🎉 <b>Boshladik!</b>\n\n"
+        "Endi bugun nima qilmoqchiligingizni shunchaki <b>yozing yoki ayting</b> — "
+        "men uni rejaga aylantirib, vaqtida eslatib turaman.\n\n"
+        f"<i>{example}</i>",
+        parse_mode="HTML",
+        reply_markup=_webapp_kb(is_premium),
+    )
+    await callback.answer("🚀 Boshlandi!")
 
 
 @router.message(F.text == "📞 Bog'lanish")
@@ -176,17 +243,14 @@ async def home_handler(callback: CallbackQuery, session: AsyncSession):
 
     lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
     rank, emoji = rank_for_level(lvl)
-    bar_filled = "▰" * round(pct / 10)
-    bar_empty = "▱" * (10 - len(bar_filled))
+    name = user.display_name or user.full_name or "do'st"
 
     await callback.message.edit_text(
         f"🏠 <b>Bosh sahifa</b>\n\n"
-        f"{emoji} <b>{user.full_name}</b>\n"
-        f"📊 {rank} · {lvl}-daraja\n"
-        f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
-        f"🔥 Streak: <b>{user.streak or 0} kun</b>\n"
-        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
-        f"⭐️ Jami ball: <b>{user.total_score or 0}</b>",
+        f"{emoji} <b>{name}</b>\n"
+        f"{rank}  ·  {lvl}-daraja\n\n"
+        f"🔥 Streak: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
+        f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )

@@ -23,8 +23,7 @@ async def my_status_handler(message: Message, session: AsyncSession):
 
     lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
     rank, emoji = rank_for_level(lvl)
-    bar_filled = "▰" * round(pct / 10)
-    bar_empty = "▱" * (10 - len(bar_filled))
+    name = user.display_name or user.full_name or "do'st"
 
     today = datetime.now(TIMEZONE).date()
     plans_result = await session.execute(
@@ -56,14 +55,13 @@ async def my_status_handler(message: Message, session: AsyncSession):
     ) or 0
 
     text = (
-        f"{emoji} <b>{user.full_name}</b>\n"
-        f"📊 {rank} · {lvl}-daraja\n"
-        f"<code>{bar_filled}{bar_empty}</code> {pct}%\n\n"
+        f"{emoji} <b>{name}</b>\n"
+        f"{rank}  ·  {lvl}-daraja  ·  {pct}%\n"
         f"━━━━━━━━━━━━━━━\n"
         f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
         f"🔥 Streak: <b>{user.streak or 0} kun</b>"
         f"  (rekord {user.longest_streak or 0})\n"
-        f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n"
+        f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n"
         f"✨ Mukammal kunlar: <b>{user.perfect_days or 0}</b>\n"
         f"🏅 Yutuqlar: <b>{ach_count} ta</b>\n"
         f"✅ Jami bajarilgan: <b>{all_done} ta</b>\n\n"

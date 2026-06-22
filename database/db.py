@@ -79,6 +79,7 @@ HABIT_NEW_COLUMNS = [
     ("start_date", "DATE"),
     ("sort_order", "INTEGER DEFAULT 0"),
     ("archived", "BOOLEAN DEFAULT FALSE"),
+    ("reminder_time", "VARCHAR(5)"),
 ]
 
 # payment_orders jadvali uchun yangi ustunlar.
