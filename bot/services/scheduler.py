@@ -541,27 +541,26 @@ async def send_habit_time_reminders(bot):
                 continue
             if user.notifications_enabled is False:
                 continue
-            lines = [f"{h.icon or '✅'} <b>{h.title}</b>" for h in habits[:8]]
-            kb = None
-            if WEBAPP_URL:
-                kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(
-                        text="✅ Belgilash", web_app=WebAppInfo(url=WEBAPP_URL),
-                    )],
-                ])
-            st = await _deliver(
-                bot, user,
-                (
-                    "⏰ <b>Odat vaqti!</b>\n\n"
-                    + "\n".join(lines)
-                    + "\n\nBajardingizmi? Belgilab qo'ying 👇"
-                ),
-                kb,
-            )
-            if st == "blocked":
-                user.is_active = False
-                blocked = True
-            await asyncio.sleep(SEND_DELAY)
+            # Har bir odat uchun alohida "bajardingmi?" so'rovi (reja kabi).
+            for h in habits:
+                kb = InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text="✅ Bajardim", callback_data=f"hbt_done:{h.id}"),
+                    InlineKeyboardButton(text="❌ Yo'q", callback_data=f"hbt_skip:{h.id}"),
+                ]])
+                st = await _deliver(
+                    bot, user,
+                    (
+                        f"⏰ <b>Odat vaqti!</b>\n\n"
+                        f"{h.icon or '✅'} <b>{h.title}</b>\n\n"
+                        "Bajardingizmi?"
+                    ),
+                    kb,
+                )
+                if st == "blocked":
+                    user.is_active = False
+                    blocked = True
+                    break
+                await asyncio.sleep(SEND_DELAY)
         if blocked:
             try:
                 await session.commit()

@@ -21,9 +21,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import TIMEZONE
 from bot.models.achievement import Achievement
+from bot.models.habit import HabitLog
 from bot.models.plan import Plan, PlanStatus
 from bot.models.score_log import ScoreLog
 from bot.models.user import User
+
+
+async def _done_points_total(session: AsyncSession, user: User) -> int:
+    """Jami ball: bajarilgan rejalar ballari + bajarilgan odatlar (har biri uchun
+    HABIT_DONE_SCORE). Odatlar ham reja/maqsad kabi ball beradi."""
+    from bot.config import HABIT_DONE_SCORE
+    plan_total = await session.scalar(
+        select(func.coalesce(func.sum(Plan.score_value), 0)).where(
+            and_(Plan.user_id == user.id, Plan.status == PlanStatus.done)
+        )
+    ) or 0
+    habit_logs = await session.scalar(
+        select(func.count(HabitLog.id)).where(HabitLog.user_id == user.id)
+    ) or 0
+    return int(plan_total) + int(habit_logs) * int(HABIT_DONE_SCORE)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -282,20 +298,21 @@ async def _check_unlocks(session: AsyncSession, user: User) -> list[Achievement]
 #  XP recompute (deterministic — no drift across toggles)
 # ─────────────────────────────────────────────────────────────
 async def _recompute_xp_and_score(session: AsyncSession, user: User) -> None:
-    """XP va total_score ni BARCHA bajarilgan rejalardan deterministik tiklaydi.
-    Shu tufayli done<->failed<->pending o'zgarishlarida drift bo'lmaydi."""
-    total = await session.scalar(
-        select(func.coalesce(func.sum(Plan.score_value), 0)).where(
-            and_(Plan.user_id == user.id, Plan.status == PlanStatus.done)
-        )
-    ) or 0
-    total = int(total)
+    """XP va total_score ni BARCHA bajarilgan reja va odatlardan deterministik
+    tiklaydi. Shu tufayli done<->failed<->pending o'zgarishlarida drift bo'lmaydi."""
+    total = await _done_points_total(session, user)
     user.xp = total
     user.total_score = total
     user.level = level_for_xp(total)
     title, emoji = rank_for_level(user.level)
     user.rank_title = title
     user.avatar_emoji = emoji
+
+
+async def recompute_user_points(session: AsyncSession, user: User) -> None:
+    """Odat belgilangach (yoki bekor qilingach) ball/daraja/discipline'ni qayta hisoblaydi."""
+    await _recompute_xp_and_score(session, user)
+    await _recompute_discipline_score(session, user)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -570,12 +587,8 @@ async def _reconcile_user_stats(session: AsyncSession, user: User) -> None:
     `xp==0` bo'lganda bajarilardi; nested sessiya/skip mantig'i ba'zan snapshot'ni
     buzib, frontendda default qiymatlar (0 XP, 50 discipline, 0/0) ko'rinardi.
     """
-    # XP / total_score / level / rank — bajarilgan rejalar yig'indisidan
-    total = await session.scalar(
-        select(func.coalesce(func.sum(Plan.score_value), 0)).where(
-            and_(Plan.user_id == user.id, Plan.status == PlanStatus.done)
-        )
-    ) or 0
+    # XP / total_score / level / rank — bajarilgan reja va odatlar yig'indisidan
+    total = await _done_points_total(session, user)
     total = int(total)
     user.xp = total
     user.total_score = total

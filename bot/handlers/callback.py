@@ -7,7 +7,9 @@ from bot.services.plan_service import (
     get_plan_by_id, move_plan_to_tomorrow, duplicate_plan_for_tomorrow,
     plan_block_reason,
 )
+from bot.services.habit_service import toggle_habit_log
 from bot.services.score_service import process_plan_result_full
+from bot.config import HABIT_DONE_SCORE
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.coach_service import (
     message_for_level_up, message_for_perfect_day, message_for_comeback,
@@ -20,6 +22,43 @@ router = Router()
 def _xp_bar(percent: int, length: int = 10) -> str:
     filled = max(0, min(length, round(percent / 100 * length)))
     return "▰" * filled + "▱" * (length - filled)
+
+
+@router.callback_query(F.data.startswith("hbt_done:"))
+async def habit_done_handler(callback: CallbackQuery, session: AsyncSession):
+    habit_id = int(callback.data.split(":", 1)[1])
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if not user:
+        await callback.answer("Avval /start bosing.", show_alert=True)
+        return
+    snap = await toggle_habit_log(session, user, habit_id, on=True)
+    if snap is None:
+        await callback.answer("Odat topilmadi!", show_alert=True)
+        return
+    try:
+        await callback.message.edit_text(
+            f"✅ <b>{snap['title']}</b> bajarildi!\n\n"
+            f"⭐️ +{HABIT_DONE_SCORE} ball  ·  🔥 Streak: <b>{snap.get('streak', 0)} kun</b>\n\n"
+            "Zo'r! Davom eting 💪",
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass
+    await callback.answer(f"⭐️ +{HABIT_DONE_SCORE} ball!")
+
+
+@router.callback_query(F.data.startswith("hbt_skip:"))
+async def habit_skip_handler(callback: CallbackQuery, session: AsyncSession):
+    habit_id = int(callback.data.split(":", 1)[1])
+    try:
+        await callback.message.edit_text(
+            "🙂 Mayli, bugun bo'lmadi — ertaga davom etamiz.\n\n"
+            "<i>Eslab qoling: kichik qadam ham — qadam.</i>",
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("done_"))

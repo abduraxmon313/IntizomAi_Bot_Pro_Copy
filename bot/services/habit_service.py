@@ -322,22 +322,30 @@ async def toggle_habit_log(
         on = existing is None  # toggle
 
     became_done = False
+    changed = False
     if on and existing is None:
         session.add(HabitLog(habit_id=habit_id, user_id=user.id, log_date=d))
         await session.commit()
         became_done = True
+        changed = True
     elif not on and existing is not None:
         await session.delete(existing)
         await session.commit()
+        changed = True
 
-    # Odat bajarilishi STREAK'ni ham uzaytiradi (retention uchun) — best-effort.
-    if became_done and d == _today():
+    # Har qanday o'zgarishdan keyin ball/daraja/discipline qayta hisoblanadi
+    # (odat reja/maqsad kabi ball beradi). Done bo'lsa streak ham uzayadi.
+    if changed:
         try:
-            from bot.services.gamification_service import _update_streak_on_complete
+            from bot.services.gamification_service import (
+                _update_streak_on_complete, recompute_user_points,
+            )
             u = await session.get(User, user.id)
             if u is not None:
-                _update_streak_on_complete(u)
+                if became_done and d == _today():
+                    _update_streak_on_complete(u)
                 u.last_active = datetime.utcnow()
+                await recompute_user_points(session, u)
                 await session.commit()
         except Exception:
             try:
