@@ -146,11 +146,6 @@ async def add_plan(
         plan_date_str=body.plan_date,
         score_value=body.score_value or 5,
     )
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("plan_created", telegram_id=user.telegram_id, user_id=user.id)
-    except Exception:
-        pass
     return _serialize(plan)
 
 

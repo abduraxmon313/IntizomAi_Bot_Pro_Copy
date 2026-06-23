@@ -176,11 +176,6 @@ async def add_goal(
     goal = await create_goal(
         session, user, body.title, body.description, body.goal_type, body.period
     )
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("goal_created", telegram_id=user.telegram_id, user_id=user.id)
-    except Exception:
-        pass
     return GoalOut(
         id=goal.id,
         title=goal.title,

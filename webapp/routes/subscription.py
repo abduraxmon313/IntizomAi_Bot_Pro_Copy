@@ -126,12 +126,6 @@ async def create_checkout(
     if not checkout_url:
         raise HTTPException(502, "Checkout URL olinmadi.")
 
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("checkout_started", telegram_id=user.telegram_id, user_id=user.id, props=body.plan)
-    except Exception:
-        pass
-
     return CheckoutOut(
         checkout_url=checkout_url,
         order_id=order.provider_order_id,

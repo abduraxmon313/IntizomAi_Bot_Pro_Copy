@@ -91,15 +91,6 @@ async def start_handler(message: Message, command: CommandObject, session: Async
                 # Referral xatosi /start oqimini to'xtatmasin
                 pass
 
-    # ── Analitika: start / signup
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("start", telegram_id=user.telegram_id, user_id=user.id)
-        if is_new:
-            await log_event("signup", telegram_id=user.telegram_id, user_id=user.id)
-    except Exception:
-        pass
-
     # ── Yangi foydalanuvchiga avtomatik Premium sinov (trial) — loss aversion.
     #    Referral orqali kelgan bo'lsa allaqachon premium bo'lishi mumkin (invitee
     #    bonusi) — bunday holda trial o'tkazib yuboriladi.
@@ -134,11 +125,6 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             parse_mode="HTML",
             reply_markup=_persona_kb(),
         )
-        try:
-            from bot.services.analytics_service import log_event
-            await log_event("onboarding_started", telegram_id=user.telegram_id, user_id=user.id)
-        except Exception:
-            pass
         return
 
     # ── Mavjud (onboarding tugatgan) foydalanuvchi ──
@@ -172,11 +158,6 @@ async def start_handler(message: Message, command: CommandObject, session: Async
 @router.callback_query(F.data.startswith("ob_persona:"))
 async def ob_persona_handler(callback: CallbackQuery, session: AsyncSession):
     persona = callback.data.split(":", 1)[1]
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("persona_selected", telegram_id=callback.from_user.id, props=persona)
-    except Exception:
-        pass
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✋ Va'da beraman", callback_data=f"ob_commit:{persona}")],
     ])
@@ -204,16 +185,6 @@ async def ob_commit_handler(callback: CallbackQuery, session: AsyncSession):
             await session.commit()
         except Exception:
             await session.rollback()
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event(
-            "onboarding_done",
-            telegram_id=callback.from_user.id,
-            user_id=(user.id if user else None),
-            props=persona,
-        )
-    except Exception:
-        pass
 
     example = PERSONA_EXAMPLE.get(persona, PERSONA_EXAMPLE["mixed"])
     is_premium = user_is_premium(user) if user else False
