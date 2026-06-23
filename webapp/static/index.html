@@ -681,6 +681,41 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .habit.finished{opacity:.6}
 .habit.finished .hcheck{filter:grayscale(.5)}
 
+/* ── Header buttons: entrance + tap animation ───────────────────────────── */
+@keyframes hdrBtnIn{from{opacity:0;transform:translateY(-10px) scale(.7)}to{opacity:1;transform:translateY(0) scale(1)}}
+.hdr-actions .mode-btn{animation:hdrBtnIn .55s cubic-bezier(.34,1.56,.64,1) both}
+.hdr-actions .mode-btn:nth-child(2){animation-delay:.09s}
+.hdr-actions .mode-btn svg,.hdr-actions .mode-btn .ic{transition:transform .45s cubic-bezier(.34,1.56,.64,1);display:inline-block}
+#settingsBtn:hover svg{transform:rotate(45deg)}
+#settingsBtn:active svg{transform:rotate(150deg) scale(.85)}
+#modeBtn:hover .ic{transform:rotate(-12deg) scale(1.1)}
+#modeBtn:active .ic{transform:rotate(-30deg) scale(.8)}
+
+/* ── Habits view segment + tracker grid ─────────────────────────────────── */
+.habit-view-seg{display:flex;padding:4px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;position:relative}
+.habit-view-seg .hvs{flex:1;text-align:center;padding:9px 4px;font-size:12.5px;font-weight:600;color:var(--text-2);border-radius:11px;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:6px}
+.habit-view-seg .hvs.active{background:var(--grad);color:#fff;box-shadow:var(--glow)}
+.tracker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px}
+.tracker-head h3{font-size:15px;font-weight:700}
+.tracker-head .nav-btn{width:32px;height:32px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--text);font-size:18px;font-weight:700}
+.tracker-head .nav-btn:active{transform:scale(.9)}
+.tracker{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tracker table{border-collapse:separate;border-spacing:5px 6px;width:100%;min-width:340px}
+.tracker th{font-size:10px;font-weight:700;color:var(--text-2);text-align:center;padding:0}
+.tracker th.tcorner{text-align:left;min-width:96px}
+.tracker th .twd{display:block}
+.tracker th .tdd{display:block;font-size:13px;font-weight:800;color:var(--text);margin-top:2px}
+.tracker th.ttoday .tdd{color:var(--primary)}
+.tracker td.tname{font-size:12.5px;font-weight:600;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;padding-right:4px}
+.tracker .tcell{width:30px;height:30px;border-radius:9px;background:var(--surface);border:1.6px solid var(--border);display:grid;place-items:center;cursor:pointer;font-size:14px;color:#fff;margin:0 auto;transition:transform .18s,background .2s}
+.tracker .tcell:active{transform:scale(.82)}
+.tracker .tcell.done{background:var(--grad);border-color:transparent;box-shadow:var(--glow)}
+.tracker .tcell.nodue{background:transparent;border-style:dashed;cursor:default;opacity:.45}
+.tracker .tcell.future{opacity:.35;cursor:not-allowed}
+
+/* ── Habit reminder time input ──────────────────────────────────────────── */
+#hRemWrap input[type=time]{width:100%;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:15px;color:var(--text);font-family:inherit}
+
 </style>
 </head>
 <body>
@@ -693,7 +728,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
   <div class="hdr-actions">
     <button class="mode-btn" id="modeBtn" aria-label="Rejim"><span class="ic" id="modeIcon">☀️</span></button>
-    <button class="mode-btn" id="settingsBtn" aria-label="Sozlamalar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="mode-btn" id="settingsBtn" aria-label="Sozlamalar"><svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
   </div>
 </div>
 
@@ -775,12 +810,6 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <section class="page" data-page="ai">
 <div class="hdr"><div class="hdr-greet"><h1>AI Coach ✨</h1><p>Sening shaxsiy mentoring</p></div></div>
 
-<div class="coach-card" id="coachCard">
-  <div class="ico" id="coachIco">🌅</div>
-  <div class="msg" id="coachMsg">Yuklanmoqda…</div>
-  <div class="tag" id="coachTag">COACH</div>
-</div>
-
 <div class="chat-card" id="chatCard">
   <div class="chat-head">
     <div class="av"><svg class="ai-bot" viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true"><path d="M12 2.6v2.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="2" r="1.15" fill="#fff"/><rect x="4" y="5" width="16" height="12.6" rx="4.2" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7"/><rect x="2.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><rect x="20.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><circle class="eye" cx="9" cy="11.2" r="1.7" fill="#fff"/><circle class="eye" cx="15" cy="11.2" r="1.7" fill="#fff"/><path d="M9.3 14.7h5.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div>
@@ -849,9 +878,16 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 
 <section class="page" data-page="habits">
 <div class="hdr"><div class="hdr-greet"><h1>Odatlar ✅</h1><p>Har kuni takrorla, streak yig'</p></div></div>
+<div class="habit-view-seg" id="habitViewSeg"><div class="hvs active" data-hv="today">📋 Bugun</div><div class="hvs" data-hv="tracker">🗓️ Tracker</div></div>
+<div id="habitToday">
 <div class="habit-summary" id="habitSummary"></div>
 <button class="add-btn ripple" id="addHabitBtn" type="button" aria-label="Odat qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Odat qo'shish</span></button>
 <div id="habitsList"></div>
+</div>
+<div id="habitTracker" class="hidden">
+<div class="tracker-head"><button class="nav-btn" id="trkPrev">‹</button><h3 id="trkRange">—</h3><button class="nav-btn" id="trkNext">›</button></div>
+<div class="tracker" id="trackerWrap"></div>
+</div>
 </section>
 
 <section class="page" data-page="profile">
@@ -983,6 +1019,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="hDesc" placeholder="Qisqacha izoh..."></textarea></div>
 <div class="fld"><label>Takrorlanish</label><div class="hseg" id="hFreqSeg"><div class="hseg-item active" data-f="daily">Har kuni</div><div class="hseg-item" data-f="weekly">Tanlangan kunlar</div></div><div class="weekday-pick" id="hWeekdays" style="display:none"></div></div>
 <div class="fld"><label>Davomiylik</label><div class="hseg" id="hDurSeg"><div class="hseg-item active" data-d="permanent">Doimiy</div><div class="hseg-item" data-d="days">Muddatli</div></div><div id="hDaysWrap" style="display:none;margin-top:10px"><input id="hTargetDays" type="number" min="1" max="365" inputmode="numeric" placeholder="Necha kun davom etadi? (masalan 30)"></div></div>
+<div class="fld"><label>Eslatma (ixtiyoriy)</label><div class="hseg" id="hRemSeg"><div class="hseg-item active" data-r="off">Eslatmasiz</div><div class="hseg-item" data-r="on">Belgilangan vaqtda</div></div><div id="hRemWrap" style="display:none;margin-top:10px"><input id="hRemTime" type="time" value="20:00"></div></div>
 <div class="row gap-12 mt-8"><button class="btn btn-ghost" id="hCancel">Bekor</button><button class="btn" id="hSave">Saqlash</button></div></div></div>
 
 <div class="modal-back" id="nameModalBack"><div class="modal"><div class="grab"></div><h3>Ismni tahrirlash</h3>
@@ -1006,7 +1043,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <script>
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const UZ_MONTHS_SHORT=['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -1107,7 +1144,7 @@ const apiPlanDelete=id=>api('/api/webapp/plans/'+id,{method:'DELETE'});
 const apiHabitCreate=p=>api('/api/webapp/habits',{method:'POST',body:JSON.stringify(p)});
 const apiHabitUpdate=(id,p)=>api('/api/webapp/habits/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
-const apiHabitToggle=(id,done)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done})});
+const apiHabitToggle=(id,done,date)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done:done,date:date||null})});
 const apiProfileUpdate=(name,notif)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
 async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' do\'st taklif qilingan · ikkalangizga Premium'):'Har taklif uchun ikkalangizga ham Premium';}}catch(_){}}
 
@@ -1159,7 +1196,56 @@ function habitMetaLabel(h){
   return {rep,dur};
 }
 
-async function loadHabitsAPI(){try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];}renderHabits();renderHabitSummary();}
+async function loadHabitsAPI(){try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];}renderHabitsPage();}
+
+function renderHabitsPage(){
+  const today=document.getElementById('habitToday');const trk=document.getElementById('habitTracker');
+  const isTracker=State.habitView==='tracker';
+  if(today)today.classList.toggle('hidden',isTracker);
+  if(trk)trk.classList.toggle('hidden',!isTracker);
+  document.querySelectorAll('#habitViewSeg .hvs').forEach(s=>s.classList.toggle('active',s.dataset.hv===State.habitView));
+  if(isTracker){renderTracker();}else{renderHabits();renderHabitSummary();}
+}
+
+// Odat shu kuni rejadami (frontend — backend bilan bir xil mantiq)
+function habitDueOn(h,d){
+  const ds=ymd(d);
+  if(h.start_date&&ds<h.start_date)return false;
+  if(h.end_date&&ds>h.end_date)return false;
+  if((h.frequency||'daily')==='weekly'){const wd=(d.getDay()+6)%7;return Array.isArray(h.weekdays)&&(h.weekdays.length===0||h.weekdays.includes(wd));}
+  return true;
+}
+
+function renderTracker(){
+  const wrap=document.getElementById('trackerWrap');if(!wrap)return;
+  if(!State.trackerWeekStart)State.trackerWeekStart=startOfWeek(new Date());
+  const s=State.trackerWeekStart;const e=addDays(s,6);
+  setText('trkRange',formatRange(s,e));
+  if(!State.habits.length){wrap.innerHTML=emptyState('✅','Hozircha odat yo\'q','Odat qo\'shsangiz, bu yerda tracker chiqadi');return;}
+  const todayStr=ymd(new Date());
+  const days=[];for(let i=0;i<7;i++)days.push(addDays(s,i));
+  let head='<th class="tcorner">Odat</th>';
+  days.forEach(d=>{const it=ymd(d)===todayStr;head+=`<th class="${it?'ttoday':''}"><span class="twd">${UZ_DOW_SHORT[(d.getDay()+6)%7]}</span><span class="tdd">${d.getDate()}</span></th>`;});
+  let rows='';
+  State.habits.forEach(h=>{
+    const logset=new Set(h.log_dates||[]);
+    let cells='';
+    days.forEach(d=>{
+      const ds=ymd(d);const done=logset.has(ds);const future=ds>todayStr;const due=habitDueOn(h,d);
+      let cls='tcell';if(done)cls+=' done';else if(future)cls+=' future';else if(!due)cls+=' nodue';
+      const inner=done?'✓':(due&&!future?esc(h.icon||''):'');
+      const tappable=due&&!future;
+      cells+=`<td><div class="${cls}" ${tappable?`data-hid="${h.id}" data-d="${ds}"`:''}>${inner}</div></td>`;
+    });
+    rows+=`<tr><td class="tname">${esc(h.icon||'✅')} ${esc(h.title)}</td>${cells}</tr>`;
+  });
+  wrap.innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.tcell[data-hid]').forEach(c=>c.onclick=async()=>{
+    const id=+c.dataset.hid;const ds=c.dataset.d;const h=State.habits.find(x=>x.id===id);if(!h)return;
+    const logset=new Set(h.log_dates||[]);const next=!logset.has(ds);
+    try{const snap=await apiHabitToggle(id,next,ds);Object.assign(h,snap);renderTracker();if(next){try{tg?.HapticFeedback?.impactOccurred?.('light');}catch(_){}}}catch(_){toast('Xato!',true);}
+  });
+}
 
 function renderHabitSummary(){const el=document.getElementById('habitSummary');if(!el)return;const tot=State.habits.length;const dueToday=State.habits.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;const best=State.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);if(!tot){el.innerHTML='';return;}el.innerHTML=`<div class="hs-card"><div class="v">${doneToday}/${dueToday.length}</div><div class="l">Bugun bajarildi</div></div><div class="hs-card"><div class="v">${best}</div><div class="l">Eng uzun streak</div></div><div class="hs-card"><div class="v">${tot}</div><div class="l">Jami odat</div></div>`;}
 
@@ -1176,8 +1262,9 @@ function renderHabitWeekdays(){const el=document.getElementById('hWeekdays');if(
 
 function applyHabitFreqUI(){document.querySelectorAll('#hFreqSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.f===State.habitFreq));const wd=document.getElementById('hWeekdays');if(wd)wd.style.display=State.habitFreq==='weekly'?'flex':'none';}
 function applyHabitDurUI(){document.querySelectorAll('#hDurSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.d===State.habitDur));const dw=document.getElementById('hDaysWrap');if(dw)dw.style.display=State.habitDur==='days'?'block':'none';}
+function applyHabitRemUI(){document.querySelectorAll('#hRemSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.r===State.habitRem));const rw=document.getElementById('hRemWrap');if(rw)rw.style.display=State.habitRem==='on'?'block':'none';}
 
-function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';State.habitFreq=(habit&&habit.frequency)||'daily';State.habitDur=(habit&&habit.duration_type)||'permanent';State.habitWeekdays=(habit&&Array.isArray(habit.weekdays))?habit.weekdays.slice():[];setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';const td=document.getElementById('hTargetDays');if(td)td.value=(habit&&habit.target_days)?habit.target_days:'';renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
+function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';State.habitFreq=(habit&&habit.frequency)||'daily';State.habitDur=(habit&&habit.duration_type)||'permanent';State.habitWeekdays=(habit&&Array.isArray(habit.weekdays))?habit.weekdays.slice():[];State.habitRem=(habit&&habit.reminder_time)?'on':'off';setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';const td=document.getElementById('hTargetDays');if(td)td.value=(habit&&habit.target_days)?habit.target_days:'';const rt=document.getElementById('hRemTime');if(rt)rt.value=(habit&&habit.reminder_time)?habit.reminder_time:'20:00';renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();applyHabitRemUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
 function closeHabitModal(){const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');}
 async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();
   const freq=State.habitFreq||'daily';
@@ -1186,8 +1273,10 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
   const dur=State.habitDur||'permanent';
   let targetDays=null;
   if(dur==='days'){targetDays=parseInt(document.getElementById('hTargetDays')?.value||'0',10);if(!targetDays||targetDays<1){toast('⏰ Necha kun davom etishini kiriting',true);return;}}
-  const body={title:t,description:desc||null,icon:State.habitIcon||'✅',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays};
-  try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabits();renderHabitSummary();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
+  const remOn=State.habitRem==='on';
+  const reminderTime=remOn?(document.getElementById('hRemTime')?.value||'20:00'):null;
+  const body={title:t,description:desc||null,icon:State.habitIcon||'✅',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays,reminder_time:reminderTime,clear_reminder:!remOn};
+  try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
@@ -1544,7 +1633,7 @@ function fabAction(){const ap=document.querySelector('.page.active').dataset.pag
 
 function updateFabVisibility(){/* inline add buttons now live inside sections */}
 
-function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCoach();loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();loadProfileMeta();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
+function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats')renderStats();if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();}if(n==='profile'){renderAchs();loadProfileMeta();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
 
 function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
 
@@ -1563,6 +1652,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _hmb=document.getElementById('habitModalBack');if(_hmb)_hmb.onclick=e=>{if(e.target.id==='habitModalBack')closeHabitModal();};
   document.querySelectorAll('#hFreqSeg .hseg-item').forEach(it=>it.onclick=()=>{State.habitFreq=it.dataset.f;if(State.habitFreq==='weekly'&&!State.habitWeekdays.length){const wd=(new Date().getDay()+6)%7;State.habitWeekdays=[wd];renderHabitWeekdays();}applyHabitFreqUI();});
   document.querySelectorAll('#hDurSeg .hseg-item').forEach(it=>it.onclick=()=>{State.habitDur=it.dataset.d;applyHabitDurUI();});
+  document.querySelectorAll('#hRemSeg .hseg-item').forEach(it=>it.onclick=()=>{State.habitRem=it.dataset.r;applyHabitRemUI();});
+  document.querySelectorAll('#habitViewSeg .hvs').forEach(it=>it.onclick=()=>{State.habitView=it.dataset.hv;renderHabitsPage();});
+  const _tp=document.getElementById('trkPrev');if(_tp)_tp.onclick=()=>{State.trackerWeekStart=addDays(State.trackerWeekStart||startOfWeek(new Date()),-7);renderTracker();};
+  const _tn=document.getElementById('trkNext');if(_tn)_tn.onclick=()=>{const ns=addDays(State.trackerWeekStart||startOfWeek(new Date()),7);if(ymd(ns)<=ymd(startOfWeek(new Date()))){State.trackerWeekStart=ns;renderTracker();}};
   // Ism tahrirlash wiring
   const _ens=document.getElementById('editNameSetting');if(_ens)_ens.onclick=openNameModal;
   const _nc=document.getElementById('nCancel');if(_nc)_nc.onclick=closeNameModal;

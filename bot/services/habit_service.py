@@ -133,11 +133,14 @@ async def habit_snapshot(session: AsyncSession, habit: Habit) -> dict:
     days_left = None
     if end:
         days_left = max(0, (end - today).days + 1) if not finished else 0
+    # Tracker uchun: oxirgi ~45 kun ichida bajarilgan sanalar (ISO)
+    recent = sorted(d.isoformat() for d in dates if d >= today - timedelta(days=45))
     return {
         "id": habit.id,
         "title": habit.title,
         "description": habit.description,
         "icon": habit.icon or "✅",
+        "reminder_time": habit.reminder_time,
         "frequency": habit.frequency or "daily",
         "weekdays": wd,
         "duration_type": habit.duration_type or "permanent",
@@ -150,6 +153,7 @@ async def habit_snapshot(session: AsyncSession, habit: Habit) -> dict:
         "done_today": today in dates,
         "streak": _current_streak(habit, dates, today),
         "total_done": len(dates),
+        "log_dates": recent,
         "created_at": habit.created_at.isoformat() if habit.created_at else None,
     }
 
@@ -171,6 +175,23 @@ def _normalize_weekdays(weekdays) -> Optional[str]:
     return ",".join(str(v) for v in vals) if vals else None
 
 
+def _normalize_time(t) -> Optional[str]:
+    """"7:5" / "07:05" -> "07:05"; yaroqsiz bo'lsa None."""
+    if not t:
+        return None
+    s = str(t).strip()
+    if ":" not in s:
+        return None
+    try:
+        hh, mm = s.split(":")[:2]
+        hh, mm = int(hh), int(mm)
+        if 0 <= hh <= 23 and 0 <= mm <= 59:
+            return f"{hh:02d}:{mm:02d}"
+    except Exception:
+        pass
+    return None
+
+
 async def create_habit(
     session: AsyncSession,
     user: User,
@@ -181,6 +202,7 @@ async def create_habit(
     weekdays=None,
     duration_type: Optional[str] = None,
     target_days: Optional[int] = None,
+    reminder_time: Optional[str] = None,
 ) -> Habit:
     res = await session.execute(
         select(func.coalesce(func.max(Habit.sort_order), 0)).where(Habit.user_id == user.id)
@@ -196,6 +218,7 @@ async def create_habit(
         title=title.strip()[:200],
         description=(description or None),
         icon=(icon or "✅")[:8],
+        reminder_time=_normalize_time(reminder_time),
         frequency=freq,
         weekdays=_normalize_weekdays(weekdays) if freq == "weekly" else None,
         duration_type=dur,
@@ -221,6 +244,8 @@ async def update_habit(
     weekdays=None,
     duration_type: Optional[str] = None,
     target_days: Optional[int] = None,
+    reminder_time: Optional[str] = None,
+    clear_reminder: bool = False,
 ) -> Optional[Habit]:
     res = await session.execute(
         select(Habit).where(and_(Habit.id == habit_id, Habit.user_id == user_id))
@@ -234,6 +259,10 @@ async def update_habit(
         habit.description = description or None
     if icon is not None:
         habit.icon = (icon or "✅")[:8]
+    if clear_reminder:
+        habit.reminder_time = None
+    elif reminder_time is not None:
+        habit.reminder_time = _normalize_time(reminder_time)
     if frequency is not None and frequency in ("daily", "weekly"):
         habit.frequency = frequency
         if frequency == "daily":
@@ -337,4 +366,29 @@ async def get_due_unchecked_habits(session: AsyncSession, user: User) -> list[Ha
         )
         if not done:
             out.append(h)
+    return out
+
+
+async def get_habits_to_remind_at(session: AsyncSession, hhmm: str) -> list[tuple[Habit, int]]:
+    """
+    Eslatma vaqti (reminder_time) HOZIRGI vaqtga (HH:MM) teng bo'lgan, bugun due
+    va hali belgilanmagan odatlar ro'yxati: (habit, user_id).
+    """
+    today = _today()
+    res = await session.execute(
+        select(Habit).where(
+            and_(Habit.archived == False, Habit.reminder_time == hhmm)  # noqa: E712
+        )
+    )
+    out = []
+    for h in res.scalars().all():
+        if not is_due_on(h, today):
+            continue
+        done = await session.scalar(
+            select(func.count(HabitLog.id)).where(
+                and_(HabitLog.habit_id == h.id, HabitLog.log_date == today)
+            )
+        )
+        if not done:
+            out.append((h, h.user_id))
     return out

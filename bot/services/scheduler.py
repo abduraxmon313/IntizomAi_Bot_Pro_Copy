@@ -519,6 +519,57 @@ async def send_habit_reminders(bot):
 
 
 # ─────────────────────────────────────────────────────────────
+async def send_habit_time_reminders(bot):
+    """Har daqiqa — reminder_time hozirgi vaqtga (HH:MM) teng odatlar uchun eslatma."""
+    from bot.services.habit_service import get_habits_to_remind_at
+    async with AsyncSessionLocal() as session:
+        hhmm = datetime.now(TIMEZONE).strftime("%H:%M")
+        pairs = await get_habits_to_remind_at(session, hhmm)
+        if not pairs:
+            return
+
+        by_user: dict[int, list] = {}
+        for habit, uid in pairs:
+            by_user.setdefault(uid, []).append(habit)
+
+        blocked = False
+        for uid, habits in by_user.items():
+            user = (await session.execute(
+                select(User).where(User.id == uid)
+            )).scalar_one_or_none()
+            if not user or not user.is_active:
+                continue
+            if user.notifications_enabled is False:
+                continue
+            lines = [f"{h.icon or '✅'} <b>{h.title}</b>" for h in habits[:8]]
+            kb = None
+            if WEBAPP_URL:
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(
+                        text="✅ Belgilash", web_app=WebAppInfo(url=WEBAPP_URL),
+                    )],
+                ])
+            st = await _deliver(
+                bot, user,
+                (
+                    "⏰ <b>Odat vaqti!</b>\n\n"
+                    + "\n".join(lines)
+                    + "\n\nBajardingizmi? Belgilab qo'ying 👇"
+                ),
+                kb,
+            )
+            if st == "blocked":
+                user.is_active = False
+                blocked = True
+            await asyncio.sleep(SEND_DELAY)
+        if blocked:
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+
+
+# ─────────────────────────────────────────────────────────────
 def start_scheduler(bot):
     tz = str(TIMEZONE)
 
@@ -527,6 +578,12 @@ def start_scheduler(bot):
         send_plan_notifications,
         trigger=CronTrigger(minute="*", timezone=tz),
         args=[bot], id="plan_notifications",
+    )
+    # every minute — odat eslatmalari (reminder_time bo'yicha)
+    scheduler.add_job(
+        send_habit_time_reminders,
+        trigger=CronTrigger(minute="*", timezone=tz),
+        args=[bot], id="habit_time_reminders",
     )
     # 07:00 — morning nudge
     scheduler.add_job(

@@ -23,6 +23,7 @@ class HabitOut(BaseModel):
     title: str
     description: Optional[str] = None
     icon: str = "✅"
+    reminder_time: Optional[str] = None
     frequency: str = "daily"
     weekdays: list[int] = []
     duration_type: str = "permanent"
@@ -35,6 +36,7 @@ class HabitOut(BaseModel):
     done_today: bool = False
     streak: int = 0
     total_done: int = 0
+    log_dates: list[str] = []
     created_at: Optional[str] = None
 
 
@@ -42,6 +44,7 @@ class HabitCreate(BaseModel):
     title: str
     description: Optional[str] = None
     icon: Optional[str] = None
+    reminder_time: Optional[str] = None       # "HH:MM" yoki bo'sh
     frequency: Optional[str] = None          # "daily" | "weekly"
     weekdays: Optional[list[int]] = None      # 0=Mon .. 6=Sun
     duration_type: Optional[str] = None       # "permanent" | "days"
@@ -52,6 +55,8 @@ class HabitUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
+    reminder_time: Optional[str] = None
+    clear_reminder: Optional[bool] = None
     frequency: Optional[str] = None
     weekdays: Optional[list[int]] = None
     duration_type: Optional[str] = None
@@ -60,6 +65,7 @@ class HabitUpdate(BaseModel):
 
 class HabitToggle(BaseModel):
     done: Optional[bool] = None  # None -> toggle
+    date: Optional[str] = None   # "YYYY-MM-DD" — bo'lmasa bugun
 
 
 async def get_session():
@@ -104,6 +110,7 @@ async def add_habit(
         session, user, body.title, body.description, body.icon,
         frequency=body.frequency, weekdays=body.weekdays,
         duration_type=body.duration_type, target_days=body.target_days,
+        reminder_time=body.reminder_time,
     )
     try:
         from bot.services.analytics_service import log_event
@@ -127,6 +134,7 @@ async def edit_habit(
         session, habit_id, user.id, body.title, body.description, body.icon,
         frequency=body.frequency, weekdays=body.weekdays,
         duration_type=body.duration_type, target_days=body.target_days,
+        reminder_time=body.reminder_time, clear_reminder=bool(body.clear_reminder),
     )
     if not habit:
         raise HTTPException(status_code=404, detail="Odat topilmadi")
@@ -143,7 +151,18 @@ async def toggle_habit(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
-    snap = await toggle_habit_log(session, user, habit_id, on=body.done)
+    target_date = None
+    if body.date:
+        from datetime import date as _date
+        try:
+            target_date = _date.fromisoformat(body.date)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Sana formati noto'g'ri.")
+        from datetime import datetime as _dt
+        from bot.config import TIMEZONE
+        if target_date > _dt.now(TIMEZONE).date():
+            raise HTTPException(status_code=409, detail="Kelajak kunni belgilab bo'lmaydi.")
+    snap = await toggle_habit_log(session, user, habit_id, on=body.done, target_date=target_date)
     if snap is None:
         raise HTTPException(status_code=404, detail="Odat topilmadi")
     return snap
