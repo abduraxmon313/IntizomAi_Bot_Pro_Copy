@@ -732,7 +732,10 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .lb-av{width:34px;height:34px;border-radius:11px;background:var(--grad-soft);display:grid;place-items:center;font-size:17px;flex-shrink:0}
 .lb-name{flex:1;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lb-val{font-size:13.5px;font-weight:800;color:var(--primary);white-space:nowrap}
-.lb-av{background-size:cover;background-position:center}
+.lb-av{background-size:cover;background-position:center;overflow:hidden}
+.lb-av img{width:100%;height:100%;object-fit:cover;border-radius:11px;display:block}
+.paywall .pw-back{display:block;width:100%;margin:clamp(8px,1.6vh,12px) auto 0;background:transparent;color:var(--text-2);border:1px solid var(--border);padding:clamp(11px,2.2vh,14px);border-radius:16px;font-weight:700;font-size:14px;cursor:pointer;transition:transform .15s,background .2s}
+.paywall .pw-back:active{transform:scale(.98);background:var(--surface)}
 /* Top-3 — premium tus */
 .lb-row.lb-1{border-color:#f5d76e;background:linear-gradient(135deg,rgba(245,215,110,.16),transparent);box-shadow:0 8px 22px rgba(245,215,110,.22)}
 .lb-row.lb-2{border-color:#cbd5e1;background:linear-gradient(135deg,rgba(203,213,225,.16),transparent)}
@@ -945,16 +948,16 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
   <div class="ss-bar"><i id="ssBar"></i></div>
 </div>
+<div class="section-title"><h2>Yutuqlar 🏆</h2></div>
+<div class="achs" id="achs"></div>
+<div class="section-title"><h2>🎨 Tema</h2></div>
+<div class="theme-grid" id="themeGrid"></div>
 <div class="section-title"><h2>Do'stlarni taklif qil 🎁</h2></div>
 <div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Har taklif uchun ikkalangizga ham Premium</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
 <div class="setting" id="channelBtn"><div class="ic">📢</div><div class="body"><div class="ttl">Telegram kanal</div><div class="dsc">Yangiliklar va maslahatlar</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="setting" id="adminBtn"><div class="ic">💬</div><div class="body"><div class="ttl">Admin bilan bog'lanish</div><div class="dsc">Savol, taklif va yordam</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Hisob</h2></div>
 <div class="setting" id="editNameSetting"><div class="ic">✏️</div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-<div class="section-title"><h2>Yutuqlar 🏆</h2></div>
-<div class="achs" id="achs"></div>
-<div class="section-title"><h2>🎨 Tema</h2></div>
-<div class="theme-grid" id="themeGrid"></div>
 <div class="section-title"><h2>Rejim</h2></div>
 <div class="setting"><div class="ic">🌓</div><div class="body"><div class="ttl">Tungi rejim</div><div class="dsc">Yorug' / qorong'i</div></div><div class="toggle" id="darkToggle"><i></i></div></div>
 <div class="section-title"><h2>Sozlamalar</h2></div>
@@ -1033,6 +1036,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
     </div>
     <div class="pw-note">Obuna sotib olish uchun botga qayting va <b>«💎 Obuna»</b> tugmasini bosing.</div>
     <button class="pw-cta" id="pwCta">💎 Botda obuna sotib olish</button>
+    <button class="pw-back" id="pwBack">⬅️ Orqaga qaytish</button>
     <span class="pw-badge">✦ INTIZOM AI PRO ✦</span>
   </div>
 </div>
@@ -1122,9 +1126,6 @@ document.getElementById('profUn').textContent=State.user.username?'@'+State.user
 
 async function api(path,opts={}){const url=API+path+(path.includes('?')?'&':'?')+'telegram_id='+State.telegramId;const headers={'Content-Type':'application/json',...(opts.headers||{})};try{if(tg&&tg.initData)headers['X-Telegram-Init-Data']=tg.initData;}catch(_){}const res=await fetch(url,{headers,...opts});if(!res.ok)throw new Error('API '+res.status);return res.json();}
 
-// Analitika hodisasi (best-effort — xato bo'lsa ham UI'ga ta'sir qilmaydi)
-function logEvent(ev,props){try{api('/api/webapp/event',{method:'POST',body:JSON.stringify({event:ev,props:props||null})}).catch(()=>{});}catch(_){}}
-
 async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();loadHomeHabits();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
 // Tanlangan kun uchun rejalarni yuklash (bugun yoki o'tgan/kelajak kun)
@@ -1194,7 +1195,6 @@ async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');St
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
 function shareInvite(){
   const link=State.profile&&State.profile.referral_link;
-  logEvent('share_clicked');
   const snap=State.snap||{};const streak=snap.streak||0;
   const txt=streak>0
     ? ('Men IntizomAI bilan '+streak+' kun streak yig\'dim 🔥 Sen ham intizomli bo\'l — qo\'shil:')
@@ -1412,7 +1412,7 @@ async function loadCheckin(){try{const c=await api('/api/webapp/checkin');if(!c)
 async function saveCheckin(payload){try{await api('/api/webapp/checkin',{method:'POST',body:JSON.stringify(payload)});}catch(_){toast('Saqlashda xato',true);}}
 
 // ── Premium / paywall ───────────────────────────────────────────────────
-function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');logEvent('paywall_view');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
+function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
 function closePaywall(){const ov=document.getElementById('paywall');if(ov)ov.classList.remove('show');}
 // Peak-moment upsell: streak milestone'ida (3,7,14,30,50,100) bepul foydalanuvchiga
 // bir marta (har milestone uchun) yumshoq premium taklifi ko'rsatamiz — eng kuchli
@@ -1550,7 +1550,7 @@ function applyStatsView(){
   document.querySelectorAll('#statsSeg .hvs').forEach(s=>s.classList.toggle('active',s.dataset.sv===State.statsView));
   if(isRating)loadLeaderboard();
 }
-async function loadStatsHabits(){try{State.habits=await api('/api/webapp/habits');}catch(_){}renderHabitStats();}
+async function loadStatsHabits(){try{State.habits=await api('/api/webapp/habits');}catch(_){}renderHabitStats();try{renderTrend(30);}catch(_){}}
 function habit30Rate(h){const logs=new Set(h.log_dates||[]);let due=0,done=0;const today=new Date();for(let i=0;i<30;i++){const d=addDays(today,-i);if(habitDueOn(h,d)){due++;if(logs.has(ymd(d)))done++;}}return due?Math.round(done*100/due):0;}
 function renderHabitStats(){
   const grid=document.getElementById('habitStatGrid');const list=document.getElementById('habitStatList');
@@ -1563,7 +1563,7 @@ function renderHabitStats(){
   if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun · 30 kun: ${r}%</div></div><div class="lb-val">${r}%</div></div>`;}).join('');
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
-function lbAvatar(r){return r.photo_url?`<div class="lb-av" style="background-image:url('${esc(r.photo_url)}')"></div>`:`<div class="lb-av">${esc(r.emoji||'🌱')}</div>`;}
+function lbAvatar(r){if(r&&r.photo_url){const em=esc(r.emoji||'🌱');return `<div class="lb-av" data-em="${em}"><img src="${esc(r.photo_url)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=this.parentNode.dataset.em"></div>`;}return `<div class="lb-av">${esc((r&&r.emoji)||'🌱')}</div>`;}
 async function loadLeaderboard(){
   const meEl=document.getElementById('lbMe');const listEl=document.getElementById('lbList');
   document.querySelectorAll('#lbSeg .hvs').forEach(s=>s.classList.toggle('active',s.dataset.lb===State.lbPeriod));
@@ -1621,7 +1621,7 @@ async function renderStats(){await loadPlansRange();const PR=State.plansRange.le
 
 function renderExtraStats(PR){const el=document.getElementById('extraStats');if(!el)return;const tot=PR.length;const dn=PR.filter(p=>p.status==='done').length;const rate=tot?Math.round(dn*100/tot):0;const byDay={};PR.forEach(p=>{if(p.status==='done'){byDay[p.plan_date]=(byDay[p.plan_date]||0)+(p.score_value||0);}});const days=Object.keys(byDay);let best={d:'—',v:0};days.forEach(k=>{if(byDay[k]>best.v)best={d:k,v:byDay[k]};});const avg=days.length?Math.round(days.reduce((s,k)=>s+byDay[k],0)/days.length):0;const bestLabel=best.d!=='—'?new Date(best.d+'T00:00:00').getDate()+' '+UZ_MONTHS_SHORT[new Date(best.d+'T00:00:00').getMonth()]:'—';el.innerHTML=`<div class="stat-card"><div class="ic-bg">📈</div><div class="l">Bajarish %</div><div class="v">${rate}%</div><div class="ch">${dn}/${tot} reja (30 kun)</div></div><div class="stat-card"><div class="ic-bg">⚡</div><div class="l">O'rtacha ball</div><div class="v">${avg}</div><div class="ch">Kuniga</div></div><div class="stat-card"><div class="ic-bg">🏅</div><div class="l">Eng yaxshi kun</div><div class="v" style="font-size:18px">${bestLabel}</div><div class="ch">+${best.v} ball</div></div><div class="stat-card"><div class="ic-bg">📅</div><div class="l">Faol kunlar</div><div class="v">${days.length}</div><div class="ch">30 kun ichida</div></div>`;}
 
-function renderTrend(days){const PR=State.plansRange.length?State.plansRange:State.plans;const tod=new Date();const pts=[];for(let i=days-1;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const sc=PR.filter(p=>p.plan_date===k&&p.status==='done').reduce((s,p)=>s+(p.score_value||0),0)+State.goals.filter(g=>g.period===k&&g.completed).length*5;pts.push(sc);}const W=320,H=160,P=8;const mx=Math.max(...pts,1);const step=(W-P*2)/(pts.length-1);const points=pts.map((v,i)=>[P+i*step,H-P-(v/mx)*(H-P*2)]);let line='M '+points[0][0].toFixed(1)+' '+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const x0=points[i-1][0],y0=points[i-1][1],x1=points[i][0],y1=points[i][1];const cx=(x0+x1)/2;line+=' C '+cx.toFixed(1)+' '+y0.toFixed(1)+', '+cx.toFixed(1)+' '+y1.toFixed(1)+', '+x1.toFixed(1)+' '+y1.toFixed(1);}const area=line+' L '+points[points.length-1][0].toFixed(1)+' '+H+' L '+points[0][0].toFixed(1)+' '+H+' Z';document.getElementById('trendG').innerHTML='<path class="area-path" d="'+area+'"/><path class="area-line" d="'+line+'"/>'+points.map((p,i)=>i%Math.ceil(points.length/6)===0||i===points.length-1?'<circle class="area-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3"/>':'').join('');}
+function renderTrend(days){const PR=State.plansRange.length?State.plansRange:State.plans;const HB=State.habits||[];const tod=new Date();const pts=[];for(let i=days-1;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const planSc=PR.filter(p=>p.plan_date===k&&p.status==='done').reduce((s,p)=>s+(p.score_value||0),0);const goalSc=State.goals.filter(g=>g.period===k&&g.completed).length*5;const habitSc=HB.reduce((s,h)=>s+(((h.log_dates||[]).indexOf(k)>=0)?HABIT_SCORE:0),0);pts.push(planSc+goalSc+habitSc);}const W=320,H=160,P=8;const mx=Math.max(...pts,1);const step=(W-P*2)/(pts.length-1);const points=pts.map((v,i)=>[P+i*step,H-P-(v/mx)*(H-P*2)]);let line='M '+points[0][0].toFixed(1)+' '+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const x0=points[i-1][0],y0=points[i-1][1],x1=points[i][0],y1=points[i][1];const cx=(x0+x1)/2;line+=' C '+cx.toFixed(1)+' '+y0.toFixed(1)+', '+cx.toFixed(1)+' '+y1.toFixed(1)+', '+x1.toFixed(1)+' '+y1.toFixed(1);}const area=line+' L '+points[points.length-1][0].toFixed(1)+' '+H+' L '+points[0][0].toFixed(1)+' '+H+' Z';document.getElementById('trendG').innerHTML='<path class="area-path" d="'+area+'"/><path class="area-line" d="'+line+'"/>'+points.map((p,i)=>i%Math.ceil(points.length/6)===0||i===points.length-1?'<circle class="area-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3"/>':'').join('');}
 
 function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_score||0;const dn=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;const list=[{ic:'🔥',nm:'Olov',ds:'3 kun streak',un:st>=3},{ic:'⚡',nm:'Yashin',ds:'7 kun streak',un:st>=7},{ic:'💎',nm:'Olmos',ds:'30 kun streak',un:st>=30},{ic:'🎯',nm:'Aniq',ds:'10 maqsad',un:dn>=10},{ic:'🏆',nm:'Chempion',ds:'100 ball',un:sc>=100},{ic:'👑',nm:'Qirol',ds:'500 ball',un:sc>=500}];document.getElementById('achs').innerHTML=list.map(a=>`<div class="ach ${a.un?'':'locked'}"><div class="ic">${a.ic}</div><div class="nm">${a.nm}</div><div class="ds">${a.ds}</div></div>`).join('');}
 
@@ -1791,7 +1791,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{if(localStorage.getItem('iz_premium')==='1')closePaywall();}catch(_){}
   loadSubscription();
   loadProfileMeta();
-  logEvent('miniapp_open');
   try{if(State.photoUrl)apiProfileUpdate(null,null,State.photoUrl).catch(()=>{});}catch(_){}
   loadPlansAPI().then(()=>{loadGoalsAPI();loadSnapshot();loadQuest();});
 
@@ -1806,6 +1805,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#energyRow .energy-cell').forEach(c=>c.onclick=()=>{document.querySelectorAll('#energyRow .energy-cell').forEach(x=>x.classList.remove('active'));c.classList.add('active');State.checkinEnergy=+c.dataset.en;saveCheckin({energy:State.checkinEnergy});});
   const _ssCta=document.getElementById('ssCta');if(_ssCta)_ssCta.onclick=()=>{openPaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
   const _pwCta=document.getElementById('pwCta');if(_pwCta)_pwCta.onclick=()=>{try{tg?.HapticFeedback?.impactOccurred('medium');}catch(_){}try{tg?.close();}catch(_){toast('Botga qaytib «💎 Obuna» tugmasini bosing');}};
+  const _pwBack=document.getElementById('pwBack');if(_pwBack)_pwBack.onclick=()=>{closePaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
   document.getElementById('unlockOk').onclick=()=>document.getElementById('unlockOverlay').classList.remove('show');
 
   // ── Onboarding ─────────────────────────────────────────────────────
@@ -1822,7 +1822,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     localStorage.setItem('iz_onboarded_v2','1');
     document.getElementById('onboarding').classList.remove('show');
     confetti(60);toast(added?('🚀 '+added+' ta odat qo\'shildi!'):'🚀 Boshlandi!');
-    logEvent('onboarding_done',(localStorage.getItem('iz_persona')||'')+':'+added);
     try{renderHabits();renderHabitSummary();}catch(_){}
     if(fin)fin.disabled=false;
   };

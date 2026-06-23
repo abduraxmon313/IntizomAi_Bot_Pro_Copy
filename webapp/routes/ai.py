@@ -282,12 +282,6 @@ async def ai_chat(
     history = [{"role": m.role, "content": m.content} for m in body.messages]
     reply = await chat_with_coach(context_block, history)
 
-    try:
-        from bot.services.analytics_service import log_event
-        await log_event("ai_chat", telegram_id=user.telegram_id, user_id=user.id)
-    except Exception:
-        pass
-
     return ChatOut(
         reply=reply,
         is_premium=user_is_premium(user),
