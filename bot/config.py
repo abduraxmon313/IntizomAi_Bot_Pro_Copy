@@ -33,6 +33,9 @@ SCORE_DONE = 5
 SCORE_FAILED = -3
 STREAK_BONUS = 2
 
+# Odat (habit) bajarilgani uchun beriladigan ball (reja/maqsad kabi).
+HABIT_DONE_SCORE = int(os.getenv("HABIT_DONE_SCORE", 5))
+
 # Kunlik summary vaqti (Tashkent vaqti)
 SUMMARY_HOUR = 23
 SUMMARY_MINUTE = 59

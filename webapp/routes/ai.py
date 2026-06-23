@@ -122,6 +122,37 @@ async def _build_context(session: AsyncSession, user) -> str:
         lines.append("(maqsadlarni o'qishda muammo)")
 
     # ── OXIRGI 7 KUNLIK REJALAR ──────────────────────────────
+    lines.append("\n=== ODATLAR (HABITS) ===")
+    try:
+        from bot.services.habit_service import list_habit_snapshots
+        habits = await list_habit_snapshots(session, user)
+        if habits:
+            wd_uz = ["Du", "Se", "Cho", "Pa", "Ju", "Sha", "Ya"]
+            for h in habits:
+                freq = h.get("frequency") or "daily"
+                if freq == "weekly" and h.get("weekdays"):
+                    freq_label = "kunlar: " + ",".join(wd_uz[i] for i in h["weekdays"])
+                else:
+                    freq_label = "har kuni"
+                dur = ""
+                if (h.get("duration_type") == "days") and h.get("target_days"):
+                    dur = f", muddat {h['target_days']} kun"
+                    if h.get("finished"):
+                        dur += " (tugagan)"
+                done_mark = "✅ bugun bajarilgan" if h.get("done_today") else (
+                    "⬜️ bugun hali yo'q" if h.get("due_today") else "— bugun rejada yo'q"
+                )
+                lines.append(
+                    f"  • {h['title']} ({freq_label}{dur}) — streak {h.get('streak', 0)} kun, "
+                    f"jami {h.get('total_done', 0)} marta — {done_mark}"
+                )
+        else:
+            lines.append("Hali odat qo'shilmagan.")
+    except Exception as e:
+        logger.warning(f"ctx habits xato: {e}")
+        lines.append("(odatlarni o'qishda muammo)")
+
+    # ── OXIRGI 7 KUNLIK REJALAR ──────────────────────────────
     lines.append("\n=== OXIRGI 7 KUNLIK REJALAR ===")
     try:
         res_plans = await session.execute(

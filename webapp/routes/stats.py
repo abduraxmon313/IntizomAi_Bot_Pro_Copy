@@ -13,6 +13,7 @@ from bot.config import TIMEZONE
 from webapp.security import resolve_telegram_id
 from bot.models.checkin import DailyCheckin
 from bot.models.plan import Plan, PlanStatus
+from bot.models.user import User
 from bot.services.coach_service import daily_quest, smart_coach_message
 from bot.services.gamification_service import build_user_snapshot
 from bot.services.user_service import get_user_by_telegram_id
@@ -70,6 +71,63 @@ async def get_quest(
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
     return await daily_quest(session, user)
+
+
+# ─────────────────────────────────────────────────────────────
+#  REYTING (leaderboard) — eng ko'p ball / haftalik / streak
+# ─────────────────────────────────────────────────────────────
+_LB_COL = {"all": User.total_score, "week": User.weekly_xp, "streak": User.streak}
+_LB_ATTR = {"all": "total_score", "week": "weekly_xp", "streak": "streak"}
+
+
+def _first_name(u: User) -> str:
+    raw = (u.display_name or u.full_name or "Foydalanuvchi").strip()
+    return (raw.split()[0] if raw.split() else "Foydalanuvchi")[:20]
+
+
+@router.get("/leaderboard")
+async def leaderboard(
+    period: str = "all",
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    if period not in _LB_COL:
+        period = "all"
+    col = _LB_COL[period]
+    attr = _LB_ATTR[period]
+
+    user = await get_user_by_telegram_id(session, telegram_id)
+
+    rows = (await session.execute(
+        select(User).order_by(col.desc().nullslast(), User.id).limit(50)
+    )).scalars().all()
+
+    top = []
+    for i, u in enumerate(rows):
+        top.append({
+            "rank": i + 1,
+            "name": _first_name(u),
+            "emoji": u.avatar_emoji or "🌱",
+            "value": int(getattr(u, attr) or 0),
+            "is_me": bool(user and u.telegram_id == user.telegram_id),
+        })
+
+    me = None
+    if user:
+        my_val = int(getattr(user, attr) or 0)
+        greater = await session.scalar(
+            select(func.count(User.id)).where(col > my_val)
+        ) or 0
+        me = {
+            "rank": int(greater) + 1,
+            "name": _first_name(user),
+            "emoji": user.avatar_emoji or "🌱",
+            "value": my_val,
+            "in_top": any(t["is_me"] for t in top),
+        }
+
+    total_users = await session.scalar(select(func.count(User.id))) or 0
+    return {"period": period, "top": top, "me": me, "total_users": int(total_users)}
 
 
 # ─────────────────────────────────────────────────────────────
