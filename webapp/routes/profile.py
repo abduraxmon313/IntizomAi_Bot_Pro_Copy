@@ -19,11 +19,13 @@ class ProfileOut(BaseModel):
     notifications_enabled: bool = True
     referral_link: Optional[str] = None
     referral_count: int = 0
+    photo_url: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     notifications_enabled: Optional[bool] = None
+    photo_url: Optional[str] = None
 
 
 async def get_session():
@@ -45,6 +47,7 @@ def _profile_payload(user) -> ProfileOut:
         notifications_enabled=bool(user.notifications_enabled),
         referral_link=build_referral_link(BOT_USERNAME, user.telegram_id),
         referral_count=int(user.referral_count or 0),
+        photo_url=user.photo_url,
     )
 
 
@@ -80,6 +83,10 @@ async def update_profile(
 
     if body.notifications_enabled is not None:
         user.notifications_enabled = bool(body.notifications_enabled)
+
+    if body.photo_url is not None:
+        pu = body.photo_url.strip()
+        user.photo_url = pu[:512] if pu else None
 
     user.last_active = datetime.utcnow()
     await session.commit()

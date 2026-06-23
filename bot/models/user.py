@@ -15,6 +15,9 @@ class User(Base):
     # alohida ustunda saqlanadi va ustunlik beriladi (Telegram sinxronizatsiyasi
     # uni o'chirib yubormaydi).
     display_name = Column(String(255), nullable=True)
+    # Telegram profil rasmi URL'i (Mini App ochilganda saqlanadi — reytingda
+    # boshqalarning rasmini ko'rsatish uchun).
+    photo_url = Column(String(512), nullable=True)
     username = Column(String(255), nullable=True)
 
     # Core score (legacy — kept for back-compat)

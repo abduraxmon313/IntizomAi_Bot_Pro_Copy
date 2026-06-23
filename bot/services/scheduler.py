@@ -306,7 +306,7 @@ async def send_daily_summary(bot):
                     f"⏳ Eslatilmadi: <b>{len(pending)} ta</b>\n\n"
                     f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
                     f"🔥 Streak: <b>{user.streak} kun</b>\n"
-                    f"💎 Intizom kuchingiz: <b>{user.discipline_score or 50}/100</b>\n\n"
+                    f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
                     f"<i>Ertaga yana davom etamiz!</i>"
                 ),
                 kb,
