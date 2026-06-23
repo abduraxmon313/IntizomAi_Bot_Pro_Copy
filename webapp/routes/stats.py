@@ -99,7 +99,7 @@ async def leaderboard(
     user = await get_user_by_telegram_id(session, telegram_id)
 
     rows = (await session.execute(
-        select(User).order_by(col.desc().nullslast(), User.id).limit(50)
+        select(User).order_by(col.desc().nullslast(), User.id).limit(20)
     )).scalars().all()
 
     top = []
@@ -108,6 +108,7 @@ async def leaderboard(
             "rank": i + 1,
             "name": _first_name(u),
             "emoji": u.avatar_emoji or "🌱",
+            "photo_url": u.photo_url,
             "value": int(getattr(u, attr) or 0),
             "is_me": bool(user and u.telegram_id == user.telegram_id),
         })
@@ -122,6 +123,7 @@ async def leaderboard(
             "rank": int(greater) + 1,
             "name": _first_name(user),
             "emoji": user.avatar_emoji or "🌱",
+            "photo_url": user.photo_url,
             "value": my_val,
             "in_top": any(t["is_me"] for t in top),
         }

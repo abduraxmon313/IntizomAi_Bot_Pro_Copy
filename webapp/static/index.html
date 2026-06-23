@@ -732,6 +732,18 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .lb-av{width:34px;height:34px;border-radius:11px;background:var(--grad-soft);display:grid;place-items:center;font-size:17px;flex-shrink:0}
 .lb-name{flex:1;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .lb-val{font-size:13.5px;font-weight:800;color:var(--primary);white-space:nowrap}
+.lb-av{background-size:cover;background-position:center}
+/* Top-3 — premium tus */
+.lb-row.lb-1{border-color:#f5d76e;background:linear-gradient(135deg,rgba(245,215,110,.16),transparent);box-shadow:0 8px 22px rgba(245,215,110,.22)}
+.lb-row.lb-2{border-color:#cbd5e1;background:linear-gradient(135deg,rgba(203,213,225,.16),transparent)}
+.lb-row.lb-3{border-color:#e0a96d;background:linear-gradient(135deg,rgba(224,169,109,.16),transparent)}
+.lb-row.lb-1 .lb-av{box-shadow:0 0 0 2px #f5d76e,var(--glow);animation:lbGlow 2.4s ease-in-out infinite}
+@keyframes lbGlow{0%,100%{box-shadow:0 0 0 2px #f5d76e,0 4px 10px rgba(245,215,110,.3)}50%{box-shadow:0 0 0 2px #f5d76e,0 8px 22px rgba(245,215,110,.6)}}
+#lbList .lb-row{animation:cardIn .45s cubic-bezier(.22,1,.36,1) both}
+#lbList .lb-row:nth-child(1){animation-delay:.03s}#lbList .lb-row:nth-child(2){animation-delay:.07s}#lbList .lb-row:nth-child(3){animation-delay:.11s}#lbList .lb-row:nth-child(4){animation-delay:.15s}#lbList .lb-row:nth-child(5){animation-delay:.19s}#lbList .lb-row:nth-child(n+6){animation-delay:.22s}
+/* Premium sub-status — yumshoq shimmer */
+.sub-status.premium{position:relative;overflow:hidden}
+.sub-status.premium::after{content:'';position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.18),transparent);transform:skewX(-20deg);animation:pwShine 4.5s ease-in-out infinite;pointer-events:none}
 
 </style>
 </head>
@@ -885,6 +897,9 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 </div>
 <div class="section-title"><h2>30 kunlik tahlil</h2></div>
 <div class="stat-grid" id="extraStats"></div>
+<div class="section-title"><h2>✅ Odatlar statistikasi</h2></div>
+<div class="stat-grid" id="habitStatGrid"></div>
+<div id="habitStatList" style="margin-bottom:6px"></div>
 <div class="chart-card"><div class="chart-head"><h3>Haftalik faollik</h3><span class="pill">Oxirgi 7 kun</span></div><div class="bars" id="weekBars"></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Discipline Score Trend</h3><span class="pill" id="dstPill">30 kun</span></div><div class="area-wrap"><svg id="trendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity=".5"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs><g id="trendG"></g></svg></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Faollik xaritasi</h3><span class="pill">14 hafta</span></div><div class="heat-grid" id="heatGrid"></div></div>
@@ -893,9 +908,6 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div style="flex:1"><div style="font-size:13px;color:var(--text-2);margin-bottom:8px">Tip bo'yicha taqsimot</div><div id="goalBreakdown" style="display:flex;flex-direction:column;gap:6px"></div></div></div></div>
 <div class="section-title"><h2>📋 Bajarilgan rejalar ro'yxati</h2></div>
 <div class="chart-card"><div class="hist-list" id="histList"></div></div>
-<div class="section-title"><h2>✅ Odatlar statistikasi</h2></div>
-<div class="stat-grid" id="habitStatGrid"></div>
-<div id="habitStatList"></div>
 </div>
 <div id="statsRating" class="hidden">
 <div class="habit-view-seg" id="lbSeg"><div class="hvs active" data-lb="all">Umumiy</div><div class="hvs" data-lb="week">Haftalik</div><div class="hvs" data-lb="streak">Streak</div></div>
@@ -935,6 +947,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 </div>
 <div class="section-title"><h2>Do'stlarni taklif qil 🎁</h2></div>
 <div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Har taklif uchun ikkalangizga ham Premium</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+<div class="setting" id="channelBtn"><div class="ic">📢</div><div class="body"><div class="ttl">Telegram kanal</div><div class="dsc">Yangiliklar va maslahatlar</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+<div class="setting" id="adminBtn"><div class="ic">💬</div><div class="body"><div class="ttl">Admin bilan bog'lanish</div><div class="dsc">Savol, taklif va yordam</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Hisob</h2></div>
 <div class="setting" id="editNameSetting"><div class="ic">✏️</div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Yutuqlar 🏆</h2></div>
@@ -1173,7 +1187,8 @@ const apiHabitCreate=p=>api('/api/webapp/habits',{method:'POST',body:JSON.string
 const apiHabitUpdate=(id,p)=>api('/api/webapp/habits/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
 const apiHabitToggle=(id,done,date)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done:done,date:date||null})});
-const apiProfileUpdate=(name,notif)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
+const apiProfileUpdate=(name,notif,photo)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;if(photo!=null)b.photo_url=photo;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
+function openTgLink(u){try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');}catch(_){try{window.open(u,'_blank');}catch(__){}}}
 async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' do\'st taklif qilingan · ikkalangizga Premium'):'Har taklif uchun ikkalangizga ham Premium';}}catch(_){}}
 
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
@@ -1548,6 +1563,7 @@ function renderHabitStats(){
   if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun · 30 kun: ${r}%</div></div><div class="lb-val">${r}%</div></div>`;}).join('');
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
+function lbAvatar(r){return r.photo_url?`<div class="lb-av" style="background-image:url('${esc(r.photo_url)}')"></div>`:`<div class="lb-av">${esc(r.emoji||'🌱')}</div>`;}
 async function loadLeaderboard(){
   const meEl=document.getElementById('lbMe');const listEl=document.getElementById('lbList');
   document.querySelectorAll('#lbSeg .hvs').forEach(s=>s.classList.toggle('active',s.dataset.lb===State.lbPeriod));
@@ -1556,8 +1572,8 @@ async function loadLeaderboard(){
   let d;try{d=await api('/api/webapp/leaderboard?period='+State.lbPeriod);}catch(e){if(listEl)listEl.innerHTML=emptyState('🏆','Reyting yuklanmadi','Keyinroq urinib ko\'ring');return;}
   const unit=LB_UNIT[State.lbPeriod]||'ball';
   const top=d.top||[];
-  if(listEl)listEl.innerHTML=top.length?top.map(r=>{const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank;return `<div class="lb-row ${r.is_me?'me':''}"><div class="lb-rank ${r.rank<=3?'top':''}">${medal}</div><div class="lb-av">${esc(r.emoji||'🌱')}</div><div class="lb-name">${esc(r.name)}${r.is_me?' (siz)':''}</div><div class="lb-val">${r.value} ${unit}</div></div>`;}).join(''):emptyState('🏆','Hali reyting yo\'q','Birinchi bo\'ling!');
-  if(meEl&&d.me&&!d.me.in_top){meEl.innerHTML=`<div style="text-align:center;font-size:11px;color:var(--text-3);margin:2px 0 8px">— sizning o'rningiz —</div><div class="lb-row me"><div class="lb-rank">${d.me.rank}</div><div class="lb-av">${esc(d.me.emoji||'🌱')}</div><div class="lb-name">${esc(d.me.name)} (siz)</div><div class="lb-val">${d.me.value} ${unit}</div></div>`;}
+  if(listEl)listEl.innerHTML=top.length?top.map(r=>{const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank;const cls=r.rank<=3?(' lb-'+r.rank):'';return `<div class="lb-row${cls} ${r.is_me?'me':''}"><div class="lb-rank ${r.rank<=3?'top':''}">${medal}</div>${lbAvatar(r)}<div class="lb-name">${esc(r.name)}${r.is_me?' (siz)':''}</div><div class="lb-val">${r.value} ${unit}</div></div>`;}).join(''):emptyState('🏆','Hali reyting yo\'q','Birinchi bo\'ling!');
+  if(meEl&&d.me&&!d.me.in_top){meEl.innerHTML=`<div style="text-align:center;font-size:11px;color:var(--text-3);margin:2px 0 8px">— sizning o'rningiz —</div><div class="lb-row me"><div class="lb-rank">${d.me.rank}</div>${lbAvatar(d.me)}<div class="lb-name">${esc(d.me.name)} (siz)</div><div class="lb-val">${d.me.value} ${unit}</div></div>`;}
 }
 
 function bindPlanActions(){document.querySelectorAll('#plansList .plan[data-id]').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(!p)return;const _r=planBlockReason(p);if(_r==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'zgartirib bo\'lmaydi',true);return;}if(p.status!=='done'&&_r==='future'){toast('⏰ Bu rejaning vaqti hali kelmagan',true);return;}const ns=p.status==='done'?'pending':'done';try{const wasNotDone=p.status!=='done';const np=await apiPlanUpdate(id,{status:ns});Object.assign(p,np);renderPlans();renderHero();if(ns==='done'&&wasNotDone){const sv=p.score_value||5;xpPop(sv);confetti(35);}toast(ns==='done'?'✓ Bajarildi':'Belgilash olindi');loadSnapshot();loadQuest();}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu rejani hozir o\'zgartirib bo\'lmaydi',true);else toast('Xato!',true);}};row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p)openPlanModal(p);};row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p&&planBlockReason(p)==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);return;}if(!await confirmDialog({title:'Rejani o\'chirish',message:'Bu rejani o\'chirishni xohlaysizmi?'}))return;try{await apiPlanDelete(id);State.plans=State.plans.filter(x=>x.id!==id);renderPlans();renderHero();toast('🗑 O\'chirildi');}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);else toast('Xato!',true);}};});}
@@ -1776,6 +1792,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadSubscription();
   loadProfileMeta();
   logEvent('miniapp_open');
+  try{if(State.photoUrl)apiProfileUpdate(null,null,State.photoUrl).catch(()=>{});}catch(_){}
   loadPlansAPI().then(()=>{loadGoalsAPI();loadSnapshot();loadQuest();});
 
   // ── AI page wiring ─────────────────────────────────────────────────
@@ -1810,6 +1827,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(fin)fin.disabled=false;
   };
   const _shareCard=document.getElementById('shareCard');if(_shareCard)_shareCard.onclick=shareInvite;
+  const _chBtn=document.getElementById('channelBtn');if(_chBtn)_chBtn.onclick=()=>openTgLink('https://t.me/Intizom_AI');
+  const _adBtn=document.getElementById('adminBtn');if(_adBtn)_adBtn.onclick=()=>openTgLink('https://t.me/Dilshod_Toxirov_adminbot');
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
 });

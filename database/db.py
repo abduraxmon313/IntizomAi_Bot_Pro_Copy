@@ -68,6 +68,7 @@ USER_NEW_COLUMNS = [
     ("display_name", "VARCHAR(255)"),
     ("notifications_enabled", "BOOLEAN DEFAULT TRUE"),
     ("trial_used", "BOOLEAN DEFAULT FALSE"),
+    ("photo_url", "VARCHAR(512)"),
 ]
 
 # habits jadvali uchun yangi ustunlar (avvalgi versiyada yaratilgan bo'lsa).

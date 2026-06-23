@@ -90,14 +90,10 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
 
     try:
         lines = [
-            "🎉 <b>Barakallo!</b>",
+            f"🎉 <b>{plan.title}</b> — bajarildi!",
             "",
-            f"✅ <b>{plan.title}</b> bajarildi!",
-            "",
-            f"⭐️ +{reward.xp_gained} ball qo'shildi",
-            f"🏆 Umumiy ball: <b>{user.total_score}</b>",
-            f"🔥 Streak: <b>{reward.new_streak} kun</b>",
-            f"💎 Intizom kuchingiz: <b>{reward.discipline_score}/100</b>",
+            f"⭐️ +{reward.xp_gained} ball   ·   🔥 {reward.new_streak} kun streak",
+            f"🏆 Jami: <b>{user.total_score}</b> ball   ·   💎 {reward.discipline_score}/100",
         ]
 
         extras = []
@@ -156,11 +152,10 @@ async def failed_handler(callback: CallbackQuery, session: AsyncSession):
     reward = await process_plan_result_full(session, user, plan, is_done=False)
 
     text = (
-        f"😔 <b>{plan.title}</b> bajarilmadi.\n\n"
-        f"❌ {reward.score_change} ball ayirildi\n"
-        f"🏆 Umumiy ball: <b>{user.total_score}</b>\n"
-        f"🔥 Streak: <b>{user.streak} kun</b>\n\n"
-        f"💪 Ertaga yana urinib ko'ring!"
+        f"🌙 <b>{plan.title}</b> — bu safar bo'lmadi.\n\n"
+        f"Zarari yo'q, muhimi — to'xtab qolmaslik.\n"
+        f"🏆 Jami: <b>{user.total_score}</b> ball   ·   🔥 {user.streak} kun\n\n"
+        f"💪 Ertaga yana imkoniyat bor!"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📅 Ertaga ko'chirish", callback_data=f"tomorrow_{plan_id}")],

@@ -110,7 +110,7 @@ async def render_subscription(
         "• Streak Freeze (streakni himoya qilish)\n"
         "• Chuqur tahlil va elite belgilar\n"
         "• Premium temalar\n\n"
-        f"🆓 <b>Bepul rejim:</b> Mini App'siz, kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja.\n\n"
+        f"🆓 <b>Bepul rejim:</b> Mini App'ni ko'rish mumkin — lekin kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja va cheklangan AI.\n\n"
     )
     if free:
         text += (
@@ -164,8 +164,8 @@ async def subscription_button(message: Message, state: FSMContext, session: Asyn
     # Obunasiz — qisqa promo + 2 variant (sotib olish / Premium haqida).
     await message.answer(
         "💎 <b>Premium</b>\n\n"
-        "Premium bilan Mini App (kalendar, statistika, AI Coach), cheksiz reja va "
-        "maqsadlar hamda boshqa imkoniyatlar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+        "Premium bilan <b>cheksiz</b> reja va maqsadlar, cheksiz AI Coach, "
+        "Streak Freeze va premium temalar ochiladi.\n\nQuyidagidan birini tanlang 👇",
         parse_mode="HTML",
         reply_markup=premium_promo_keyboard(),
     )
@@ -230,8 +230,8 @@ async def premium_menu_cb(callback: CallbackQuery, state: FSMContext, session: A
     else:
         await callback.message.edit_text(
             "💎 <b>Premium</b>\n\n"
-            "Premium bilan Mini App (kalendar, statistika, AI Coach), cheksiz reja va "
-            "maqsadlar hamda boshqa imkoniyatlar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+            "Premium bilan <b>cheksiz</b> reja va maqsadlar, cheksiz AI Coach, "
+            "Streak Freeze va premium temalar ochiladi.\n\nQuyidagidan birini tanlang 👇",
             parse_mode="HTML",
             reply_markup=premium_promo_keyboard(),
         )
