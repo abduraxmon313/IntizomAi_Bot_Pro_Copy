@@ -11,8 +11,13 @@ class Goal(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(500), nullable=False)
     description = Column(String(1000), nullable=True)
-    goal_type = Column(String(20), nullable=False)   # yearly | monthly | weekly | daily
-    period = Column(String(30), nullable=False)       # 2026 | 2026-05 | 2026-W21 | 2026-05-22
+    # Maqsad turi: FAQAT `yearly` yoki `monthly`.
+    # Eski `weekly` va `daily` turlari olib tashlandi — kunlik/haftalik takroriy
+    # niyatlar endi Habits'da, bir martalik ishlar esa Plans'da yashaydi.
+    # DB'da eski yozuvlar saqlanib qoladi (backward compat) — API tomonida
+    # filtrlanadi va foydalanuvchiga ko'rsatilmaydi.
+    goal_type = Column(String(20), nullable=False)   # yearly | monthly
+    period = Column(String(30), nullable=False)       # 2026 | 2026-05
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -56,8 +56,6 @@ class ContextOut(BaseModel):
 GOAL_TYPE_UZ = {
     "yearly": "Yillik",
     "monthly": "Oylik",
-    "weekly": "Haftalik",
-    "daily": "Kunlik",
 }
 
 UZ_WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"]
@@ -103,7 +101,7 @@ async def _build_context(session: AsyncSession, user) -> str:
             by_type: dict[str, list] = {}
             for g in goals:
                 by_type.setdefault(g.goal_type, []).append(g)
-            for gtype in ("yearly", "monthly", "weekly", "daily"):
+            for gtype in ("yearly", "monthly"):
                 items = by_type.get(gtype, [])
                 if not items:
                     continue

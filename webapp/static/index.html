@@ -804,7 +804,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 
 <section class="page" data-page="goals">
 <div class="hdr"><div class="hdr-greet"><h1>Maqsadlar 🎯</h1><p>Yo'lingni rejalashtir</p></div></div>
-<div class="seg" id="goalSeg"><div class="seg-indicator" id="goalSegInd"></div><div class="seg-item active" data-gp="yearly">Yillik</div><div class="seg-item" data-gp="monthly">Oylik</div><div class="seg-item" data-gp="weekly">Haftalik</div><div class="seg-item" data-gp="daily">Kunlik</div></div>
+<div class="seg" id="goalSeg"><div class="seg-indicator" id="goalSegInd"></div><div class="seg-item active" data-gp="yearly">Yillik</div><div class="seg-item" data-gp="monthly">Oylik</div></div>
 
 <div class="goal-view" id="gvYearly">
   <div class="year-chips" id="yearChips"></div>
@@ -818,25 +818,11 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   <div id="monthlyList" class="mt-16"></div>
 </div>
 
-<div class="goal-view hidden" id="gvWeekly">
-  <div class="week-banner">
-    <button class="nav-btn" id="weekPrev">‹</button>
-    <div style="text-align:center;flex:1;position:relative"><div class="lbl">Hafta</div><div class="rng" id="weekRange">—</div></div>
-    <button class="nav-btn" id="weekNext">›</button>
-  </div>
-  <div class="week-strip" id="weekStrip"></div>
-  <button class="add-btn ripple add-goal-trigger" data-gp="weekly" type="button" aria-label="Maqsad qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Maqsad qo'shish</span></button>
-  <div class="section-title"><h2>Shu hafta uchun maqsadlar</h2></div>
-  <div id="weeklyList"></div>
-</div>
-
-<div class="goal-view hidden" id="gvDaily">
-  <div class="dv-toggle" id="dvToggle"><div class="dv-toggle-indicator" id="dvInd"></div><div class="dv-toggle-item active" data-dv="week">📖 Hafta version</div><div class="dv-toggle-item" data-dv="month">🗓️ Oylik version</div></div>
-  <div id="dvWeek"><div class="cal-head"><button class="nav-btn" id="diaryPrev">‹</button><h3 id="diaryRange">—</h3><button class="nav-btn" id="diaryNext">›</button></div><div class="diary" id="diaryGrid"></div><div class="diary-sunday" id="diarySunday" style="margin-top:10px"></div><div style="margin-top:14px"><button class="add-btn ripple add-goal-trigger" data-gp="daily" type="button" aria-label="Maqsad qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Maqsad qo'shish</span></button></div></div>
-  <div id="dvMonth" class="hidden"><div class="cal-head"><button class="nav-btn" id="calPrev">‹</button><h3 id="calTitle">—</h3><button class="nav-btn" id="calNext">›</button></div><div class="cal-dow"><span>Du</span><span>Se</span><span>Cho</span><span>Pa</span><span>Ju</span><span>Sha</span><span>Ya</span></div><div class="cal-grid" id="calGrid"></div><div style="margin-top:14px"><button class="add-btn ripple add-goal-trigger" data-gp="daily" type="button" aria-label="Maqsad qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Maqsad qo'shish</span></button></div></div>
-  <div class="section-title"><h2 id="dailyTitleText">Tanlangan kun maqsadlari</h2></div>
-  <div id="dailyList"></div>
-</div>
+<!--
+  Kunlik va haftalik maqsad turlari olib tashlandi.
+  Kunlik takroriy niyatlar endi Odat (Habit) sifatida, bir martalik ishlar esa
+  Reja (Plan) sifatida yashaydi. Faqat Yillik va Oylik maqsadlar qoladi.
+-->
 </section>
 
 <section class="page" data-page="ai">
@@ -1057,7 +1043,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="row gap-12"><div class="fld" style="flex:1"><label>Eslatma vaqti <span style="color:var(--danger)">*</span></label><div class="time-pick"><select id="pHour" aria-label="Soat"></select><span class="tcolon">:</span><select id="pMin" aria-label="Daqiqa"></select></div></div><div class="fld" style="flex:1"><label>Sana</label><input id="pDate" type="date"></div></div>
 <div class="row gap-12 mt-8"><button class="btn btn-ghost" id="pCancel">Bekor</button><button class="btn" id="pSave">Saqlash</button></div></div></div>
 
-<div class="modal-back" id="dayModalBack"><div class="modal"><div class="grab"></div><h3 id="dayModalTitle">Kun maqsadlari</h3><div id="dayModalList"></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="dayClose">Yopish</button><button class="btn" id="dayAdd">+ Qo'shish</button></div></div></div>
+<!-- Day modal (dayModalBack) olib tashlandi — kunlik maqsad tushunchasi endi yo'q. -->
 
 <div class="modal-back" id="habitModalBack"><div class="modal"><div class="grab"></div><h3 id="habitModalTitle">Yangi odat</h3>
 <div class="fld"><label>Belgi</label><div class="emoji-pick" id="habitIconPick"></div></div>
@@ -1089,7 +1075,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <script>
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const UZ_MONTHS_SHORT=['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -1578,7 +1564,13 @@ async function loadLeaderboard(){
 
 function bindPlanActions(){document.querySelectorAll('#plansList .plan[data-id]').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(!p)return;const _r=planBlockReason(p);if(_r==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'zgartirib bo\'lmaydi',true);return;}if(p.status!=='done'&&_r==='future'){toast('⏰ Bu rejaning vaqti hali kelmagan',true);return;}const ns=p.status==='done'?'pending':'done';try{const wasNotDone=p.status!=='done';const np=await apiPlanUpdate(id,{status:ns});Object.assign(p,np);renderPlans();renderHero();if(ns==='done'&&wasNotDone){const sv=p.score_value||5;xpPop(sv);confetti(35);}toast(ns==='done'?'✓ Bajarildi':'Belgilash olindi');loadSnapshot();loadQuest();}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu rejani hozir o\'zgartirib bo\'lmaydi',true);else toast('Xato!',true);}};row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p)openPlanModal(p);};row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p&&planBlockReason(p)==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);return;}if(!await confirmDialog({title:'Rejani o\'chirish',message:'Bu rejani o\'chirishni xohlaysizmi?'}))return;try{await apiPlanDelete(id);State.plans=State.plans.filter(x=>x.id!==id);renderPlans();renderHero();toast('🗑 O\'chirildi');}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);else toast('Xato!',true);}};});}
 
-function renderGoalsView(){['Yearly','Monthly','Weekly','Daily'].forEach(k=>document.getElementById('gv'+k).classList.toggle('hidden',State.goalPeriod!==k.toLowerCase()));if(State.goalPeriod==='yearly')renderYearly();else if(State.goalPeriod==='monthly')renderMonthly();else if(State.goalPeriod==='weekly')renderWeekly();else renderDaily();}
+function renderGoalsView(){
+  // Faqat Yillik va Oylik maqsadlar qoldi. Eski (yashirilgan) turlar yashamaydi.
+  if(State.goalPeriod!=='yearly'&&State.goalPeriod!=='monthly')State.goalPeriod='yearly';
+  document.getElementById('gvYearly').classList.toggle('hidden',State.goalPeriod!=='yearly');
+  document.getElementById('gvMonthly').classList.toggle('hidden',State.goalPeriod!=='monthly');
+  if(State.goalPeriod==='yearly')renderYearly();else renderMonthly();
+}
 
 const goalsBy=(t,p)=>State.goals.filter(g=>g.goal_type===t&&(!p||g.period===p));
 
@@ -1588,27 +1580,29 @@ function renderYearlyList(){const l=goalsBy('yearly',String(State.selectedYear))
 function renderMonthly(){const g=document.getElementById('monthsGrid');const cM=new Date().getMonth(),cY=new Date().getFullYear();g.innerHTML=UZ_MONTHS.map((m,i)=>{const k=State.selectedYear+'-'+pad(i+1);const c=goalsBy('monthly',k).length;const ic=i===cM&&State.selectedYear===cY;const sel=State.selectedMonth===i;return `<div class="month-cell ${ic?'current':''}" data-m="${i}" style="${sel?'border-color:var(--primary);background:var(--primary-soft)':''}"><div class="mn">${UZ_MONTHS_SHORT[i]}</div><div class="ct">${c}</div>${c?'<div class="dot"></div>':''}</div>`;}).join('');g.querySelectorAll('.month-cell').forEach(c=>c.onclick=()=>{State.selectedMonth=+c.dataset.m;renderMonthly();});renderMonthlyList();}
 function renderMonthlyList(){const k=State.selectedYear+'-'+pad(State.selectedMonth+1);const l=goalsBy('monthly',k);document.getElementById('monthlyList').innerHTML=renderGoalList(l,UZ_MONTHS[State.selectedMonth]+' '+State.selectedYear+' maqsadlari');bindGoalActions('monthlyList');}
 
-function renderWeekly(){const base=addDays(new Date(),State.weekOffset*7);const s=startOfWeek(base),e=endOfWeek(base);document.getElementById('weekRange').textContent=formatRange(s,e);const tod=ymd(new Date());document.getElementById('weekStrip').innerHTML=UZ_DOW_SHORT.map((n,i)=>{const d=addDays(s,i);const it=ymd(d)===tod;return `<div class="wd ${it?'today':''}"><div class="n">${n}</div><div class="d">${d.getDate()}</div></div>`;}).join('');const wk=weekKey(base);const l=goalsBy('weekly',wk);document.getElementById('weeklyList').innerHTML=renderGoalList(l,'Hafta uchun umumiy maqsadlar');bindGoalActions('weeklyList');}
+// renderWeekly / renderDaily / renderDiary / renderCalendar / openDayModal /
+// renderDailyList olib tashlandi — kunlik va haftalik maqsad turlari yo'q.
+// Takroriy niyatlar Odat (Habit)'ga, bir martalik ishlar Reja (Plan)'ga ko'chirilgan.
 
-function renderDaily(){document.getElementById('dvWeek').classList.toggle('hidden',State.dailyView!=='week');document.getElementById('dvMonth').classList.toggle('hidden',State.dailyView!=='month');const items=document.querySelectorAll('#dvToggle .dv-toggle-item');const ind=document.getElementById('dvInd');const ai=State.dailyView==='week'?0:1;items.forEach((it,i)=>it.classList.toggle('active',i===ai));setTimeout(()=>{const w=items[ai].offsetWidth,x=items[ai].offsetLeft;ind.style.left=x+'px';ind.style.width=w+'px';},10);if(State.dailyView==='week')renderDiary();else renderCalendar();renderDailyList();}
 
-function renderDiary(){if(!State.diaryWeekStart)State.diaryWeekStart=startOfWeek(new Date());const s=State.diaryWeekStart;const e=addDays(s,6);document.getElementById('diaryRange').textContent=formatRange(s,e);const tod=ymd(new Date());const cell=i=>{const d=addDays(s,i);const k=ymd(d);const gs=goalsBy('daily',k);const it=k===tod;const gh=gs.length?`<div class="dgoals">${gs.slice(0,3).map(g=>`<div class="g">${esc(g.title)}</div>`).join('')}${gs.length>3?`<div class="g">+${gs.length-3} ko\'proq</div>`:''}</div>`:`<div class="empty">Maqsad qo\'shing</div>`;const isSel=k===ymd(State.selectedDate);return `<div class="diary-page ${it?'today':''} ${isSel?'selected':''} ${(i%2===0)?'right':'left'}" data-day="${k}"><div class="dh"><span class="dn">${UZ_DOW_SHORT[i]}</span><span class="dd">${d.getDate()}</span></div>${gh}</div>`;};document.getElementById('diaryGrid').innerHTML=[0,1,2,3,4,5].map(cell).join('');const sun=addDays(s,6);const sk=ymd(sun);const sg=goalsBy('daily',sk);const ist=sk===tod;document.getElementById('diarySunday').classList.toggle('selected',sk===ymd(State.selectedDate)&&sk!==tod);document.getElementById('diarySunday').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-size:13px;color:var(--text-2);font-weight:700">${UZ_DOW_FULL[6]} ${ist?'(Bugun)':''}</span><span style="font-size:18px;font-weight:800;color:var(--primary)">${sun.getDate()}</span></div>${sg.length?`<div style="font-size:12px;color:var(--text-2)">${sg.slice(0,3).map(g=>`<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--primary);font-weight:700">•</span>${esc(g.title)}</div>`).join('')}${sg.length>3?`<div style="color:var(--text-3);margin-top:2px">+${sg.length-3} ko\'proq</div>`:''}</div>`:`<div style="font-size:12px;color:var(--text-3);font-style:italic">Yakshanba uchun maqsad qo\'shing</div>`}`;document.getElementById('diarySunday').dataset.day=sk;document.querySelectorAll('.diary-page, .diary-sunday').forEach(p=>p.onclick=()=>{State.selectedDate=new Date(p.dataset.day+'T00:00:00');renderDiary();renderDailyList();});}
 
-function renderCalendar(){const cm=State.calMonth;const y=cm.getFullYear(),m=cm.getMonth();document.getElementById('calTitle').textContent=UZ_MONTHS[m]+' '+y;const first=new Date(y,m,1);const fdow=(first.getDay()+6)%7;const dim=new Date(y,m+1,0).getDate();const tod=ymd(new Date());const sel=ymd(State.selectedDate);let cells='';for(let i=0;i<fdow;i++)cells+=`<div class="cal-day empty"></div>`;for(let d=1;d<=dim;d++){const dt=new Date(y,m,d);const k=ymd(dt);const gs=goalsBy('daily',k);const it=k===tod;const isSel=k===sel;const he=gs.length>0;const max=2;const evs=gs.slice(0,max).map((g,i)=>`<div class="ev c${(i%3)+1}" title="${esc(g.title)}">${esc(g.title)}</div>`).join('');const more=gs.length>max?`<div class="more">+${gs.length-max} more</div>`:'';cells+=`<div class="cal-day ${it?'today':''} ${isSel?'selected':''} ${he?'has-events':''}" data-day="${k}"><div class="dn">${d}</div><div class="events">${evs}${more}</div></div>`;}document.getElementById('calGrid').innerHTML=cells;document.querySelectorAll('.cal-day:not(.empty)').forEach(c=>c.onclick=()=>{const k=c.dataset.day;State.selectedDate=new Date(k+'T00:00:00');renderCalendar();renderDailyList();});}
 
-function openDayModal(k,gs){const d=new Date(k+'T00:00:00');document.getElementById('dayModalTitle').textContent=formatDateLong(d);const list=document.getElementById('dayModalList');list.innerHTML=gs.length?gs.map(g=>`<div class="goal ${g.completed?'done':''}" data-id="${g.id}"><div class="cbx ${g.completed?'done':''}" data-act="toggle">${g.completed?'✓':''}</div><div class="body"><div class="ttl">${esc(g.title)}</div>${g.description?`<div class="desc">${esc(g.description)}</div>`:''}</div><button class="del" data-act="delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6"/></svg></button></div>`).join(''):'<div class="empty-state"><p>Hozircha maqsadlar yo\'q</p></div>';document.getElementById('dayModalBack').classList.add('show');list.querySelectorAll('.goal').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async()=>{const g=State.goals.find(x=>x.id===id);if(!g)return;const nv=!g.completed;if(nv&&isGoalPeriodFuture(g.goal_type,g.period)){toast('⏰ Bu maqsad davri hali boshlanmagan',true);return;}if(nv){xpPop(5);confetti(35);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}}try{await apiGoalUpdate(id,{completed:nv});g.completed=nv;openDayModal(k,goalsBy('daily',k));renderGoalsView();}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu maqsad davri hali boshlanmagan',true);else toast('Xato!',true);}};row.querySelector('[data-act="delete"]').onclick=async()=>{if(!await confirmDialog({title:'Maqsadni o\'chirish',message:'Bu maqsadni o\'chirishni xohlaysizmi?'}))return;try{await apiGoalDelete(id);State.goals=State.goals.filter(x=>x.id!==id);openDayModal(k,goalsBy('daily',k));renderGoalsView();}catch(_){toast('Xato!',true);}};});document.getElementById('dayAdd').onclick=()=>{document.getElementById('dayModalBack').classList.remove('show');State.selectedDate=d;openModal('daily',k);};document.getElementById('dayClose').onclick=()=>document.getElementById('dayModalBack').classList.remove('show');}
 
-function renderDailyList(){const k=ymd(State.selectedDate);const l=goalsBy('daily',k);document.getElementById('dailyTitleText').textContent=formatDateLong(State.selectedDate)+' maqsadlari';document.getElementById('dailyList').innerHTML=renderGoalList(l,'');bindGoalActions('dailyList');}
+
+
+
+
+
 
 function renderGoalList(list,emp){if(!list.length)return emptyState('🎯',emp||'Hech narsa yo\'q','+ tugma orqali yangi maqsad qo\'shing');return list.map((g,i)=>`<div class="goal ${g.completed?'done':''}" style="animation-delay:${i*50}ms" data-id="${g.id}"><div class="cbx ${g.completed?'done':''}" data-act="toggle">${g.completed?'✓':''}</div><div class="body"><div class="ttl">${esc(g.title)}</div>${g.description?`<div class="desc">${esc(g.description)}</div>`:''}</div><button class="del" data-act="edit" aria-label="Tahrirlash" style="color:var(--text-3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="delete" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div>`).join('');}
 
 function bindGoalActions(cid){const w=document.getElementById(cid);w.querySelectorAll('.goal').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(!g)return;const nv=!g.completed;if(nv&&isGoalPeriodFuture(g.goal_type,g.period)){toast('⏰ Bu maqsad davri hali boshlanmagan',true);return;}g.completed=nv;row.classList.toggle('done',nv);row.querySelector('.cbx').classList.toggle('done',nv);row.querySelector('.cbx').textContent=nv?'✓':'';if(nv){xpPop(5);confetti(35);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}}try{await apiGoalUpdate(id,{completed:nv});toast(nv?'✓ Bajarildi':'Belgilash olindi');}catch(err){g.completed=!nv;row.classList.toggle('done',!nv);row.querySelector('.cbx').classList.toggle('done',!nv);row.querySelector('.cbx').textContent=!nv?'✓':'';const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu maqsad davri hali boshlanmagan',true);else toast('Xato!',true);}};const eb=row.querySelector('[data-act="edit"]');if(eb)eb.onclick=e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(g)openModal(g.goal_type,g.period,g);};row.querySelector('[data-act="delete"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Maqsadni o\'chirish',message:'Bu maqsadni o\'chirishni xohlaysizmi?'}))return;try{await apiGoalDelete(id);State.goals=State.goals.filter(x=>x.id!==id);renderGoalsView();toast('🗑 O\'chirildi');}catch(_){toast('Xato!',true);}};});}
 
 // Maqsad davri o'tib ketganmi? (frontend tekshiruvi — backend bilan bir xil mantiq)
-function isGoalPeriodPast(goalType,period){try{const now=new Date();const p=String(period||'').trim();if(!p)return false;const gt=(goalType||'').toLowerCase();if(gt==='yearly')return parseInt(p,10)<now.getFullYear();if(gt==='monthly'){const[y,m]=p.split('-').map(n=>parseInt(n,10));return(y<now.getFullYear())||(y===now.getFullYear()&&m<(now.getMonth()+1));}if(gt==='weekly'){const[ys,ws]=p.toUpperCase().split('-W');const y=parseInt(ys,10),wk=parseInt(ws,10);const iso=isoWeek(now);return(y<iso.year)||(y===iso.year&&wk<iso.week);}if(gt==='daily')return p<ymd(now);return false;}catch(_){return false;}}
+function isGoalPeriodPast(goalType,period){try{const now=new Date();const p=String(period||'').trim();if(!p)return false;const gt=(goalType||'').toLowerCase();if(gt==='yearly')return parseInt(p,10)<now.getFullYear();if(gt==='monthly'){const[y,m]=p.split('-').map(n=>parseInt(n,10));return(y<now.getFullYear())||(y===now.getFullYear()&&m<(now.getMonth()+1));}return false;}catch(_){return false;}}
 
 // Maqsad davri hali BOSHLANMAGANmi? (kelajakdagi maqsadni bajarib bo'lmaydi)
-function isGoalPeriodFuture(goalType,period){try{const now=new Date();const p=String(period||'').trim();if(!p)return false;const gt=(goalType||'').toLowerCase();if(gt==='yearly')return parseInt(p,10)>now.getFullYear();if(gt==='monthly'){const[y,m]=p.split('-').map(n=>parseInt(n,10));return(y>now.getFullYear())||(y===now.getFullYear()&&m>(now.getMonth()+1));}if(gt==='weekly'){const[ys,ws]=p.toUpperCase().split('-W');const y=parseInt(ys,10),wk=parseInt(ws,10);const iso=isoWeek(now);return(y>iso.year)||(y===iso.year&&wk>iso.week);}if(gt==='daily')return p>ymd(now);return false;}catch(_){return false;}}
+function isGoalPeriodFuture(goalType,period){try{const now=new Date();const p=String(period||'').trim();if(!p)return false;const gt=(goalType||'').toLowerCase();if(gt==='yearly')return parseInt(p,10)>now.getFullYear();if(gt==='monthly'){const[y,m]=p.split('-').map(n=>parseInt(n,10));return(y>now.getFullYear())||(y===now.getFullYear()&&m>(now.getMonth()+1));}return false;}catch(_){return false;}}
 
 // Rejani 'bajarildi' deb belgilashga to'siq: '' (yo'q) / 'past' / 'future'
 //  • kechagi/oldingi kun -> 'past'  • bugun vaqti kelmagan / kelajak kun -> 'future'
@@ -1617,11 +1611,44 @@ function planBlockReason(p){try{const now=new Date();const todayStr=ymd(now);con
 
 function moveGoalSegInd(){const ind=document.getElementById('goalSegInd');const a=document.querySelector('#goalSeg .seg-item.active');if(!a)return;ind.style.left=a.offsetLeft+'px';ind.style.width=a.offsetWidth+'px';}
 
-async function renderStats(){await loadPlansRange();const PR=State.plansRange.length?State.plansRange:State.plans;const tod=new Date();const bars=[];for(let i=6;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const c=PR.filter(p=>p.plan_date===k&&p.status==='done').length+State.goals.filter(g=>g.period===k&&g.completed).length;bars.push({d,cnt:c});}const mx=Math.max(1,...bars.map(b=>b.cnt));document.getElementById('weekBars').innerHTML=bars.map(b=>`<div class="bar-col"><div class="bar" data-v="${b.cnt}" style="height:0px"></div><div class="lb">${UZ_DOW_SHORT[(b.d.getDay()+6)%7]}</div></div>`).join('');setTimeout(()=>{document.querySelectorAll('#weekBars .bar').forEach((bar,i)=>{const h=Math.max(6,(bars[i].cnt/mx)*110);bar.style.height=h+'px';});},100);renderTrend(30);const heat=document.getElementById('heatGrid');const cells=[];for(let i=0;i<98;i++){const d=addDays(tod,-(97-i));const c=PR.filter(p=>p.plan_date===ymd(d)&&p.status==='done').length;const l=c===0?0:c<2?1:c<4?2:c<6?3:4;cells.push(`<div class="heat-cell" data-l="${l}" title="${ymd(d)}: ${c}"></div>`);}heat.innerHTML=cells.join('');const aG=State.goals;const dG=aG.filter(g=>g.completed).length;const pct=aG.length?Math.round(dG*100/aG.length):0;document.getElementById('goalDonutPill').textContent=pct+'%';const C=2*Math.PI*46;setTimeout(()=>{document.getElementById('donut').setAttribute('stroke-dashoffset',String(C*(1-pct/100)));},200);const types=['yearly','monthly','weekly','daily'];const labels=['Yillik','Oylik','Haftalik','Kunlik'];document.getElementById('goalBreakdown').innerHTML=types.map((t,i)=>{const tot=State.goals.filter(g=>g.goal_type===t).length;const dn=State.goals.filter(g=>g.goal_type===t&&g.completed).length;const p=tot?Math.round(dn*100/tot):0;return `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px"><span style="width:60px;color:var(--text-2);font-weight:600">${labels[i]}</span><div style="flex:1;height:6px;background:var(--border);border-radius:999px;overflow:hidden"><div style="width:${p}%;height:100%;background:var(--grad);border-radius:999px;transition:width 1s ease"></div></div><span style="font-weight:700;color:var(--primary);min-width:38px;text-align:right">${dn}/${tot}</span></div>`;}).join('');renderHistory();document.getElementById('stStreakDelta').textContent=Math.min(7,State.user?.streak||0);document.getElementById('stTotalDelta').textContent=PR.filter(p=>p.status==='done'&&new Date(p.plan_date)>=addDays(tod,-7)).reduce((s,p)=>s+(p.score_value||0),0);renderExtraStats(PR);}
+async function renderStats(){
+  await loadPlansRange();
+  const PR=State.plansRange.length?State.plansRange:State.plans;
+  const tod=new Date();
+  // Haftalik faollik chizig'i: FAQAT bajarilgan rejalar (kunlik maqsad tushunchasi olib tashlandi).
+  const bars=[];
+  for(let i=6;i>=0;i--){
+    const d=addDays(tod,-i);const k=ymd(d);
+    const c=PR.filter(p=>p.plan_date===k&&p.status==='done').length;
+    bars.push({d,cnt:c});
+  }
+  const mx=Math.max(1,...bars.map(b=>b.cnt));
+  document.getElementById('weekBars').innerHTML=bars.map(b=>`<div class="bar-col"><div class="bar" data-v="${b.cnt}" style="height:0px"></div><div class="lb">${UZ_DOW_SHORT[(b.d.getDay()+6)%7]}</div></div>`).join('');
+  setTimeout(()=>{document.querySelectorAll('#weekBars .bar').forEach((bar,i)=>{const h=Math.max(6,(bars[i].cnt/mx)*110);bar.style.height=h+'px';});},100);
+  renderTrend(30);
+
+  const heat=document.getElementById('heatGrid');
+  const cells=[];
+  for(let i=0;i<98;i++){const d=addDays(tod,-(97-i));const c=PR.filter(p=>p.plan_date===ymd(d)&&p.status==='done').length;const l=c===0?0:c<2?1:c<4?2:c<6?3:4;cells.push(`<div class="heat-cell" data-l="${l}" title="${ymd(d)}: ${c}"></div>`);}
+  heat.innerHTML=cells.join('');
+
+  // Maqsadlar donut + Yillik/Oylik bo'yicha taqsimot (faqat 2 tur qoldi).
+  const aG=State.goals;const dG=aG.filter(g=>g.completed).length;const pct=aG.length?Math.round(dG*100/aG.length):0;
+  document.getElementById('goalDonutPill').textContent=pct+'%';
+  const C=2*Math.PI*46;
+  setTimeout(()=>{document.getElementById('donut').setAttribute('stroke-dashoffset',String(C*(1-pct/100)));},200);
+  const types=['yearly','monthly'];const labels=['Yillik','Oylik'];
+  document.getElementById('goalBreakdown').innerHTML=types.map((t,i)=>{const tot=State.goals.filter(g=>g.goal_type===t).length;const dn=State.goals.filter(g=>g.goal_type===t&&g.completed).length;const p=tot?Math.round(dn*100/tot):0;return `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px"><span style="width:60px;color:var(--text-2);font-weight:600">${labels[i]}</span><div style="flex:1;height:6px;background:var(--border);border-radius:999px;overflow:hidden"><div style="width:${p}%;height:100%;background:var(--grad);border-radius:999px;transition:width 1s ease"></div></div><span style="font-weight:700;color:var(--primary);min-width:38px;text-align:right">${dn}/${tot}</span></div>`;}).join('');
+
+  renderHistory();
+  document.getElementById('stStreakDelta').textContent=Math.min(7,State.user?.streak||0);
+  document.getElementById('stTotalDelta').textContent=PR.filter(p=>p.status==='done'&&new Date(p.plan_date)>=addDays(tod,-7)).reduce((s,p)=>s+(p.score_value||0),0);
+  renderExtraStats(PR);
+}
 
 function renderExtraStats(PR){const el=document.getElementById('extraStats');if(!el)return;const tot=PR.length;const dn=PR.filter(p=>p.status==='done').length;const rate=tot?Math.round(dn*100/tot):0;const byDay={};PR.forEach(p=>{if(p.status==='done'){byDay[p.plan_date]=(byDay[p.plan_date]||0)+(p.score_value||0);}});const days=Object.keys(byDay);let best={d:'—',v:0};days.forEach(k=>{if(byDay[k]>best.v)best={d:k,v:byDay[k]};});const avg=days.length?Math.round(days.reduce((s,k)=>s+byDay[k],0)/days.length):0;const bestLabel=best.d!=='—'?new Date(best.d+'T00:00:00').getDate()+' '+UZ_MONTHS_SHORT[new Date(best.d+'T00:00:00').getMonth()]:'—';el.innerHTML=`<div class="stat-card"><div class="ic-bg">📈</div><div class="l">Bajarish %</div><div class="v">${rate}%</div><div class="ch">${dn}/${tot} reja (30 kun)</div></div><div class="stat-card"><div class="ic-bg">⚡</div><div class="l">O'rtacha ball</div><div class="v">${avg}</div><div class="ch">Kuniga</div></div><div class="stat-card"><div class="ic-bg">🏅</div><div class="l">Eng yaxshi kun</div><div class="v" style="font-size:18px">${bestLabel}</div><div class="ch">+${best.v} ball</div></div><div class="stat-card"><div class="ic-bg">📅</div><div class="l">Faol kunlar</div><div class="v">${days.length}</div><div class="ch">30 kun ichida</div></div>`;}
 
-function renderTrend(days){const PR=State.plansRange.length?State.plansRange:State.plans;const HB=State.habits||[];const tod=new Date();const pts=[];for(let i=days-1;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const planSc=PR.filter(p=>p.plan_date===k&&p.status==='done').reduce((s,p)=>s+(p.score_value||0),0);const goalSc=State.goals.filter(g=>g.period===k&&g.completed).length*5;const habitSc=HB.reduce((s,h)=>s+(((h.log_dates||[]).indexOf(k)>=0)?HABIT_SCORE:0),0);pts.push(planSc+goalSc+habitSc);}const W=320,H=160,P=8;const mx=Math.max(...pts,1);const step=(W-P*2)/(pts.length-1);const points=pts.map((v,i)=>[P+i*step,H-P-(v/mx)*(H-P*2)]);let line='M '+points[0][0].toFixed(1)+' '+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const x0=points[i-1][0],y0=points[i-1][1],x1=points[i][0],y1=points[i][1];const cx=(x0+x1)/2;line+=' C '+cx.toFixed(1)+' '+y0.toFixed(1)+', '+cx.toFixed(1)+' '+y1.toFixed(1)+', '+x1.toFixed(1)+' '+y1.toFixed(1);}const area=line+' L '+points[points.length-1][0].toFixed(1)+' '+H+' L '+points[0][0].toFixed(1)+' '+H+' Z';document.getElementById('trendG').innerHTML='<path class="area-path" d="'+area+'"/><path class="area-line" d="'+line+'"/>'+points.map((p,i)=>i%Math.ceil(points.length/6)===0||i===points.length-1?'<circle class="area-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3"/>':'').join('');}
+function renderTrend(days){const PR=State.plansRange.length?State.plansRange:State.plans;const HB=State.habits||[];const tod=new Date();const pts=[];for(let i=days-1;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const planSc=PR.filter(p=>p.plan_date===k&&p.status==='done').reduce((s,p)=>s+(p.score_value||0),0);const habitSc=HB.reduce((s,h)=>s+(((h.log_dates||[]).indexOf(k)>=0)?HABIT_SCORE:0),0);pts.push(planSc+habitSc);}const W=320,H=160,P=8;const mx=Math.max(...pts,1);const step=(W-P*2)/(pts.length-1);const points=pts.map((v,i)=>[P+i*step,H-P-(v/mx)*(H-P*2)]);let line='M '+points[0][0].toFixed(1)+' '+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const x0=points[i-1][0],y0=points[i-1][1],x1=points[i][0],y1=points[i][1];const cx=(x0+x1)/2;line+=' C '+cx.toFixed(1)+' '+y0.toFixed(1)+', '+cx.toFixed(1)+' '+y1.toFixed(1)+', '+x1.toFixed(1)+' '+y1.toFixed(1);}const area=line+' L '+points[points.length-1][0].toFixed(1)+' '+H+' L '+points[0][0].toFixed(1)+' '+H+' Z';document.getElementById('trendG').innerHTML='<path class="area-path" d="'+area+'"/><path class="area-line" d="'+line+'"/>'+points.map((p,i)=>i%Math.ceil(points.length/6)===0||i===points.length-1?'<circle class="area-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3"/>':'').join('');}
 
 function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_score||0;const dn=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;const list=[{ic:'🔥',nm:'Olov',ds:'3 kun streak',un:st>=3},{ic:'⚡',nm:'Yashin',ds:'7 kun streak',un:st>=7},{ic:'💎',nm:'Olmos',ds:'30 kun streak',un:st>=30},{ic:'🎯',nm:'Aniq',ds:'10 maqsad',un:dn>=10},{ic:'🏆',nm:'Chempion',ds:'100 ball',un:sc>=100},{ic:'👑',nm:'Qirol',ds:'500 ball',un:sc>=500}];document.getElementById('achs').innerHTML=list.map(a=>`<div class="ach ${a.un?'':'locked'}"><div class="ic">${a.ic}</div><div class="nm">${a.nm}</div><div class="ds">${a.ds}</div></div>`).join('');}
 
@@ -1659,7 +1686,19 @@ function confirmDialog(opts){
   });
 }
 
-function openModal(period,periodKey,goal){State.modal={period,periodKey,id:goal?goal.id:null};const lb={yearly:'yillik',monthly:'oylik',weekly:'haftalik',daily:'kunlik'};document.getElementById('modalTitle').textContent=(goal?'Tahrirlash: ':'Yangi ')+lb[period]+' maqsad';document.getElementById('mTitle').value=goal?goal.title:'';document.getElementById('mDesc').value=goal?goal.description||'':'';document.getElementById('modalBack').classList.add('show');setTimeout(()=>document.getElementById('mTitle').focus(),300);}
+function openModal(period,periodKey,goal){
+  // Eski (yashirilgan) `weekly`/`daily` yozuvlarni tahrirlashga urinilsa —
+  // avtomatik yillikga tushamiz (foydalanuvchi bunday maqsadni ko'rmaydi
+  // ham, lekin himoya sifatida).
+  if(period!=='yearly'&&period!=='monthly'){period='yearly';periodKey=String(new Date().getFullYear());}
+  State.modal={period,periodKey,id:goal?goal.id:null};
+  const lb={yearly:'yillik',monthly:'oylik'};
+  document.getElementById('modalTitle').textContent=(goal?'Tahrirlash: ':'Yangi ')+lb[period]+' maqsad';
+  document.getElementById('mTitle').value=goal?goal.title:'';
+  document.getElementById('mDesc').value=goal?goal.description||'':'';
+  document.getElementById('modalBack').classList.add('show');
+  setTimeout(()=>document.getElementById('mTitle').focus(),300);
+}
 function closeModal(){document.getElementById('modalBack').classList.remove('show');}
 async function saveModal(){const t=document.getElementById('mTitle').value.trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const d=document.getElementById('mDesc').value.trim();try{if(State.modal.id){const ng=await apiGoalUpdate(State.modal.id,{title:t,description:d||null});const idx=State.goals.findIndex(g=>g.id===State.modal.id);if(idx>=0)State.goals[idx]={...State.goals[idx],...ng};toast('✓ Yangilandi');}else{const pl={title:t,description:d||null,goal_type:State.modal.period,period:State.modal.periodKey};const ng=await apiGoalCreate(pl);State.goals.push(ng);toast('✨ Maqsad qo\'shildi');}closeModal();renderGoalsView();setText('msGoals',State.goals.length);}catch(e){toast('Xato: '+e.message,true);}}
 
@@ -1735,7 +1774,16 @@ async function savePlanModal(){
   }catch(err){console.warn('post-save refresh',err);}
 }
 
-function fabAction(){const ap=document.querySelector('.page.active').dataset.page;if(ap==='home'){openPlanModal(null);return;}if(ap==='goals'){let pk;if(State.goalPeriod==='yearly')pk=String(State.selectedYear);else if(State.goalPeriod==='monthly')pk=State.selectedYear+'-'+pad(State.selectedMonth+1);else if(State.goalPeriod==='weekly')pk=weekKey(addDays(new Date(),State.weekOffset*7));else pk=ymd(State.selectedDate);openModal(State.goalPeriod,pk);return;}}
+function fabAction(){
+  const ap=document.querySelector('.page.active').dataset.page;
+  if(ap==='home'){openPlanModal(null);return;}
+  if(ap==='goals'){
+    const gp=(State.goalPeriod==='monthly')?'monthly':'yearly';
+    const pk=(gp==='yearly')?String(State.selectedYear):(State.selectedYear+'-'+pad(State.selectedMonth+1));
+    openModal(gp,pk);
+    return;
+  }
+}
 
 function updateFabVisibility(){/* inline add buttons now live inside sections */}
 
@@ -1746,7 +1794,18 @@ function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();con
 document.addEventListener('DOMContentLoaded',()=>{
   document.documentElement.setAttribute('data-theme',State.theme);applyMode();initUser();renderThemes();
   document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>switchPage(n.dataset.nav));
-  const _ap=document.getElementById('addPlanBtn');if(_ap)_ap.onclick=e=>{ripple(e);openPlanModal(null);};document.querySelectorAll('.add-goal-trigger').forEach(b=>{b.onclick=e=>{ripple(e);const gp=b.dataset.gp||State.goalPeriod;let pk;if(gp==='yearly')pk=String(State.selectedYear);else if(gp==='monthly')pk=State.selectedYear+'-'+pad(State.selectedMonth+1);else if(gp==='weekly')pk=weekKey(addDays(new Date(),State.weekOffset*7));else pk=ymd(State.selectedDate);openModal(gp,pk);};});
+  const _ap=document.getElementById('addPlanBtn');
+  if(_ap)_ap.onclick=e=>{ripple(e);openPlanModal(null);};
+  document.querySelectorAll('.add-goal-trigger').forEach(b=>{
+    b.onclick=e=>{
+      ripple(e);
+      // Faqat yillik/oylik. Eski `weekly`/`daily` data-gp qiymatlari kelsa yillikga tushamiz.
+      let gp=b.dataset.gp||State.goalPeriod;
+      if(gp!=='yearly'&&gp!=='monthly')gp='yearly';
+      const pk=(gp==='yearly')?String(State.selectedYear):(State.selectedYear+'-'+pad(State.selectedMonth+1));
+      openModal(gp,pk);
+    };
+  });
   document.getElementById('modeBtn').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
   // Settings (sozlamalar) tugmasi va profil rasmi -> Profil sahifasi
   const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
@@ -1770,18 +1829,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _ns=document.getElementById('nSave');if(_ns)_ns.onclick=saveNameModal;
   const _nmb=document.getElementById('nameModalBack');if(_nmb)_nmb.onclick=e=>{if(e.target.id==='nameModalBack')closeNameModal();};
   document.querySelectorAll('#goalSeg .seg-item').forEach(s=>s.onclick=()=>{document.querySelectorAll('#goalSeg .seg-item').forEach(x=>x.classList.remove('active'));s.classList.add('active');State.goalPeriod=s.dataset.gp;moveGoalSegInd();renderGoalsView();});
-  document.querySelectorAll('#dvToggle .dv-toggle-item').forEach(it=>it.onclick=()=>{State.dailyView=it.dataset.dv;renderDaily();});
-  document.getElementById('diaryPrev').onclick=()=>{State.diaryWeekStart=addDays(State.diaryWeekStart||startOfWeek(new Date()),-7);renderDiary();};
-  document.getElementById('diaryNext').onclick=()=>{State.diaryWeekStart=addDays(State.diaryWeekStart||startOfWeek(new Date()),7);renderDiary();};
-  document.getElementById('calPrev').onclick=()=>{State.calMonth=new Date(State.calMonth.getFullYear(),State.calMonth.getMonth()-1,1);renderCalendar();};
-  document.getElementById('calNext').onclick=()=>{State.calMonth=new Date(State.calMonth.getFullYear(),State.calMonth.getMonth()+1,1);renderCalendar();};
-  document.getElementById('weekPrev').onclick=()=>{State.weekOffset--;renderWeekly();};
-  document.getElementById('weekNext').onclick=()=>{State.weekOffset++;renderWeekly();};
+  // dvToggle / diaryPrev / diaryNext / calPrev / calNext / weekPrev / weekNext
+  // / dayModalBack handlerlari olib tashlandi — kunlik/haftalik maqsad turlari yo'q.
   document.getElementById('mCancel').onclick=closeModal;document.getElementById('mSave').onclick=saveModal;
   document.getElementById('modalBack').onclick=e=>{if(e.target.id==='modalBack')closeModal();};
   document.getElementById('pCancel').onclick=closePlanModal;document.getElementById('pSave').onclick=savePlanModal;
   document.getElementById('planModalBack').onclick=e=>{if(e.target.id==='planModalBack')closePlanModal();};
-  document.getElementById('dayModalBack').onclick=e=>{if(e.target.id==='dayModalBack')document.getElementById('dayModalBack').classList.remove('show');};
   document.getElementById('darkToggle').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
   document.getElementById('notifToggle').onclick=async e=>{const el=e.currentTarget;el.classList.toggle('on');const on=el.classList.contains('on');try{await apiProfileUpdate(null,on);toast(on?'🔔 Bildirishnomalar yoqildi':'🔕 Bildirishnomalar o\'chirildi');}catch(_){el.classList.toggle('on');toast('Xato!',true);}};
   document.getElementById('animToggle').onclick=e=>e.currentTarget.classList.toggle('on');
