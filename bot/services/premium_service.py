@@ -176,9 +176,11 @@ async def grant_bonus_premium(
     days: int,
     source: str = "trial",
     label: str = "Bonus",
+    promocode: Optional[str] = None,
 ) -> Optional[Subscription]:
     """
-    Tarif katalogiga bog'lanmagan bonus premium beradi (trial yoki referral invitee).
+    Tarif katalogiga bog'lanmagan bonus premium beradi (trial, referral invitee
+    yoki `-` turidagi bepul promokod).
     Premium muddatini ADDITIV uzaytiradi (mavjud premium ustiga qo'shiladi).
     """
     if days <= 0:
@@ -187,13 +189,22 @@ async def grant_bonus_premium(
     base = user.premium_until if (user.premium_until and user.premium_until > now) else now
     expires_at = base + timedelta(days=days)
 
+    # Eski faol obunalarni nofaol qilamiz (joriy bittasi bo'lsin)
+    old = (await session.execute(
+        select(Subscription).where(
+            and_(Subscription.user_id == user.id, Subscription.is_active == True)  # noqa: E712
+        )
+    )).scalars().all()
+    for s in old:
+        s.is_active = False
+
     sub = Subscription(
         user_id=user.id,
-        plan=source,            # "trial" | "referral_invitee"
+        plan=source,            # "trial" | "referral_invitee" | "promo_free"
         days=days,
         price=0,
         source=source,
-        promocode=None,
+        promocode=promocode,
         started_at=now,
         expires_at=expires_at,
         is_active=True,
@@ -230,6 +241,7 @@ class PromoResult:
     reason: str = ""
     plan_override: Optional[str] = None
     bonus_days: int = 0
+    is_free: bool = False          # True (`-`) = to'lovsiz avtomatik; False (`+`) = sotib olish + bonus
     promo: Optional[Promocode] = None
 
 
@@ -264,6 +276,7 @@ async def validate_promocode(session: AsyncSession, code: str) -> PromoResult:
         reason="db_code",
         plan_override=promo.plan,
         bonus_days=promo.bonus_days or 0,
+        is_free=bool(promo.is_free),
         promo=promo,
     )
 
@@ -350,8 +363,13 @@ async def create_promocode(
     max_uses: int = 0,
     created_by: Optional[int] = None,
     expires_at: Optional[datetime] = None,
+    is_free: bool = False,
 ) -> Optional[Promocode]:
-    """Yangi promokod yaratadi (admin). Mavjud bo'lsa None qaytaradi."""
+    """Yangi promokod yaratadi (admin). Mavjud bo'lsa None qaytaradi.
+
+    `is_free=True` (`-`) → to'lovsiz avtomatik `bonus_days` kun premium.
+    `is_free=False` (`+`) → foydalanuvchi obuna sotib oladi, `bonus_days` bonus.
+    """
     norm = code.strip()
     existing = await session.execute(
         select(Promocode).where(func.lower(Promocode.code) == norm.lower())
@@ -365,6 +383,7 @@ async def create_promocode(
         max_uses=max_uses,
         created_by=created_by,
         expires_at=expires_at,
+        is_free=is_free,
     )
     session.add(promo)
     await session.commit()

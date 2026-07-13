@@ -88,6 +88,11 @@ PAYMENT_ORDER_NEW_COLUMNS = [
     ("pay_message_id", "BIGINT"),
 ]
 
+# promocodes jadvali uchun yangi ustunlar.
+PROMOCODE_NEW_COLUMNS = [
+    ("is_free", "BOOLEAN DEFAULT FALSE"),
+]
+
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -126,6 +131,15 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip payment_orders.{col}: {e}")
+
+    # promocodes uchun yangi ustunlar (is_free — `+`/`-` turi).
+    for col, ddl in PROMOCODE_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE promocodes ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip promocodes.{col}: {e}")
 
     # habits uchun yangi ustunlar (frequency/weekdays/duration/start_date...).
     # Jadval shu transaksiyada create_all bilan yaratilgani uchun yangi DB'da
