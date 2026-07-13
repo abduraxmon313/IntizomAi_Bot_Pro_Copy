@@ -203,6 +203,7 @@ async def create_habit(
     duration_type: Optional[str] = None,
     target_days: Optional[int] = None,
     reminder_time: Optional[str] = None,
+    created_by_user_id: Optional[int] = None,
 ) -> Habit:
     res = await session.execute(
         select(func.coalesce(func.max(Habit.sort_order), 0)).where(Habit.user_id == user.id)
@@ -226,6 +227,7 @@ async def create_habit(
         start_date=_today(),
         sort_order=max_order + 1,
         archived=False,
+        created_by_user_id=created_by_user_id,
     )
     session.add(habit)
     await session.commit()
