@@ -7,6 +7,8 @@ from database.db import AsyncSessionLocal
 from webapp.security import resolve_telegram_id
 from bot.services.user_service import get_user_by_telegram_id
 from bot.services.goal_service import (
+    ALLOWED_GOAL_TYPES,
+    InvalidGoalTypeError,
     get_user_goals,
     create_goal,
     update_goal,
@@ -47,17 +49,14 @@ async def get_session():
 def _is_period_past(goal_type: str, period: str) -> bool:
     """
     Maqsad davri o'tib ketganmi? (o'tgan davrni belgilab bo'lmaydi)
-      • yearly:  period = "2025"           -> joriy yildan kichik bo'lsa o'tgan
-      • monthly: period = "2025-05"        -> joriy oydan oldin bo'lsa o'tgan
-      • weekly:  period = "2025-W22"        -> joriy haftadan oldin bo'lsa o'tgan
-      • daily:   period = "2025-05-29"      -> bugundan oldin bo'lsa o'tgan
+      • yearly:  period = "2025"      -> joriy yildan kichik bo'lsa o'tgan
+      • monthly: period = "2025-05"   -> joriy oydan oldin bo'lsa o'tgan
     Format noto'g'ri/aniqlanmasa — ruxsat beramiz (False), foydalanuvchini bloklamaymiz.
     """
-    from datetime import datetime, date
+    from datetime import datetime
     from bot.config import TIMEZONE
     try:
-        now = datetime.now(TIMEZONE)
-        today = now.date()
+        today = datetime.now(TIMEZONE).date()
         gt = (goal_type or "").lower()
         p = (period or "").strip()
         if not p:
@@ -71,17 +70,6 @@ def _is_period_past(goal_type: str, period: str) -> bool:
             y, m = int(y), int(m)
             return (y, m) < (today.year, today.month)
 
-        if gt == "weekly":
-            # ISO hafta: "YYYY-Www"
-            y_str, w_str = p.upper().split("-W")
-            y, w = int(y_str), int(w_str)
-            iso = today.isocalendar()
-            return (y, w) < (iso[0], iso[1])
-
-        if gt == "daily":
-            d = date.fromisoformat(p)
-            return d < today
-
         return False
     except Exception:
         return False
@@ -91,17 +79,14 @@ def _is_period_future(goal_type: str, period: str) -> bool:
     """
     Maqsad davri hali BOSHLANMAGANmi? (kelajakdagi davrni "bajarildi" deb
     belgilab bo'lmaydi — vaqti kelmagan).
-      • yearly:  "2027"          -> joriy yildan katta bo'lsa kelajak
-      • monthly: "2026-07"       -> joriy oydan keyin bo'lsa kelajak
-      • weekly:  "2026-W30"      -> joriy haftadan keyin bo'lsa kelajak
-      • daily:   "2026-06-10"    -> bugundan keyin bo'lsa kelajak
+      • yearly:  "2027"       -> joriy yildan katta bo'lsa kelajak
+      • monthly: "2026-07"    -> joriy oydan keyin bo'lsa kelajak
     Format noto'g'ri/aniqlanmasa — bloklamaymiz (False).
     """
-    from datetime import datetime, date
+    from datetime import datetime
     from bot.config import TIMEZONE
     try:
-        now = datetime.now(TIMEZONE)
-        today = now.date()
+        today = datetime.now(TIMEZONE).date()
         gt = (goal_type or "").lower()
         p = (period or "").strip()
         if not p:
@@ -114,16 +99,6 @@ def _is_period_future(goal_type: str, period: str) -> bool:
             y, m = p.split("-")[:2]
             y, m = int(y), int(m)
             return (y, m) > (today.year, today.month)
-
-        if gt == "weekly":
-            y_str, w_str = p.upper().split("-W")
-            y, w = int(y_str), int(w_str)
-            iso = today.isocalendar()
-            return (y, w) > (iso[0], iso[1])
-
-        if gt == "daily":
-            d = date.fromisoformat(p)
-            return d > today
 
         return False
     except Exception:
@@ -162,6 +137,19 @@ async def add_goal(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # Faqat yillik va oylik maqsadlar ruxsat etilgan.
+    # Eski kunlik/haftalik turlari olib tashlandi — takroriy niyatlar Habits'ga,
+    # bir martalik ishlar Plans'ga ko'chirilgan.
+    if (body.goal_type or "").strip().lower() not in ALLOWED_GOAL_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Faqat yillik yoki oylik maqsad yaratish mumkin. "
+                "Kunlik takroriy niyatni Odat (Habit), bir martalik ishni Reja (Plan) sifatida qo'shing."
+            ),
+        )
+
     # Free-tier maqsad limiti (premium — cheksiz)
     from bot.services.premium_service import check_goal_limit
     lim = await check_goal_limit(session, user, adding=1)
@@ -173,9 +161,12 @@ async def add_goal(
                 "Cheksiz maqsadlar uchun Premium oling."
             ),
         )
-    goal = await create_goal(
-        session, user, body.title, body.description, body.goal_type, body.period
-    )
+    try:
+        goal = await create_goal(
+            session, user, body.title, body.description, body.goal_type, body.period
+        )
+    except InvalidGoalTypeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return GoalOut(
         id=goal.id,
         title=goal.title,
