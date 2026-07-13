@@ -104,6 +104,7 @@ async def create_plan_single(
     scheduled_time: str | None,
     plan_date_str: str | None,
     score_value: int = 5,
+    created_by_user_id: int | None = None,
 ) -> Plan:
     if plan_date_str:
         try:
@@ -119,6 +120,7 @@ async def create_plan_single(
         scheduled_time=scheduled_time,
         plan_date=pd,
         score_value=score_value,
+        created_by_user_id=created_by_user_id,
     )
     session.add(plan)
     await session.commit()

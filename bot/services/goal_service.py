@@ -21,14 +21,27 @@ async def create_goal(
     description: Optional[str],
     goal_type: str,
     period: str,
+    created_by_user_id: Optional[int] = None,
 ) -> Goal:
+    """
+    Yangi maqsad yaratadi. Faqat `yearly` va `monthly` turlari ruxsat etilgan.
+    Boshqasi kelsa `InvalidGoalTypeError` ko'tariladi (route 400 qaytaradi).
+
+    `created_by_user_id` — kim yaratgani (Do'stlar guruhida). NULL = o'zi.
+    """
+    gt = (goal_type or "").strip().lower()
+    if gt not in ALLOWED_GOAL_TYPES:
+        raise InvalidGoalTypeError(
+            f"Maqsad turi noto'g'ri: {goal_type!r}. Faqat yillik yoki oylik maqsad yaratish mumkin."
+        )
     goal = Goal(
         user_id=user.id,
         title=title,
         description=description,
-        goal_type=goal_type,
+        goal_type=gt,
         period=period,
         completed=False,
+        created_by_user_id=created_by_user_id,
     )
     session.add(goal)
     await session.commit()

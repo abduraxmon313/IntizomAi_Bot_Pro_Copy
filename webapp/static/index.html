@@ -263,6 +263,38 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .btn{flex:1;padding:14px;border:none;border-radius:14px;background:var(--grad);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:var(--glow);transition:transform .2s}
 .btn:active{transform:scale(.97)}
 .btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:none}
+.btn-danger{background:var(--danger,#ef4444);color:#fff;border:none}
+.btn-danger:active{transform:scale(.97)}
+
+/* Do'stlar (Friends) moduli */
+.friends-actions{display:flex;gap:8px;margin-top:2px}
+.friends-actions .btn{flex:1;font-size:13px;padding:11px 10px}
+.friends-back{background:transparent;border:none;padding:6px;margin-right:4px}
+.grp-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:12px}
+.grp-card:active{transform:scale(.98)}
+.grp-card .ic{width:44px;height:44px;border-radius:12px;background:var(--grad-soft);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.grp-card .body{flex:1;min-width:0}
+.grp-card .nm{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp-card .sub{font-size:12px;color:var(--text-2);margin-top:2px}
+.grp-card .badge-owner{font-size:10px;font-weight:800;color:#fff;background:var(--grad);padding:2px 8px;border-radius:999px;margin-left:6px}
+.mem-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:11px}
+.mem-card:active{transform:scale(.98)}
+.mem-card.me{border-color:var(--primary);background:var(--primary-soft)}
+.mem-card .av{width:38px;height:38px;border-radius:12px;background:var(--grad-soft);display:grid;place-items:center;font-size:16px;font-weight:800;color:#fff;background-image:var(--grad);flex-shrink:0}
+.mem-card .body{flex:1;min-width:0}
+.mem-card .nm{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mem-card .st{display:flex;gap:8px;font-size:11px;color:var(--text-2);margin-top:3px;flex-wrap:wrap}
+.mem-card .st .chip{padding:2px 7px;border-radius:999px;background:var(--bg-2);font-weight:600}
+.mem-card .st .chip.ok{color:var(--primary);background:var(--primary-soft)}
+.mem-card .st .chip.mine{color:#fff;background:var(--grad)}
+.mem-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;font-size:13px}
+.mem-item .cbx{width:20px;height:20px;border-radius:6px;border:2px solid var(--text-3);display:grid;place-items:center;flex-shrink:0;font-size:11px;font-weight:800}
+.mem-item .cbx.done{background:var(--grad);border-color:transparent;color:#fff}
+.mem-item.done .ttl{text-decoration:line-through;color:var(--text-2)}
+.mem-item .ttl{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mem-item .meta{font-size:10.5px;color:var(--text-3);font-weight:600}
+.perm-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px}
+.perm-row .nm{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);z-index:300;opacity:0;transition:all .35s cubic-bezier(.22,1,.36,1)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .confirm-back{position:fixed;inset:0;z-index:650;background:rgba(2,6,23,.62);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s ease}
@@ -760,6 +792,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
   <div class="hdr-actions">
     <button class="mode-btn" id="modeBtn" aria-label="Rejim"><span class="ic" id="modeIcon">☀️</span></button>
+    <button class="mode-btn" id="statsBtn" aria-label="Statistika"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></button>
     <button class="mode-btn" id="settingsBtn" aria-label="Sozlamalar"><svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
   </div>
 </div>
@@ -965,6 +998,108 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="setting"><div class="ic">✨</div><div class="body"><div class="ttl">Animatsiyalar</div><div class="dsc">Yumshoq harakatlar</div></div><div class="toggle on" id="animToggle"><i></i></div></div>
 <div class="setting"><div class="ic">ℹ️</div><div class="body"><div class="ttl">Versiya</div><div class="dsc">Intizom AI v2.1 Pro</div></div></div>
 </section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- DO'STLAR (Friends / Groups)                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="page" data-page="friends">
+  <!-- Groups list view -->
+  <div id="friendsListView">
+    <div class="hdr"><div class="hdr-greet"><h1>Do'stlar 👥</h1><p>Jamoa bo'lib intizom yig'ing</p></div></div>
+    <div id="friendsGroupsList"></div>
+    <button class="add-btn ripple" id="friendsCreateBtn" type="button" style="margin-top:14px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Yangi guruh</span>
+    </button>
+  </div>
+
+  <!-- Group detail view -->
+  <div id="friendsGroupView" class="hidden">
+    <div class="hdr">
+      <button class="mode-btn friends-back" id="friendsGroupBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsGroupName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsGroupSub">a'zolar</p></div>
+      <button class="mode-btn" id="friendsGroupSettings" aria-label="Sozlamalar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+    </div>
+    <div class="friends-actions">
+      <button class="btn friends-invite" id="friendsInviteBtn" type="button">🔗 Do'st taklif qilish</button>
+      <button class="btn btn-ghost friends-perms" id="friendsPermsBtn" type="button">🛡 Ruxsatlar</button>
+    </div>
+    <div id="friendsMembersList" style="margin-top:14px"></div>
+  </div>
+
+  <!-- Member detail view -->
+  <div id="friendsMemberView" class="hidden">
+    <div class="hdr">
+      <button class="mode-btn friends-back" id="friendsMemberBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsMemberName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsMemberSub">bugungi holat</p></div>
+    </div>
+    <div id="friendsMemberContent"></div>
+  </div>
+</section>
+
+<!-- Friends: yangi guruh yaratish -->
+<div class="modal-back" id="groupCreateBack">
+  <div class="modal">
+    <div class="grab"></div>
+    <h3>Yangi guruh</h3>
+    <div class="fld"><label>Guruh nomi</label><input class="in" id="gcName" placeholder="Masalan: Oila / Ish jamoasi" maxlength="80"></div>
+    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea class="in" id="gcDesc" rows="2" maxlength="300" placeholder="Guruh haqida bir necha so'z"></textarea></div>
+    <div class="row gap-12 mt-8">
+      <button class="btn btn-ghost" id="gcCancel">Bekor</button>
+      <button class="btn" id="gcSave">Yaratish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Friends: guruh sozlamalari (owner uchun rename / delete) -->
+<div class="modal-back" id="groupEditBack">
+  <div class="modal">
+    <div class="grab"></div>
+    <h3>Guruh sozlamalari</h3>
+    <div class="fld"><label>Guruh nomi</label><input class="in" id="geName" maxlength="80"></div>
+    <div class="fld"><label>Tavsif</label><textarea class="in" id="geDesc" rows="2" maxlength="300"></textarea></div>
+    <div class="row gap-12 mt-8">
+      <button class="btn btn-ghost" id="geCancel">Bekor</button>
+      <button class="btn" id="geSave">Saqlash</button>
+    </div>
+    <button class="btn btn-danger" id="geDelete" style="margin-top:10px;width:100%">🗑 Guruhni o'chirish</button>
+    <button class="btn btn-ghost" id="geLeave" style="margin-top:6px;width:100%">🚪 Guruhdan chiqish</button>
+  </div>
+</div>
+
+<!-- Friends: ruxsatlar -->
+<div class="modal-back" id="permsBack">
+  <div class="modal">
+    <div class="grab"></div>
+    <h3>Ruxsatlar 🛡</h3>
+    <p style="font-size:12.5px;color:var(--text-2);margin:2px 0 12px">Boshqalarga o'zingiz uchun reja, maqsad va odat yaratishga ruxsat bering.</p>
+    <div id="permsGrantsOut"></div>
+    <h3 style="margin-top:16px;font-size:14px">Menga ruxsat berganlar</h3>
+    <p style="font-size:12px;color:var(--text-3);margin:2px 0 8px">Bu odamlar sizga ular uchun reja/maqsad/odat yaratishga ruxsat berdi.</p>
+    <div id="permsGrantsIn"></div>
+    <div class="row gap-12 mt-8">
+      <button class="btn" id="permsClose">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Friends: a'zo uchun yangi item (reja/maqsad/odat) -->
+<div class="modal-back" id="forMemberBack">
+  <div class="modal">
+    <div class="grab"></div>
+    <h3 id="forMemberTitle">A'zo uchun yangi</h3>
+    <div class="fld" id="fmTypeFld"><label>Turi</label><div class="hseg" id="fmTypeSeg"><div class="hseg-item active" data-fm="plan">Reja</div><div class="hseg-item" data-fm="goal">Maqsad</div><div class="hseg-item" data-fm="habit">Odat</div></div></div>
+    <div class="fld"><label>Sarlavha</label><input class="in" id="fmTitle" maxlength="200" placeholder="Nima qilish kerak?"></div>
+    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea class="in" id="fmDesc" rows="2" maxlength="500"></textarea></div>
+    <div class="fld" id="fmTimeFld"><label>Vaqt (ixtiyoriy, HH:MM)</label><input class="in" id="fmTime" placeholder="06:00" maxlength="5"></div>
+    <div class="fld hidden" id="fmGoalTypeFld"><label>Maqsad turi</label><div class="hseg" id="fmGoalTypeSeg"><div class="hseg-item active" data-gt="yearly">Yillik</div><div class="hseg-item" data-gt="monthly">Oylik</div></div></div>
+    <div class="row gap-12 mt-8">
+      <button class="btn btn-ghost" id="fmCancel">Bekor</button>
+      <button class="btn" id="fmSave">Yaratish</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <!-- Achievement unlock modal -->
@@ -1046,7 +1181,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <div class="nav-item" data-nav="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Maqsad</span></div>
 <div class="nav-ai" data-nav="ai" aria-label="AI"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l1.9 4.8a2.5 2.5 0 0 0 1.4 1.4L20 10.6l-4.7 1.9a2.5 2.5 0 0 0-1.4 1.4L12 18.7l-1.9-4.8a2.5 2.5 0 0 0-1.4-1.4L4 10.6l4.7-1.9a2.5 2.5 0 0 0 1.4-1.4L12 2.5z" opacity=".95"/><circle cx="19" cy="5" r="1.4" opacity=".85"/><circle cx="5.5" cy="18.5" r="1" opacity=".7"/></svg></div>
 <div class="nav-item" data-nav="habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Odat</span></div>
-<div class="nav-item" data-nav="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Statistika</span></div>
+<div class="nav-item" data-nav="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Do'stlar</span></div>
 </nav>
 
 <div class="modal-back" id="modalBack"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3><div class="fld"><label>Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh..."></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel">Bekor</button><button class="btn" id="mSave">Saqlash</button></div></div></div>
@@ -1089,7 +1224,14 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 <script>
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',dailyView:'week',selectedDate:new Date(),diaryWeekStart:null,calMonth:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),weekOffset:0,modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light'};
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light',
+  // Do'stlar (Friends) moduli
+  friendsView:'list',       // 'list' | 'group' | 'member'
+  groups:[],
+  currentGroup:null,        // {id,name,description,invite_code,is_owner,members:[...]}
+  currentMember:null,       // {member:{...}, plans:[...], habits:[...], goals:[...], can_manage}
+  forMemberModal:{groupId:null,userId:null,type:'plan',goalType:'yearly'},
+};
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const UZ_MONTHS_SHORT=['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -1179,6 +1321,21 @@ async function loadPlansRange(){try{const tod=new Date();const df=ymd(addDays(to
 const apiGoalCreate=p=>api('/api/webapp/goals',{method:'POST',body:JSON.stringify(p)});
 const apiGoalUpdate=(id,p)=>api('/api/webapp/goals/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiGoalDelete=id=>api('/api/webapp/goals/'+id,{method:'DELETE'});
+
+// ── Do'stlar (Friends) API helperlar ─────────────────────────
+const apiGroupsList = ()=>api('/api/webapp/friends/groups');
+const apiGroupCreate = (name,description)=>api('/api/webapp/friends/groups',{method:'POST',body:JSON.stringify({name,description:description||null})});
+const apiGroupGet = (id)=>api('/api/webapp/friends/groups/'+id);
+const apiGroupPatch = (id,body)=>api('/api/webapp/friends/groups/'+id,{method:'PATCH',body:JSON.stringify(body)});
+const apiGroupDelete = (id)=>api('/api/webapp/friends/groups/'+id,{method:'DELETE'});
+const apiGroupLeave = (id)=>api('/api/webapp/friends/groups/'+id+'/leave',{method:'POST'});
+const apiGroupJoin = (code)=>api('/api/webapp/friends/join/'+encodeURIComponent(code),{method:'POST'});
+const apiMemberView = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid);
+const apiPerms = (gid)=>api('/api/webapp/friends/groups/'+gid+'/permissions');
+const apiPermsSet = (gid,granteeId,canManage)=>api('/api/webapp/friends/groups/'+gid+'/permissions/'+granteeId,{method:'PUT',body:JSON.stringify({can_manage:!!canManage})});
+const apiForMemberPlan = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/plans',{method:'POST',body:JSON.stringify(body)});
+const apiForMemberGoal = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/goals',{method:'POST',body:JSON.stringify(body)});
+const apiForMemberHabit = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/habits',{method:'POST',body:JSON.stringify(body)});
 const apiPlanCreate=p=>api('/api/webapp/plans',{method:'POST',body:JSON.stringify(p)});
 const apiPlanUpdate=(id,p)=>api('/api/webapp/plans/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiPlanDelete=id=>api('/api/webapp/plans/'+id,{method:'DELETE'});
@@ -1739,7 +1896,294 @@ function fabAction(){const ap=document.querySelector('.page.active').dataset.pag
 
 function updateFabVisibility(){/* inline add buttons now live inside sections */}
 
-function switchPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));if(n==='stats'){renderStats();loadStatsHabits();applyStatsView();}if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}if(n==='habits')loadHabitsAPI();if(n==='ai'){loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();loadHomeHabits();}if(n==='profile'){renderAchs();loadProfileMeta();}updateFabVisibility();if(navigator.vibrate)navigator.vibrate(10);}
+// ═══════════════════════════════════════════════════════════════
+// DO'STLAR (Friends) — render + wiring
+// ═══════════════════════════════════════════════════════════════
+function _showFriendsView(v){
+  State.friendsView=v;
+  document.getElementById('friendsListView').classList.toggle('hidden',v!=='list');
+  document.getElementById('friendsGroupView').classList.toggle('hidden',v!=='group');
+  document.getElementById('friendsMemberView').classList.toggle('hidden',v!=='member');
+}
+
+async function loadGroupsAPI(){
+  try{const d=await apiGroupsList();State.groups=d.groups||[];}
+  catch(e){console.warn('groups',e);State.groups=[];}
+  renderGroupsList();
+}
+
+function renderGroupsList(){
+  _showFriendsView('list');
+  const el=document.getElementById('friendsGroupsList');
+  if(!el)return;
+  if(!State.groups.length){
+    el.innerHTML=emptyState('👥','Hozircha guruh yo\'q','Yangi guruh yarating va do\'stlaringizni taklif qiling');
+    return;
+  }
+  el.innerHTML=State.groups.map(g=>`
+    <div class="grp-card" data-gid="${g.id}">
+      <div class="ic">👥</div>
+      <div class="body">
+        <div class="nm">${esc(g.name)} ${g.is_owner?'<span class="badge-owner">EGA</span>':''}</div>
+        <div class="sub">${g.member_count} a'zo${g.description?' · '+esc(g.description):''}</div>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>`).join('');
+  el.querySelectorAll('.grp-card').forEach(c=>c.onclick=()=>openGroup(+c.dataset.gid));
+}
+
+async function openGroup(gid){
+  let d;try{d=await apiGroupGet(gid);}catch(e){toast('Guruh yuklanmadi',true);return;}
+  State.currentGroup=d;
+  _showFriendsView('group');
+  document.getElementById('friendsGroupName').textContent=d.name;
+  document.getElementById('friendsGroupSub').textContent=(d.members||[]).length+' a\'zo · kod: '+d.invite_code;
+  document.getElementById('friendsGroupSettings').style.display=d.is_owner?'':'none';
+  renderGroupMembers();
+}
+
+function _sumChips(s){
+  const chips=[];
+  if(s.plans_total)chips.push(`<span class="chip ${s.plans_done>=s.plans_total?'ok':''}">📅 ${s.plans_done}/${s.plans_total}</span>`);
+  if(s.habits_total)chips.push(`<span class="chip ${s.habits_done_today>=s.habits_total?'ok':''}">🔁 ${s.habits_done_today}/${s.habits_total}</span>`);
+  if(s.goals_total)chips.push(`<span class="chip ${s.goals_done>=s.goals_total?'ok':''}">🎯 ${s.goals_done}/${s.goals_total}</span>`);
+  if(!chips.length)chips.push('<span class="chip">bugun bo\'sh</span>');
+  return chips.join('');
+}
+
+function renderGroupMembers(){
+  const el=document.getElementById('friendsMembersList');
+  const g=State.currentGroup;
+  if(!el||!g)return;
+  el.innerHTML=(g.members||[]).map(m=>{
+    const initial=(m.name||'?').trim().charAt(0).toUpperCase();
+    const role=m.role==='owner'?' <span class="chip mine" style="padding:1px 6px">EGA</span>':'';
+    return `<div class="mem-card ${m.is_me?'me':''}" data-uid="${m.user_id}">
+      <div class="av">${initial}</div>
+      <div class="body">
+        <div class="nm">${esc(m.name)}${m.is_me?' (siz)':''}${role}</div>
+        <div class="st">${_sumChips(m.summary||{})} <span class="chip">🔥 ${m.streak||0}</span></div>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.mem-card').forEach(c=>c.onclick=()=>openMember(+c.dataset.uid));
+}
+
+async function openMember(uid){
+  const g=State.currentGroup;if(!g)return;
+  let d;try{d=await apiMemberView(g.id,uid);}catch(e){toast('A\'zo yuklanmadi',true);return;}
+  State.currentMember=d;
+  _showFriendsView('member');
+  document.getElementById('friendsMemberName').textContent=(d.member.name||'—')+(d.member.is_me?' (siz)':'');
+  document.getElementById('friendsMemberSub').textContent='🔥 '+(d.member.streak||0)+' kun · ⭐ '+(d.member.total_score||0)+' ball';
+  renderMemberContent();
+}
+
+function renderMemberContent(){
+  const d=State.currentMember;if(!d)return;
+  const wrap=document.getElementById('friendsMemberContent');
+  const canManage=d.can_manage&&!d.member.is_me;
+  const plans=d.plans||[],habits=d.habits||[],goals=d.goals||[];
+
+  const plansHtml=plans.length?plans.map(p=>{
+    const done=p.status==='done';const tag=p.scheduled_time?`<span class="meta">${esc(p.scheduled_time)}</span>`:'';
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(p.title)}</div>${tag}</div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Bugun reja yo\'q</div>';
+
+  const habitsHtml=habits.length?habits.map(h=>{
+    const done=h.done_today;
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}</div><span class="meta">${h.frequency==='weekly'?'haftalik':'har kuni'}</span></div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Odat yo\'q</div>';
+
+  const goalsHtml=goals.length?goals.map(g=>{
+    const done=!!g.completed;
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(g.title)}</div><span class="meta">${g.goal_type==='yearly'?'yillik':'oylik'} · ${esc(g.period)}</span></div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Maqsad yo\'q</div>';
+
+  const createBtns=canManage?`
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" data-fmnew="plan" style="flex:1;min-width:130px;font-size:12.5px">+ Reja</button>
+      <button class="btn btn-ghost" data-fmnew="goal" style="flex:1;min-width:130px;font-size:12.5px">+ Maqsad</button>
+      <button class="btn btn-ghost" data-fmnew="habit" style="flex:1;min-width:130px;font-size:12.5px">+ Odat</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja/maqsad/odat yaratishga ruxsat bergan.</p>`:'';
+
+  const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">🛡 Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
+
+  wrap.innerHTML=`
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">📅 Bugungi rejalar (${plans.filter(p=>p.status==='done').length}/${plans.length})</h2></div>
+    ${plansHtml}
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🔁 Odatlar</h2></div>
+    ${habitsHtml}
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🎯 Maqsadlar (joriy davr)</h2></div>
+    ${goalsHtml}
+    ${createBtns}
+    ${noPermHint}
+  `;
+  wrap.querySelectorAll('[data-fmnew]').forEach(b=>b.onclick=()=>openForMemberModal(b.dataset.fmnew));
+}
+
+// ── Guruh yaratish modali ────────────────────────────────
+function openGroupCreateModal(){
+  document.getElementById('gcName').value='';
+  document.getElementById('gcDesc').value='';
+  document.getElementById('groupCreateBack').classList.add('show');
+  setTimeout(()=>document.getElementById('gcName').focus(),200);
+}
+async function saveGroupCreate(){
+  const name=document.getElementById('gcName').value.trim();
+  const desc=document.getElementById('gcDesc').value.trim();
+  if(!name){toast('Nom bo\'sh',true);return;}
+  try{
+    await apiGroupCreate(name,desc||null);
+    document.getElementById('groupCreateBack').classList.remove('show');
+    toast('✨ Guruh yaratildi');
+    await loadGroupsAPI();
+  }catch(e){toast('Xato: '+e.message,true);}
+}
+
+// ── Guruh sozlamalari (rename/delete/leave) ──────────────
+function openGroupEditModal(){
+  const g=State.currentGroup;if(!g)return;
+  document.getElementById('geName').value=g.name||'';
+  document.getElementById('geDesc').value=g.description||'';
+  document.getElementById('geDelete').style.display=g.is_owner?'':'none';
+  document.getElementById('geLeave').style.display=g.is_owner?'none':'';
+  document.getElementById('geSave').style.display=g.is_owner?'':'none';
+  document.getElementById('geName').disabled=!g.is_owner;
+  document.getElementById('geDesc').disabled=!g.is_owner;
+  document.getElementById('groupEditBack').classList.add('show');
+}
+async function saveGroupEdit(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  const name=document.getElementById('geName').value.trim();
+  const desc=document.getElementById('geDesc').value.trim();
+  if(!name){toast('Nom bo\'sh',true);return;}
+  try{
+    await apiGroupPatch(g.id,{name,description:desc||null});
+    document.getElementById('groupEditBack').classList.remove('show');
+    toast('✓ Yangilandi');
+    await loadGroupsAPI();
+    await openGroup(g.id);
+  }catch(e){toast('Xato: '+e.message,true);}
+}
+async function deleteCurrentGroup(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  if(!await confirmDialog({title:'Guruhni o\'chirish',message:'Barcha a\'zolar va ruxsatlar yo\'q qilinadi. Davom etamizmi?'}))return;
+  try{await apiGroupDelete(g.id);toast('🗑 O\'chirildi');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
+  catch(e){toast('Xato: '+e.message,true);}
+}
+async function leaveCurrentGroup(){
+  const g=State.currentGroup;if(!g)return;
+  if(!await confirmDialog({title:'Guruhdan chiqish',message:'Bu guruhni tark etasizmi?'}))return;
+  try{await apiGroupLeave(g.id);toast('👋 Chiqdingiz');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
+  catch(e){toast('Xato: '+e.message,true);}
+}
+
+// ── Do'st taklif qilish (Telegram share) ─────────────────
+async function _resolveBotUsername(){
+  if(State.botUsername)return State.botUsername;
+  // Profil endpointidagi referral_link ichida bot username bor
+  // (masalan https://t.me/intizomAi_bot?start=ref_123).
+  try{
+    const p=await api('/api/webapp/profile');
+    const m=/t\.me\/([^\/\?]+)/i.exec(p&&p.referral_link||'');
+    if(m&&m[1])State.botUsername=m[1];
+  }catch(_){}
+  return State.botUsername||'intizomAi_bot';
+}
+async function inviteFriend(){
+  const g=State.currentGroup;if(!g)return;
+  const bot=await _resolveBotUsername();
+  const link='https://t.me/'+encodeURIComponent(bot)+'?start=grp_'+encodeURIComponent(g.invite_code);
+  const text='👥 «'+g.name+'» guruhiga taklif etilyapsiz! Intizom AI botiga qo\'shiling va birga intizomli bo\'ling.';
+  const shareUrl='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text);
+  // Telegram Mini App'da native share sheet ochiladi (kontakt tanlash).
+  try{if(tg&&tg.openTelegramLink){tg.openTelegramLink(shareUrl);return;}}catch(_){}
+  window.open(shareUrl,'_blank');
+}
+
+// ── Ruxsatlar modali ─────────────────────────────────────
+async function openPermsModal(){
+  const g=State.currentGroup;if(!g)return;
+  let d;try{d=await apiPerms(g.id);}catch(e){toast('Ruxsatlar yuklanmadi',true);return;}
+  const out=document.getElementById('permsGrantsOut');
+  const inp=document.getElementById('permsGrantsIn');
+  out.innerHTML=(d.grants_out||[]).length?(d.grants_out.map(m=>`
+    <div class="perm-row">
+      <div class="nm">${esc(m.name)}</div>
+      <div class="toggle ${m.can_manage?'on':''}" data-uid="${m.user_id}"><i></i></div>
+    </div>`).join('')):'<div style="font-size:12px;color:var(--text-3);padding:6px">Guruhda boshqa a\'zo yo\'q</div>';
+  inp.innerHTML=(d.grants_in||[]).filter(m=>m.can_manage).length?d.grants_in.filter(m=>m.can_manage).map(m=>`
+    <div class="perm-row"><div class="nm">${esc(m.name)}</div><span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">🛡 huquqli</span></div>`).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Hech kim sizga ruxsat bermagan</div>';
+  out.querySelectorAll('.toggle').forEach(t=>t.onclick=async()=>{
+    const uid=+t.dataset.uid;const nv=!t.classList.contains('on');
+    t.classList.toggle('on',nv);
+    try{await apiPermsSet(g.id,uid,nv);toast(nv?'🛡 Ruxsat berildi':'Ruxsat olindi');}
+    catch(e){t.classList.toggle('on',!nv);toast('Xato: '+e.message,true);}
+  });
+  document.getElementById('permsBack').classList.add('show');
+}
+
+// ── A'zo uchun yangi (plan/goal/habit) modali ────────────
+function openForMemberModal(type){
+  const g=State.currentGroup,m=State.currentMember;
+  if(!g||!m)return;
+  State.forMemberModal={groupId:g.id,userId:m.member.user_id,type:type||'plan',goalType:'yearly'};
+  document.getElementById('forMemberTitle').textContent=m.member.name+' uchun yangi';
+  document.getElementById('fmTitle').value='';
+  document.getElementById('fmDesc').value='';
+  document.getElementById('fmTime').value='';
+  document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.fm===State.forMemberModal.type));
+  document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.gt==='yearly'));
+  applyForMemberTypeUI();
+  document.getElementById('forMemberBack').classList.add('show');
+  setTimeout(()=>document.getElementById('fmTitle').focus(),200);
+}
+function applyForMemberTypeUI(){
+  const t=State.forMemberModal.type;
+  document.getElementById('fmTimeFld').classList.toggle('hidden',t!=='plan');
+  document.getElementById('fmGoalTypeFld').classList.toggle('hidden',t!=='goal');
+}
+async function saveForMember(){
+  const s=State.forMemberModal;const title=document.getElementById('fmTitle').value.trim();
+  if(!title){toast('Sarlavha bo\'sh',true);return;}
+  const desc=document.getElementById('fmDesc').value.trim()||null;
+  try{
+    if(s.type==='plan'){
+      const time=(document.getElementById('fmTime').value||'').trim()||null;
+      await apiForMemberPlan(s.groupId,s.userId,{title,description:desc,scheduled_time:time,plan_date:ymd(new Date())});
+    }else if(s.type==='goal'){
+      const gt=(document.querySelector('#fmGoalTypeSeg .hseg-item.active')||{}).dataset?.gt||'yearly';
+      const today=new Date();
+      const period=(gt==='yearly')?String(today.getFullYear()):(today.getFullYear()+'-'+pad(today.getMonth()+1));
+      await apiForMemberGoal(s.groupId,s.userId,{title,description:desc,goal_type:gt,period});
+    }else{
+      await apiForMemberHabit(s.groupId,s.userId,{title,description:desc,frequency:'daily'});
+    }
+    document.getElementById('forMemberBack').classList.remove('show');
+    toast('✨ Yaratildi');
+    // Ma'lumotlarni yangilaymiz
+    await openMember(s.userId);
+  }catch(e){toast('Xato: '+e.message,true);}
+}
+
+function switchPage(n){
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));
+  // Statistika endi pastki nav'da yo'q — u tepadagi header tugmasi orqali ochiladi.
+  // Shuning uchun 'stats' navi bo'sh; 'friends' aksincha 'friends' nav'iga mos.
+  document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));
+  if(n==='stats'){renderStats();loadStatsHabits();applyStatsView();}
+  if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}
+  if(n==='habits')loadHabitsAPI();
+  if(n==='ai'){loadCheckin();chatGreet();loadPlansRange().then(()=>renderInsights());}
+  if(n==='home'){loadSnapshot();loadQuest();renderDayStrip();updateHomePlansTitle();loadHomeHabits();}
+  if(n==='profile'){renderAchs();loadProfileMeta();}
+  if(n==='friends'){_showFriendsView('list');loadGroupsAPI();}
+  updateFabVisibility();
+  if(navigator.vibrate)navigator.vibrate(10);
+}
 
 function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
 
@@ -1751,6 +2195,38 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Settings (sozlamalar) tugmasi va profil rasmi -> Profil sahifasi
   const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
   const _hdrAv=document.getElementById('hdrAv');if(_hdrAv)_hdrAv.onclick=()=>switchPage('profile');
+  // Statistika endi header'dagi tugma orqali ochiladi (pastki nav'dan olib tashlandi).
+  const _stBtn=document.getElementById('statsBtn');if(_stBtn)_stBtn.onclick=()=>switchPage('stats');
+
+  // ── Do'stlar (Friends) wiring ──────────────────────────────
+  const _fCreate=document.getElementById('friendsCreateBtn');if(_fCreate)_fCreate.onclick=openGroupCreateModal;
+  const _fBack1=document.getElementById('friendsGroupBack');if(_fBack1)_fBack1.onclick=()=>_showFriendsView('list');
+  const _fBack2=document.getElementById('friendsMemberBack');if(_fBack2)_fBack2.onclick=()=>_showFriendsView('group');
+  const _fInv=document.getElementById('friendsInviteBtn');if(_fInv)_fInv.onclick=inviteFriend;
+  const _fPerms=document.getElementById('friendsPermsBtn');if(_fPerms)_fPerms.onclick=openPermsModal;
+  const _fSet=document.getElementById('friendsGroupSettings');if(_fSet)_fSet.onclick=openGroupEditModal;
+  const _gcC=document.getElementById('gcCancel');if(_gcC)_gcC.onclick=()=>document.getElementById('groupCreateBack').classList.remove('show');
+  const _gcS=document.getElementById('gcSave');if(_gcS)_gcS.onclick=saveGroupCreate;
+  const _gcB=document.getElementById('groupCreateBack');if(_gcB)_gcB.onclick=e=>{if(e.target.id==='groupCreateBack')_gcB.classList.remove('show');};
+  const _geC=document.getElementById('geCancel');if(_geC)_geC.onclick=()=>document.getElementById('groupEditBack').classList.remove('show');
+  const _geS=document.getElementById('geSave');if(_geS)_geS.onclick=saveGroupEdit;
+  const _geD=document.getElementById('geDelete');if(_geD)_geD.onclick=deleteCurrentGroup;
+  const _geL=document.getElementById('geLeave');if(_geL)_geL.onclick=leaveCurrentGroup;
+  const _geB=document.getElementById('groupEditBack');if(_geB)_geB.onclick=e=>{if(e.target.id==='groupEditBack')_geB.classList.remove('show');};
+  const _pC=document.getElementById('permsClose');if(_pC)_pC.onclick=()=>document.getElementById('permsBack').classList.remove('show');
+  const _pB=document.getElementById('permsBack');if(_pB)_pB.onclick=e=>{if(e.target.id==='permsBack')_pB.classList.remove('show');};
+  document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(it=>it.onclick=()=>{
+    State.forMemberModal.type=it.dataset.fm;
+    document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(x=>x.classList.toggle('active',x===it));
+    applyForMemberTypeUI();
+  });
+  document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(it=>it.onclick=()=>{
+    State.forMemberModal.goalType=it.dataset.gt;
+    document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(x=>x.classList.toggle('active',x===it));
+  });
+  const _fmC=document.getElementById('fmCancel');if(_fmC)_fmC.onclick=()=>document.getElementById('forMemberBack').classList.remove('show');
+  const _fmS=document.getElementById('fmSave');if(_fmS)_fmS.onclick=saveForMember;
+  const _fmB=document.getElementById('forMemberBack');if(_fmB)_fmB.onclick=e=>{if(e.target.id==='forMemberBack')_fmB.classList.remove('show');};
   // Odat (habit) wiring
   const _ah=document.getElementById('addHabitBtn');if(_ah)_ah.onclick=e=>{ripple(e);openHabitModal(null);};
   const _hc=document.getElementById('hCancel');if(_hc)_hc.onclick=closeHabitModal;

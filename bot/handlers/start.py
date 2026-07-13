@@ -19,6 +19,9 @@ from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
 from bot.services.premium_service import user_is_premium, days_left, grant_bonus_premium
 from bot.services.referral_service import parse_referrer_id, register_referral
+from bot.services.group_service import (
+    GroupError, join_by_code, parse_invite_code_from_payload,
+)
 
 router = Router()
 
@@ -91,6 +94,20 @@ async def start_handler(message: Message, command: CommandObject, session: Async
                 # Referral xatosi /start oqimini to'xtatmasin
                 pass
 
+    # ── Guruh taklifi (Do'stlar moduli) — payload `grp_<code>` ────
+    # Yangi va eski foydalanuvchilar uchun ham ishlaydi (agar allaqachon
+    # a'zo bo'lgan bo'lsa — no-op). Xato bo'lsa oqimni to'xtatmaymiz.
+    joined_group_name: str | None = None
+    grp_code = parse_invite_code_from_payload(command.args)
+    if grp_code:
+        try:
+            g = await join_by_code(session, user, grp_code)
+            joined_group_name = g.name
+        except GroupError:
+            joined_group_name = None
+        except Exception:
+            joined_group_name = None
+
     # ── Yangi foydalanuvchiga avtomatik Premium sinov (trial) — loss aversion.
     #    Referral orqali kelgan bo'lsa allaqachon premium bo'lishi mumkin (invitee
     #    bonusi) — bunday holda trial o'tkazib yuboriladi.
@@ -118,6 +135,11 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             welcome += (
                 f"\n\n🎁 Sizga <b>{trial_days_granted} kunlik Premium</b> sovg'a qilindi!"
             )
+        if joined_group_name:
+            welcome += (
+                f"\n\n👥 Siz <b>«{joined_group_name}»</b> guruhiga qo'shildingiz! "
+                "Mini App'da <b>Do'stlar</b> bo'limidan a'zolarni ko'ring."
+            )
         await message.answer(welcome, parse_mode="HTML", reply_markup=main_reply_keyboard())
         await message.answer(
             "🧭 <b>Avval bitta savol — siz kimsiz?</b>\n\n"
@@ -137,6 +159,11 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
         "Bugun nima qilamiz? 👇"
     )
+    if joined_group_name:
+        text += (
+            f"\n\n👥 Siz <b>«{joined_group_name}»</b> guruhiga qo'shildingiz — "
+            "Mini App'ning <b>Do'stlar</b> bo'limidan a'zolarni ko'ring."
+        )
     await message.answer(text, parse_mode="HTML", reply_markup=main_reply_keyboard())
 
     is_premium = user_is_premium(user)
