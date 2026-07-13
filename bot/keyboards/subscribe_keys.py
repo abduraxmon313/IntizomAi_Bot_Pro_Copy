@@ -17,20 +17,20 @@ PROVIDER_LABELS = {
 }
 
 
-def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False, free: bool = False) -> InlineKeyboardMarkup:
+def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False) -> InlineKeyboardMarkup:
     """
-    Obuna planlarini tanlash klaviaturasi.
-      • free=True (bonus_days=0 promokod) → har bir tarif "BEPUL" ko'rinadi.
-      • bonus_days>0 → har bir tarif nomida "+N kun" qo'shiladi.
+    Obuna planlarini tanlash klaviaturasi (obuna sotib olish uchun).
+      • bonus_days>0 (`+` turidagi promokod) → har bir tarif nomida "+N kun" qo'shiladi.
+
+    Eslatma: bepul (`-`) turdagi promokodlar bu klaviaturaga kelmaydi — ular
+    kiritilishi bilan darhol (to'lovsiz) faollashtiriladi.
     """
     rows = []
     for key, plan in SUBSCRIPTION_PLANS.items():
         emoji = plan.get("emoji", "💎")
         tag = plan.get("tag", "")
         tag_str = f" ({tag})" if tag else ""
-        if free:
-            label = f"🎁 {plan['title']} — BEPUL{tag_str}"
-        elif bonus_days > 0:
+        if bonus_days > 0:
             label = f"{emoji} {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
         else:
             label = f"{emoji} {plan['title']} — {format_price(plan['price'])} so'm{tag_str}"

@@ -3,12 +3,14 @@ Obuna (premium) oqimi — to'lov tizimiga tayyorlangan.
 
 Foydalanuvchi yo'li:
   1. "💎 Premium" → tariflar ro'yxati + "🎟 Promokod kiritish" tugmasi
-  2. (ixtiyoriy) Promokod kiritadi → agar admin yaratgan amaldagi kod bo'lsa,
-     har bir tarifga promokoddagi bonus kunlar qo'shiladi ("1 oylik +15 kun")
-  3. Tarifni tanlaydi → to'lov oynasi ochiladi
-  4. "💳 To'lovni amalga oshirish" → (hozircha to'lov SIMULYATSIYA qilinadi)
-     premium = tarif kunlari + promokod bonus kunlari muddatga ochiladi va DB ga
-     shu muddat bilan saqlanadi.
+  2. (ixtiyoriy) Promokod kiritadi. Promokod 2 xil bo'ladi:
+     • `+` (is_free=False) → foydalanuvchi obunani SOTIB OLADI; har bir tarifga
+       promokoddagi bonus kunlar qo'shiladi ("1 oylik +15 kun").
+     • `-` (is_free=True) → foydalanuvchi obuna sotib olmaydi; kod kiritilishi
+       bilan unga bonus_kun ta kunga premium AVTOMATIK (to'lovsiz) ochiladi.
+  3. `+` turi: tarifni tanlaydi → to'lov oynasi ochiladi
+  4. "💳 To'lovni amalga oshirish" → to'lov muvaffaqiyatli bo'lgach premium =
+     tarif kunlari + promokod bonus kunlari muddatga ochiladi va DB ga saqlanadi.
 
 Kelajakda to'lov kompaniyasi API qo'shilsa — faqat 4-bosqich (sub_pay_*) ichida
 haqiqiy to'lov tasdiqlanishi tekshiriladi, qolgan oqim o'zgarmaydi.
@@ -31,7 +33,7 @@ from bot.services.premium_service import (
     get_plan,
     format_price,
     validate_promocode,
-    activate_subscription,
+    grant_bonus_premium,
     increment_promocode_use,
     user_is_premium,
 )
@@ -99,9 +101,9 @@ async def render_subscription(
         )
         return
 
-    # Bepul foydalanuvchi — planlarni taklif qilamiz
-    free = bool(promo_code) and bonus_days == 0
-
+    # Bepul foydalanuvchi — planlarni (sotib olish uchun) taklif qilamiz.
+    # Eslatma: bepul (`-`) promokodlar bu yerga kelmaydi — ular kiritilishi
+    # bilan darhol (to'lovsiz) faollashtiriladi (receive_promocode ichida).
     text = (
         "💎 <b>Intizom AI Premium</b>\n\n"
         "Premium bilan to'liq imkoniyatlar ochiladi:\n"
@@ -112,13 +114,7 @@ async def render_subscription(
         "• Premium temalar\n\n"
         f"🆓 <b>Bepul rejim:</b> Mini App'ni ko'rish mumkin — lekin kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja va cheklangan AI.\n\n"
     )
-    if free:
-        text += (
-            f"🎁 <b>Bepul promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
-            "Tarifni tanlang — <b>to'lovsiz</b> ochiladi! 🎉\n\n"
-            "👇 Tarifni tanlang:"
-        )
-    elif bonus_days > 0 and promo_code:
+    if bonus_days > 0 and promo_code:
         text += (
             f"🎟 <b>Promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
             f"Har bir tarifga <b>+{bonus_days} kun</b> qo'shildi! 🎁\n\n"
@@ -131,7 +127,7 @@ async def render_subscription(
         text,
         parse_mode="HTML",
         reply_markup=plans_keyboard(
-            bonus_days=bonus_days, promo_applied=bool(promo_code), free=free,
+            bonus_days=bonus_days, promo_applied=bool(promo_code),
         ),
     )
 
@@ -337,7 +333,47 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
         )
         return
 
-    # Promokod qabul qilindi — bonusni holatga saqlaymiz (hali ishlatilmaydi)
+    # ── `-` turi (bepul): obuna sotib olinmaydi — darhol avtomatik ochamiz ──
+    if result.is_free:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        if not user:
+            user = await get_or_create_user(
+                session, message.from_user.id,
+                message.from_user.full_name, message.from_user.username or "",
+            )
+        if user_is_premium(user):
+            await message.answer(
+                "✅ Sizda allaqachon faol obuna bor. Promokod ishlatilmadi.",
+                parse_mode="HTML",
+                reply_markup=premium_active_keyboard(),
+            )
+            await state.clear()
+            return
+
+        bonus_days = int(result.bonus_days or 0)
+        sub = await grant_bonus_premium(
+            session, user, bonus_days, source="promo_free", promocode=code,
+        )
+        await increment_promocode_use(session, code)
+        await state.clear()
+
+        await message.answer(
+            "🎁 <b>Bepul premium faollashdi!</b>\n\n"
+            f"🎟 Promokod: <code>{code}</code>\n"
+            f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
+            f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
+            "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
+            "Pastdagi tugma orqali Mini App'ni oching 👇",
+            parse_mode="HTML",
+            reply_markup=premium_active_keyboard(),
+        )
+        logger.info(
+            f"🎁 Bepul promokod faollashdi: user={message.from_user.id} "
+            f"code={code} days={bonus_days}"
+        )
+        return
+
+    # ── `+` turi (sotib olish + bonus): bonusni holatga saqlaymiz ──
     await state.update_data(promo_code=code, promo_bonus_days=int(result.bonus_days or 0))
     await state.set_state(None)  # tariflar bosqichiga qaytamiz (data saqlanadi)
 
@@ -351,44 +387,6 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
 # ─────────────────────────────────────────────────────────────
 #  TARIF TANLASH → TO'LOV OYNASI
 # ─────────────────────────────────────────────────────────────
-async def _finalize_subscription(callback, state, session, user, plan, plan_key, bonus_days, promo_code, free):
-    """Obunani faollashtiradi, promokod hisobini oshiradi va xabar beradi."""
-    source = "promo_free" if free else "card"
-    sub = await activate_subscription(
-        session, user,
-        plan_key=plan_key,
-        source=source,
-        promocode=promo_code,
-        bonus_days=bonus_days,
-    )
-    if promo_code:
-        await increment_promocode_use(session, promo_code)
-
-    await state.clear()
-
-    if free:
-        head = "🎁 <b>Bepul obuna faollashdi!</b>"
-        extra = f" (promokod: <code>{promo_code}</code>)"
-    else:
-        head = "🎉 <b>Tabriklaymiz — Premium faollashdi!</b>"
-        extra = f" (+{bonus_days} kun promokod)" if bonus_days > 0 else ""
-
-    await callback.message.edit_text(
-        f"{head}\n\n"
-        f"📦 Tarif: <b>{plan['title']}</b>{extra}\n"
-        f"📅 Amal qiladi: <b>{_fmt_date(sub.expires_at)} gacha</b>\n"
-        f"⏳ Davomiylik: <b>{sub.days} kun</b>\n\n"
-        "✨ Endi Mini App va barcha premium imkoniyatlar ochiq!\n"
-        "Pastdagi tugma orqali Mini App'ni oching 👇",
-        parse_mode="HTML",
-        reply_markup=premium_active_keyboard(),
-    )
-    logger.info(
-        f"💳 Obuna: user={user.telegram_id} plan={plan_key} bonus={bonus_days} "
-        f"promo={promo_code} free={free}"
-    )
-
-
 @router.callback_query(F.data.startswith("sub_plan_"))
 async def choose_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     plan_key = callback.data.replace("sub_plan_", "")
@@ -409,26 +407,18 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
 
     bonus_days, promo_code = await _state_promo(state)
 
-    # Promokod hali ham amaldami — qayta tekshiramiz
+    # Promokod hali ham amaldami — qayta tekshiramiz.
+    # Bu bosqichga faqat `+` (sotib olish) turidagi promokodlar keladi; bepul
+    # (`-`) turdagilar kiritilishi bilan darhol faollashtirilgan bo'ladi.
     if promo_code:
         recheck = await validate_promocode(session, promo_code)
-        if recheck.valid:
+        if recheck.valid and not recheck.is_free:
             bonus_days = int(recheck.bonus_days or 0)
         else:
             bonus_days, promo_code = 0, None
             await state.update_data(promo_code=None, promo_bonus_days=0)
 
-    free = bool(promo_code) and bonus_days == 0
-
-    # BEPUL promokod (bonus_days=0) → to'lovsiz darhol ochamiz
-    if free:
-        await _finalize_subscription(
-            callback, state, session, user, plan, plan_key, 0, promo_code, free=True
-        )
-        await callback.answer("Bepul obuna ochildi 🎁")
-        return
-
-    # Aks holda — to'lov oynasi
+    # To'lov oynasi (obuna sotib olinadi)
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     if PAYLOV_ENABLED:
@@ -492,12 +482,14 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
 
     bonus_days, promo_code = await _state_promo(state)
 
-    # Promokod hali ham amaldami — qayta tekshiramiz (xavfsizlik uchun)
+    # Promokod hali ham amaldami — qayta tekshiramiz (xavfsizlik uchun).
+    # Bepul (`-`) turdagi kod to'lov oqimiga umuman ta'sir qilmasligi kerak.
     if promo_code:
         recheck = await validate_promocode(session, promo_code)
-        bonus_days = int(recheck.bonus_days or 0) if recheck.valid else 0
-        if not recheck.valid:
-            promo_code = None
+        if recheck.valid and not recheck.is_free:
+            bonus_days = int(recheck.bonus_days or 0)
+        else:
+            bonus_days, promo_code = 0, None
 
     # ── To'lov tizimi hali sozlanmagan (kalitlar yo'q) — Phase 1 ──
     # Tugma bosilsa hech narsa faollashtirilmaydi (bepul premium berilmaydi).

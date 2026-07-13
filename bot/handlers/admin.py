@@ -1130,14 +1130,18 @@ async def admin_promo_create_start(callback: CallbackQuery, state: FSMContext, s
         return
     await callback.message.edit_text(
         "🎟 <b>Promokod yaratish</b>\n\n"
-        "Format: <code>KOD bonus_kun [max_uses] [amal_kun]</code>\n\n"
-        "• <b>bonus_kun</b>: tarifga qo'shiladigan kunlar.\n"
-        "   <code>0</code> = obuna <b>BEPUL</b> ochiladi (to'lovsiz)\n"
+        "Format: <code>KOD ± bonus_kun [max_uses] [amal_kun]</code>\n\n"
+        "<b>Ishora (± majburiy):</b>\n"
+        "• <code>+</code> → foydalanuvchi obunani <b>SOTIB OLADI</b>, unga "
+        "qo'shimcha <b>bonus_kun</b> qo'shiladi.\n"
+        "• <code>-</code> → foydalanuvchi obuna <b>sotib olmaydi</b>, unga "
+        "<b>bonus_kun</b> kunga premium <b>avtomatik (bepul)</b> ochiladi.\n\n"
+        "• <b>bonus_kun</b>: kunlar soni.\n"
         "• <b>max_uses</b>: nechta marta ishlatilsin (0 = cheksiz)\n"
         "• <b>amal_kun</b>: promokod necha kun amal qiladi (0 = muddatsiz)\n\n"
         "Masalan:\n"
-        "<code>YANGI2026 15 100 30</code> — +15 kun, 100 marta, 30 kun amal qiladi\n"
-        "<code>SOVGA 0 0 7</code> — bepul obuna, cheksiz, 7 kun amal qiladi",
+        "<code>YANGI2026 +15 100 30</code> — sotib olsa +15 kun, 100 marta, 30 kun amal qiladi\n"
+        "<code>SOVGA -30 0 7</code> — bepul 30 kun premium, cheksiz, 7 kun amal qiladi",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
     )
@@ -1150,37 +1154,79 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
     if not await is_admin(session, message.from_user.id):
         return
 
+    _fmt_help = (
+        "❌ Format: <code>KOD ± bonus_kun [max_uses] [amal_kun]</code>\n"
+        "Masalan: <code>YANGI2026 +15 100 30</code> yoki <code>SOVGA -30 0 7</code>"
+    )
+
     parts = (message.text or "").split()
     if len(parts) < 2:
-        await message.answer(
-            "❌ Format: <code>KOD bonus_kun [max_uses] [amal_kun]</code>\n"
-            "Masalan: <code>YANGI2026 15 100 30</code>",
-            parse_mode="HTML",
-        )
+        await message.answer(_fmt_help, parse_mode="HTML")
         return
 
     from datetime import datetime, timedelta
     from bot.services.premium_service import create_promocode
 
     code = parts[0].strip()
+
+    # ── Ishora (+/-) va bonus_kun'ni ajratamiz ────────────────
+    # Qo'llab-quvvatlanadigan ko'rinishlar:
+    #   "KOD + 15 ..."  (ishora alohida)
+    #   "KOD +15 ..."   (ishora songa yopishgan)
+    rest = parts[1:]
+    sign = None
+    nums: list[str] = []
+    if rest[0] in ("+", "-"):
+        sign = rest[0]
+        nums = rest[1:]
+    elif rest[0] and rest[0][0] in ("+", "-"):
+        sign = rest[0][0]
+        nums = [rest[0][1:]] + rest[1:]
+
+    if sign is None:
+        await message.answer(
+            "❌ <b>Ishora majburiy!</b> <code>+</code> (sotib olish + bonus) yoki "
+            "<code>-</code> (bepul) qo'ying.\n\n" + _fmt_help,
+            parse_mode="HTML",
+        )
+        return
+
+    is_free = (sign == "-")
+
+    if not nums or not nums[0]:
+        await message.answer(_fmt_help, parse_mode="HTML")
+        return
+
     try:
-        bonus_days = max(0, int(parts[1]))
+        bonus_days = max(0, int(nums[0]))
     except ValueError:
-        await message.answer("❌ <b>bonus_kun</b> butun son bo'lishi kerak. Masalan: <code>YANGI 15 100 30</code>", parse_mode="HTML")
+        await message.answer(
+            "❌ <b>bonus_kun</b> butun son bo'lishi kerak.\n\n" + _fmt_help,
+            parse_mode="HTML",
+        )
+        return
+
+    # `-` (bepul) turida kun soni 0 bo'lsa — ochadigan hech narsa yo'q.
+    if is_free and bonus_days <= 0:
+        await message.answer(
+            "❌ Bepul (<code>-</code>) promokod uchun <b>bonus_kun</b> 0 dan katta "
+            "bo'lishi kerak. Masalan: <code>SOVGA -30 0 7</code>",
+            parse_mode="HTML",
+        )
         return
 
     max_uses = 0
-    if len(parts) >= 3:
+    if len(nums) >= 2:
         try:
-            max_uses = max(0, int(parts[2]))
+            max_uses = max(0, int(nums[1]))
         except ValueError:
             max_uses = 0
 
     expires_at = None
     valid_days = 0
-    if len(parts) >= 4:
+    if len(nums) >= 3:
         try:
-            valid_days = max(0, int(parts[3]))
+            valid_days = max(0, int(nums[2]))
         except ValueError:
             valid_days = 0
         if valid_days > 0:
@@ -1188,7 +1234,7 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
 
     promo = await create_promocode(
         session, code=code, bonus_days=bonus_days, max_uses=max_uses,
-        created_by=message.from_user.id, expires_at=expires_at,
+        created_by=message.from_user.id, expires_at=expires_at, is_free=is_free,
     )
     await state.clear()
 
@@ -1202,10 +1248,16 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
 
     uses_label = "cheksiz" if max_uses == 0 else f"{max_uses} marta"
     valid_label = "muddatsiz" if valid_days == 0 else f"{valid_days} kun"
-    if bonus_days == 0:
-        type_label = "🎁 <b>BEPUL obuna</b> (to'lovsiz ochiladi)"
+    if is_free:
+        type_label = (
+            f"🎁 <b>BEPUL obuna</b> — <b>{bonus_days} kun</b>ga to'lovsiz ochiladi "
+            "(<code>-</code> turi)"
+        )
     else:
-        type_label = f"🎁 Bonus: <b>+{bonus_days} kun</b> (tarif ustiga qo'shiladi)"
+        type_label = (
+            f"💳 <b>Sotib olish + bonus</b> — tarif ustiga <b>+{bonus_days} kun</b> "
+            "(<code>+</code> turi)"
+        )
 
     await message.answer(
         f"✅ <b>Promokod yaratildi!</b>\n\n"
@@ -1229,7 +1281,10 @@ def _promos_text(promos: list) -> str:
     text = "🎟 <b>Promokodlar</b>\n\n"
     for p in promos:
         uses = f"{p.used_count}/{p.max_uses}" if p.max_uses else f"{p.used_count}/∞"
-        kind = "🎁 BEPUL" if (p.bonus_days or 0) == 0 else f"+{p.bonus_days} kun"
+        if getattr(p, "is_free", False):
+            kind = f"🎁 BEPUL {p.bonus_days} kun"
+        else:
+            kind = f"💳 +{p.bonus_days} kun (to'lov bilan)"
         if p.expires_at:
             if p.expires_at < now:
                 valid = "⛔️ muddati tugagan"

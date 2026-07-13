@@ -44,7 +44,14 @@ class Promocode(Base):
     `code` — kiritiladigan matn (masalan, 'intizom').
     `plan` — agar berilgan bo'lsa, foydalanuvchi tanlovidan qat'i nazar shu
               planni beradi; None bo'lsa foydalanuvchi tanlagan plan qo'llanadi.
-    `bonus_days` — plandan tashqari qo'shimcha kunlar (kampaniyalar uchun).
+    `is_free` — promokod turi:
+        • False (`+`) → foydalanuvchi obunani SOTIB OLISHI kerak; `bonus_days`
+          tanlangan tarif ustiga qo'shimcha kun sifatida qo'shiladi.
+        • True (`-`) → foydalanuvchi obuna sotib olmaydi; `bonus_days` ta kunga
+          premium AVTOMATIK (to'lovsiz) ochiladi.
+    `bonus_days` —
+        • `+` turida: tarif ustiga qo'shiladigan qo'shimcha kunlar.
+        • `-` turida: to'lovsiz ochiladigan premium kunlari soni.
     `max_uses` — 0 = cheksiz.
     """
     __tablename__ = "promocodes"
@@ -54,6 +61,7 @@ class Promocode(Base):
 
     plan = Column(String(16), nullable=True)          # 1m | 3m | 6m | 12m | None
     bonus_days = Column(Integer, default=0)
+    is_free = Column(Boolean, default=False)          # True (`-`) = to'lovsiz; False (`+`) = sotib olish + bonus
 
     max_uses = Column(Integer, default=0)             # 0 = cheksiz
     used_count = Column(Integer, default=0)
