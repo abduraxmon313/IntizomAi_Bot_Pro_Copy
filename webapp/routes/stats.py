@@ -102,13 +102,19 @@ async def leaderboard(
         select(User).order_by(col.desc().nullslast(), User.id).limit(20)
     )).scalars().all()
 
+    # Har bir foydalanuvchi rasmini BOT orqali yuklab beruvchi proksi (avatar.py).
+    # Mini App'ni ochmagan (faqat botni ishga tushirgan) foydalanuvchilar rasmi
+    # ham shu yerdan yuklanadi — reytingda hamma rasmi bilan ko'rinadi.
+    def _avatar_url(u: User) -> str:
+        return f"/api/webapp/avatar/{u.telegram_id}"
+
     top = []
     for i, u in enumerate(rows):
         top.append({
             "rank": i + 1,
             "name": _first_name(u),
             "emoji": u.avatar_emoji or "🌱",
-            "photo_url": u.photo_url,
+            "photo_url": _avatar_url(u),
             "value": int(getattr(u, attr) or 0),
             "is_me": bool(user and u.telegram_id == user.telegram_id),
         })
@@ -123,7 +129,7 @@ async def leaderboard(
             "rank": int(greater) + 1,
             "name": _first_name(user),
             "emoji": user.avatar_emoji or "🌱",
-            "photo_url": user.photo_url,
+            "photo_url": _avatar_url(user),
             "value": my_val,
             "in_top": any(t["is_me"] for t in top),
         }
