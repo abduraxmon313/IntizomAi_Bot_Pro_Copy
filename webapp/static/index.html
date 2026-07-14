@@ -1023,13 +1023,23 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
 </section>
 
+</div>
+<!-- ═══════════════════════════════════════════════════════════════
+     Do'stlar modallari — .app CONTAINERINDAN TASHQARIDA joylashadi.
+     Sabab: .app { z-index: 1 } stacking konteksti yaratadi va uning
+     ichidagi z-index:200 modal-back .nav (z-index:100, body darajasi)
+     tagida qoladi — natijada modal tugmalari nav ostida yashirinadi.
+     Modallar body darajasida joylashsa (boshqa modallar kabi), .nav
+     ustida to'g'ri ko'rinadi. Modallarni bu yerda saqlaymiz.
+═══════════════════════════════════════════════════════════════ -->
+
 <!-- Friends: yangi guruh yaratish -->
 <div class="modal-back" id="groupCreateBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Yangi guruh</h3>
-    <div class="fld"><label>Guruh nomi</label><input class="in" id="gcName" placeholder="Masalan: Oila / Ish jamoasi" maxlength="80"></div>
-    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea class="in" id="gcDesc" rows="2" maxlength="300" placeholder="Guruh haqida bir necha so'z"></textarea></div>
+    <div class="fld"><label>Guruh nomi</label><input id="gcName" placeholder="Masalan: Oila / Ish jamoasi" maxlength="80"></div>
+    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="gcDesc" maxlength="300" placeholder="Guruh haqida bir necha so'z"></textarea></div>
     <div class="row gap-12 mt-8">
       <button class="btn btn-ghost" id="gcCancel">Bekor</button>
       <button class="btn" id="gcSave">Yaratish</button>
@@ -1042,8 +1052,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   <div class="modal">
     <div class="grab"></div>
     <h3>Guruh sozlamalari</h3>
-    <div class="fld"><label>Guruh nomi</label><input class="in" id="geName" maxlength="80"></div>
-    <div class="fld"><label>Tavsif</label><textarea class="in" id="geDesc" rows="2" maxlength="300"></textarea></div>
+    <div class="fld"><label>Guruh nomi</label><input id="geName" maxlength="80"></div>
+    <div class="fld"><label>Tavsif</label><textarea id="geDesc" maxlength="300"></textarea></div>
     <div class="row gap-12 mt-8">
       <button class="btn btn-ghost" id="geCancel">Bekor</button>
       <button class="btn" id="geSave">Saqlash</button>
@@ -1075,17 +1085,15 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
     <div class="grab"></div>
     <h3 id="forMemberTitle">A'zo uchun yangi</h3>
     <div class="fld" id="fmTypeFld"><label>Turi</label><div class="hseg" id="fmTypeSeg"><div class="hseg-item active" data-fm="plan">Reja</div><div class="hseg-item" data-fm="goal">Maqsad</div><div class="hseg-item" data-fm="habit">Odat</div></div></div>
-    <div class="fld"><label>Sarlavha</label><input class="in" id="fmTitle" maxlength="200" placeholder="Nima qilish kerak?"></div>
-    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea class="in" id="fmDesc" rows="2" maxlength="500"></textarea></div>
-    <div class="fld" id="fmTimeFld"><label>Vaqt (ixtiyoriy, HH:MM)</label><input class="in" id="fmTime" placeholder="06:00" maxlength="5"></div>
+    <div class="fld"><label>Sarlavha</label><input id="fmTitle" maxlength="200" placeholder="Nima qilish kerak?"></div>
+    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="fmDesc" maxlength="500"></textarea></div>
+    <div class="fld" id="fmTimeFld"><label>Vaqt (ixtiyoriy, HH:MM)</label><input id="fmTime" placeholder="06:00" maxlength="5"></div>
     <div class="fld hidden" id="fmGoalTypeFld"><label>Maqsad turi</label><div class="hseg" id="fmGoalTypeSeg"><div class="hseg-item active" data-gt="yearly">Yillik</div><div class="hseg-item" data-gt="monthly">Oylik</div></div></div>
     <div class="row gap-12 mt-8">
       <button class="btn btn-ghost" id="fmCancel">Bekor</button>
       <button class="btn" id="fmSave">Yaratish</button>
     </div>
   </div>
-</div>
-
 </div>
 
 <!-- Achievement unlock modal -->

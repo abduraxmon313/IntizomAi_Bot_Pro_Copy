@@ -97,12 +97,16 @@ async def create_checkout_order(session, user, plan_key: str,
     provider — to'lov provayderi (payme/click/uzum/paylov). None bo'lsa default.
     Qaytaradi: (order, checkout_url). checkout_url None bo'lsa — xato.
     """
-    plan = SUBSCRIPTION_PLANS.get(plan_key)
+    # Effective narx — admin o'zgartirgan narx ustuvor.
+    # `SUBSCRIPTION_PLANS` — tarif kaliti va meta (kunlar/emoji/teg) uchun,
+    # narx `plan_pricing` xizmatidan olinadi.
+    from bot.services.plan_pricing import get_effective_plan
+    plan = get_effective_plan(plan_key) or SUBSCRIPTION_PLANS.get(plan_key)
     if not plan:
         raise ValueError(f"Noma'lum tarif: {plan_key}")
 
     prov = (provider or PAYLOV_PROVIDER).strip().lower()
-    amount_tiyin = int(plan["price"]) * 100  # so'm -> tiyin
+    amount_tiyin = int(plan["price"]) * 100  # so'm -> tiyin (order yaratilgan paytdagi narx qulflanadi)
     external_id = _gen_external_id(user.id)
 
     order = PaymentOrder(

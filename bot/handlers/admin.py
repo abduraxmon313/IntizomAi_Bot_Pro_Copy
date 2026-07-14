@@ -18,6 +18,7 @@ from bot.keyboards.admin_keys import (
     back_to_admin_keyboard, back_to_users_keyboard,
     admin_premium_keyboard, back_to_premium_keyboard,
     admin_promo_list_keyboard,
+    admin_plans_prices_keyboard, admin_plan_edit_keyboard,
     admin_keys_keyboard, admin_keys_confirm_keyboard,
 )
 
@@ -35,6 +36,8 @@ class AdminState(StatesGroup):
     premium_grant = State()           # "ID plan" kutish
     premium_revoke = State()          # ID kutish
     promo_create = State()            # promokod yaratish
+    # Tarif narxini o'zgartirish (yangi narxni so'mda kutish)
+    plan_price_edit = State()
     # To'lovni qo'lda faollashtirish (external_id yoki payment_id orqali)
     payment_activate = State()
 
@@ -1348,3 +1351,167 @@ async def admin_promo_del(callback: CallbackQuery, session: AsyncSession):
         )
     except Exception:
         pass
+
+
+
+# ─────────────────────────────────────────────────────────────
+#  💰 TARIFLAR NARXI — admin overrides
+# ─────────────────────────────────────────────────────────────
+def _plans_prices_text(effective_plans: dict, overrides: dict) -> str:
+    from bot.config import SUBSCRIPTION_PLANS
+    from bot.services.premium_service import format_price
+    lines = ["💰 <b>Tariflar narxi</b>", ""]
+    for key, plan in effective_plans.items():
+        default_price = int(SUBSCRIPTION_PLANS.get(key, {}).get("price", 0))
+        current_price = int(plan.get("price", 0))
+        title = plan.get("title", key)
+        emoji = plan.get("emoji", "💎")
+        if key in overrides and current_price != default_price:
+            lines.append(
+                f"{emoji} <b>{title}</b>: <b>{format_price(current_price)} so'm</b> "
+                f"🔧 <s>{format_price(default_price)}</s>"
+            )
+        else:
+            lines.append(f"{emoji} <b>{title}</b>: <b>{format_price(current_price)} so'm</b>")
+    lines.append("")
+    lines.append(
+        "<i>Tarifni tanlab yangi narxni yuboring. "
+        "Narx o'zgartirilsa foydalanuvchilar darhol yangi narxni ko'radi. "
+        "Avval yaratilgan buyurtmalarga (pending) ta'sir qilmaydi — ular yaratilgan "
+        "paytdagi narxda qoladi.</i>"
+    )
+    return "\n".join(lines)
+
+
+@router.callback_query(F.data == "admin_plans_prices")
+async def admin_plans_prices_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    await state.clear()
+    from bot.services.plan_pricing import (
+        get_effective_plans, list_overrides, refresh_plans_cache,
+    )
+    # Ehtiyot uchun keshni yangilab olamiz (DB'da qo'lda o'zgargan bo'lishi mumkin).
+    await refresh_plans_cache(session)
+    plans = get_effective_plans()
+    overrides = await list_overrides(session)
+    await callback.message.edit_text(
+        _plans_prices_text(plans, overrides),
+        parse_mode="HTML",
+        reply_markup=admin_plans_prices_keyboard(plans, overrides),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_plan_edit_"))
+async def admin_plan_edit_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    plan_key = callback.data[len("admin_plan_edit_"):]
+    from bot.config import SUBSCRIPTION_PLANS
+    if plan_key not in SUBSCRIPTION_PLANS:
+        await callback.answer("Bunday tarif yo'q!", show_alert=True)
+        return
+
+    from bot.services.plan_pricing import get_effective_plan, list_overrides
+    from bot.services.premium_service import format_price
+    plan = get_effective_plan(plan_key) or SUBSCRIPTION_PLANS[plan_key]
+    overrides = await list_overrides(session)
+    default_price = int(SUBSCRIPTION_PLANS[plan_key].get("price", 0))
+    current_price = int(plan.get("price", 0))
+    is_overridden = plan_key in overrides
+
+    await state.update_data(plan_key=plan_key)
+    await state.set_state(AdminState.plan_price_edit)
+    await callback.message.edit_text(
+        f"💰 <b>Tarif: {plan.get('emoji','💎')} {plan.get('title', plan_key)}</b>\n\n"
+        f"Joriy narx: <b>{format_price(current_price)} so'm</b>"
+        + (f" <i>(default: {format_price(default_price)})</i>" if is_overridden and current_price != default_price else "") +
+        f"\n\nYangi narxni <b>so'mda</b> yuboring (faqat raqam).\n"
+        f"Masalan: <code>29900</code>\n\n"
+        f"<i>Foydalanuvchilar yangi narxni darhol ko'radi. "
+        f"Ushbu tarif uchun avval yaratilgan pending buyurtmalar o'z summasida qoladi "
+        f"(webhook'dagi anti-tamper tekshiruvi buzilmaydi).</i>",
+        parse_mode="HTML",
+        reply_markup=admin_plan_edit_keyboard(plan_key, is_overridden and current_price != default_price),
+    )
+    await callback.answer()
+
+
+@router.message(AdminState.plan_price_edit)
+async def admin_plan_price_process(message: Message, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, message.from_user.id):
+        return
+
+    data = await state.get_data()
+    plan_key = data.get("plan_key")
+    from bot.config import SUBSCRIPTION_PLANS
+    if not plan_key or plan_key not in SUBSCRIPTION_PLANS:
+        await state.clear()
+        await message.answer("❌ Tarif yo'qoldi. Qaytadan urinib ko'ring.", reply_markup=back_to_premium_keyboard())
+        return
+
+    raw = (message.text or "").strip().replace(" ", "").replace(",", "").replace("_", "")
+    try:
+        price = int(raw)
+    except ValueError:
+        await message.answer(
+            "❌ Faqat butun raqam yuboring (so'mda). Masalan: <code>29900</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    from bot.services.plan_pricing import set_plan_price, get_effective_plan
+    from bot.services.premium_service import format_price
+    try:
+        await set_plan_price(session, plan_key, price, updated_by=message.from_user.id)
+    except ValueError as e:
+        await message.answer(f"❌ {e}", parse_mode="HTML")
+        return
+    except Exception as e:
+        await message.answer(f"❌ Xato: {e}")
+        return
+
+    await state.clear()
+    plan = get_effective_plan(plan_key)
+    default_price = int(SUBSCRIPTION_PLANS[plan_key].get("price", 0))
+    delta = ""
+    if price != default_price:
+        delta = f"\n<i>Default: {format_price(default_price)} so'm</i>"
+    await message.answer(
+        f"✅ <b>Yangi narx saqlandi!</b>\n\n"
+        f"{plan.get('emoji','💎')} <b>{plan.get('title', plan_key)}</b>\n"
+        f"💰 <b>{format_price(price)} so'm</b>{delta}\n\n"
+        f"Foydalanuvchilar endi obuna oynasida yangi narxni ko'radi.",
+        parse_mode="HTML",
+        reply_markup=back_to_premium_keyboard(),
+    )
+
+
+@router.callback_query(F.data.startswith("admin_plan_reset_"))
+async def admin_plan_reset(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    plan_key = callback.data[len("admin_plan_reset_"):]
+    from bot.config import SUBSCRIPTION_PLANS
+    if plan_key not in SUBSCRIPTION_PLANS:
+        await callback.answer("Bunday tarif yo'q!", show_alert=True)
+        return
+
+    from bot.services.plan_pricing import reset_plan_price, get_effective_plans, list_overrides
+    await reset_plan_price(session, plan_key)
+    await state.clear()
+
+    plans = get_effective_plans()
+    overrides = await list_overrides(session)
+    await callback.message.edit_text(
+        _plans_prices_text(plans, overrides),
+        parse_mode="HTML",
+        reply_markup=admin_plans_prices_keyboard(plans, overrides),
+    )
+    await callback.answer("↺ Default narxga qaytarildi", show_alert=True)
