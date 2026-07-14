@@ -124,7 +124,7 @@ def referral_share_keyboard(link: str) -> InlineKeyboardMarkup:
 def contact_keyboard() -> InlineKeyboardMarkup:
     """Bog'lanish: admin + kanal."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👨‍💻 Admin bilan bog'lanish", url="https://t.me/Dilshod_Toxirov_adminbot")],
+        [InlineKeyboardButton(text="👨‍💻 Admin bilan bog'lanish", url="https://t.me/adxamovvvs")],
         [InlineKeyboardButton(text="📢 IntizomAI kanali", url="https://t.me/Intizom_AI")],
     ])
 

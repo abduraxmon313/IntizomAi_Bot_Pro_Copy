@@ -1079,22 +1079,10 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
 </div>
 
-<!-- Friends: a'zo uchun yangi item (reja/maqsad/odat) -->
-<div class="modal-back" id="forMemberBack">
-  <div class="modal">
-    <div class="grab"></div>
-    <h3 id="forMemberTitle">A'zo uchun yangi</h3>
-    <div class="fld" id="fmTypeFld"><label>Turi</label><div class="hseg" id="fmTypeSeg"><div class="hseg-item active" data-fm="plan">Reja</div><div class="hseg-item" data-fm="goal">Maqsad</div><div class="hseg-item" data-fm="habit">Odat</div></div></div>
-    <div class="fld"><label>Sarlavha</label><input id="fmTitle" maxlength="200" placeholder="Nima qilish kerak?"></div>
-    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="fmDesc" maxlength="500"></textarea></div>
-    <div class="fld" id="fmTimeFld"><label>Vaqt (ixtiyoriy, HH:MM)</label><input id="fmTime" placeholder="06:00" maxlength="5"></div>
-    <div class="fld hidden" id="fmGoalTypeFld"><label>Maqsad turi</label><div class="hseg" id="fmGoalTypeSeg"><div class="hseg-item active" data-gt="yearly">Yillik</div><div class="hseg-item" data-gt="monthly">Oylik</div></div></div>
-    <div class="row gap-12 mt-8">
-      <button class="btn btn-ghost" id="fmCancel">Bekor</button>
-      <button class="btn" id="fmSave">Yaratish</button>
-    </div>
-  </div>
-</div>
+<!-- Eski "A'zo uchun yangi" (forMemberBack) modal olib tashlandi — o'rniga
+     plan/habit/goal uchun asosiy modallar (planModalBack / habitModalBack /
+     modalBack) qayta ishlatiladi. Barcha maydonlar (vaqt, sana, belgi,
+     takrorlash, davomiylik, eslatma) o'z-o'zi uchun bo'lgani kabi ko'rinadi. -->
 
 <!-- Achievement unlock modal -->
 <div class="unlock-overlay" id="unlockOverlay">
@@ -1224,7 +1212,10 @@ const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{i
   groups:[],
   currentGroup:null,        // {id,name,description,invite_code,is_owner,members:[...]}
   currentMember:null,       // {member:{...}, plans:[...], habits:[...], goals:[...], can_manage}
-  forMemberModal:{groupId:null,userId:null,type:'plan',goalType:'yearly'},
+  // Boshqa a'zo uchun reja/maqsad/odat yaratayotganda o'z modallari (plan/habit/goal)
+  // qayta ishlatiladi (barcha maydonlar bilan). Bu maydon set bo'lsa, save
+  // handlerlar item'ni friends API orqali TARGET a'zoning hisobiga yozadi.
+  forMemberContext:null,    // {groupId, userId, name} yoki null
 };
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -1465,7 +1456,10 @@ function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.h
   const rhSel=document.getElementById('hRemHour');if(rhSel)rhSel.value=rh;
   const rmSel=document.getElementById('hRemMin');if(rmSel)rmSel.value=rm;
   renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();applyHabitRemUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
-function closeHabitModal(){const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');}
+function closeHabitModal(){
+  const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');
+  State.forMemberContext=null;
+}
 async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();
   const freq=State.habitFreq||'daily';
   let weekdays=null;
@@ -1477,7 +1471,24 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
   let reminderTime=null;
   if(remOn){const rh=document.getElementById('hRemHour')?.value||'20';const rm=document.getElementById('hRemMin')?.value||'00';reminderTime=rh+':'+rm;}
   const body={title:t,description:desc||null,icon:State.habitIcon||'✅',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays,reminder_time:reminderTime,clear_reminder:!remOn};
-  try{if(State.habitModal.id){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
+  const isEdit=!!State.habitModal.id;
+  // ── Boshqa a'zo uchun yaratish ──
+  if(!isEdit && State.forMemberContext){
+    const ctx=State.forMemberContext;
+    try{await apiForMemberHabit(ctx.groupId, ctx.userId, body);}
+    catch(e){
+      const m=String(e&&e.message||'');
+      if(m.includes('402')){toast('⚠️ A\'zoning bepul odat limiti tugagan',true);return;}
+      if(m.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
+      toast('Xato: '+m,true);return;
+    }
+    State.forMemberContext=null;
+    closeHabitModal();
+    toast('✨ '+ctx.name+' uchun odat qo\'shildi');
+    try{await openMember(ctx.userId);}catch(_){}
+    return;
+  }
+  try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
@@ -1864,8 +1875,50 @@ function openModal(period,periodKey,goal){
   document.getElementById('modalBack').classList.add('show');
   setTimeout(()=>document.getElementById('mTitle').focus(),300);
 }
-function closeModal(){document.getElementById('modalBack').classList.remove('show');}
-async function saveModal(){const t=document.getElementById('mTitle').value.trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const d=document.getElementById('mDesc').value.trim();try{if(State.modal.id){const ng=await apiGoalUpdate(State.modal.id,{title:t,description:d||null});const idx=State.goals.findIndex(g=>g.id===State.modal.id);if(idx>=0)State.goals[idx]={...State.goals[idx],...ng};toast('✓ Yangilandi');}else{const pl={title:t,description:d||null,goal_type:State.modal.period,period:State.modal.periodKey};const ng=await apiGoalCreate(pl);State.goals.push(ng);toast('✨ Maqsad qo\'shildi');}closeModal();renderGoalsView();setText('msGoals',State.goals.length);}catch(e){toast('Xato: '+e.message,true);}}
+function closeModal(){
+  document.getElementById('modalBack').classList.remove('show');
+  State.forMemberContext=null;
+}
+async function saveModal(){
+  const t=document.getElementById('mTitle').value.trim();
+  if(!t){toast('Sarlavha bo\'sh',true);return;}
+  const d=document.getElementById('mDesc').value.trim();
+  const isEdit=!!State.modal.id;
+  // ── Boshqa a'zo uchun maqsad yaratish ──
+  if(!isEdit && State.forMemberContext){
+    const ctx=State.forMemberContext;
+    try{
+      await apiForMemberGoal(ctx.groupId, ctx.userId, {
+        title:t, description:d||null,
+        goal_type:State.modal.period, period:State.modal.periodKey,
+      });
+    }catch(e){
+      const msg=String(e&&e.message||'');
+      if(msg.includes('402')){toast('⚠️ A\'zoning bepul maqsad limiti tugagan',true);return;}
+      if(msg.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
+      toast('Xato: '+msg,true);return;
+    }
+    State.forMemberContext=null;
+    closeModal();
+    toast('✨ '+ctx.name+' uchun maqsad qo\'shildi');
+    try{await openMember(ctx.userId);}catch(_){}
+    return;
+  }
+  try{
+    if(isEdit){
+      const ng=await apiGoalUpdate(State.modal.id,{title:t,description:d||null});
+      const idx=State.goals.findIndex(g=>g.id===State.modal.id);
+      if(idx>=0)State.goals[idx]={...State.goals[idx],...ng};
+      toast('✓ Yangilandi');
+    }else{
+      const pl={title:t,description:d||null,goal_type:State.modal.period,period:State.modal.periodKey};
+      const ng=await apiGoalCreate(pl);
+      State.goals.push(ng);
+      toast('✨ Maqsad qo\'shildi');
+    }
+    closeModal();renderGoalsView();setText('msGoals',State.goals.length);
+  }catch(e){toast('Xato: '+e.message,true);}
+}
 
 function fillTimeSelects(){
   const h=document.getElementById('pHour');const m=document.getElementById('pMin');
@@ -1903,7 +1956,11 @@ function openPlanModal(plan){
   const back=document.getElementById('planModalBack');if(back)back.classList.add('show');
   setTimeout(()=>{const f=document.getElementById('pTitle');if(f)f.focus();},300);
 }
-function closePlanModal(){const b=document.getElementById('planModalBack');if(b)b.classList.remove('show');}
+function closePlanModal(){
+  const b=document.getElementById('planModalBack');if(b)b.classList.remove('show');
+  // Do'stlar konteksti — modal yopilsa (cancel/backdrop) tozalanadi.
+  State.forMemberContext=null;
+}
 async function savePlanModal(){
   const t=(document.getElementById('pTitle')?.value||'').trim();
   if(!t){toast('Sarlavha bo\'sh',true);return;}
@@ -1921,6 +1978,24 @@ async function savePlanModal(){
   const body={title:t,description:desc||null,scheduled_time:tm,plan_date:dt};
   const isEdit=!!State.planModal.id;
   if(!isEdit && dt < ymd(new Date())){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
+  // ── Boshqa a'zo uchun yaratish (Do'stlar guruhi) ──
+  if(!isEdit && State.forMemberContext){
+    const ctx=State.forMemberContext;
+    try{
+      await apiForMemberPlan(ctx.groupId, ctx.userId, body);
+    }catch(e){
+      const msg=String(e&&e.message||'');
+      if(msg.includes('402')){toast('⚠️ A\'zoning bepul kunlik limiti tugagan',true);return;}
+      if(msg.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
+      if(msg.includes('409')){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
+      toast('Xato: '+msg,true);return;
+    }
+    State.forMemberContext=null;
+    closePlanModal();
+    toast('✨ '+ctx.name+' uchun reja qo\'shildi');
+    try{await openMember(ctx.userId);}catch(_){}
+    return;
+  }
   try{
     if(isEdit){const np=await apiPlanUpdate(State.planModal.id,body);const idx=State.plans.findIndex(x=>x.id===State.planModal.id);if(idx>=0)State.plans[idx]=np;}
     else{await apiPlanCreate(body);}
@@ -2058,10 +2133,11 @@ function renderMemberContent(){
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Maqsad yo\'q</div>';
 
   const createBtns=canManage?`
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn btn-ghost" data-fmnew="plan" style="flex:1;min-width:130px;font-size:12.5px">+ Reja</button>
-      <button class="btn btn-ghost" data-fmnew="goal" style="flex:1;min-width:130px;font-size:12.5px">+ Maqsad</button>
-      <button class="btn btn-ghost" data-fmnew="habit" style="flex:1;min-width:130px;font-size:12.5px">+ Odat</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <button class="btn btn-ghost" data-fmnew="plan" style="font-size:12.5px">+ Reja</button>
+      <button class="btn btn-ghost" data-fmnew="habit" style="font-size:12.5px">+ Odat</button>
+      <button class="btn btn-ghost" data-fmnew="goal_yearly" style="font-size:12.5px">+ Yillik maqsad</button>
+      <button class="btn btn-ghost" data-fmnew="goal_monthly" style="font-size:12.5px">+ Oylik maqsad</button>
     </div>
     <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja/maqsad/odat yaratishga ruxsat bergan.</p>`:'';
 
@@ -2077,7 +2153,31 @@ function renderMemberContent(){
     ${createBtns}
     ${noPermHint}
   `;
-  wrap.querySelectorAll('[data-fmnew]').forEach(b=>b.onclick=()=>openForMemberModal(b.dataset.fmnew));
+  wrap.querySelectorAll('[data-fmnew]').forEach(b=>b.onclick=()=>openCreateForMember(b.dataset.fmnew));
+}
+
+// A'zo uchun yangi resurs yaratishda — o'ziga xos plan/habit/goal modallarini
+// qayta ishlatamiz (barcha maydonlar bilan: eslatma vaqti, sana, belgi,
+// takrorlash, davomiylik, eslatma va h.k.). `State.forMemberContext` set
+// bo'lsa saqlash friends API'ga (a'zoning hisobiga) yo'naltiriladi.
+function openCreateForMember(kind){
+  const g=State.currentGroup, m=State.currentMember;
+  if(!g||!m||m.member.is_me){return;}
+  State.forMemberContext={groupId:g.id, userId:m.member.user_id, name:m.member.name};
+  if(kind==='plan'){
+    openPlanModal(null);
+    setText('planModalTitle', m.member.name+' uchun yangi reja');
+  }else if(kind==='habit'){
+    openHabitModal(null);
+    setText('habitModalTitle', m.member.name+' uchun yangi odat');
+  }else if(kind==='goal_yearly' || kind==='goal_monthly'){
+    const today=new Date();
+    const gt=(kind==='goal_monthly')?'monthly':'yearly';
+    const period=(gt==='yearly')?String(today.getFullYear()):(today.getFullYear()+'-'+pad(today.getMonth()+1));
+    openModal(gt, period, null);
+    const lb=gt==='yearly'?'yillik':'oylik';
+    document.getElementById('modalTitle').textContent=m.member.name+' uchun yangi '+lb+' maqsad';
+  }
 }
 
 // ── Guruh yaratish modali ────────────────────────────────
@@ -2182,48 +2282,10 @@ async function openPermsModal(){
   document.getElementById('permsBack').classList.add('show');
 }
 
-// ── A'zo uchun yangi (plan/goal/habit) modali ────────────
-function openForMemberModal(type){
-  const g=State.currentGroup,m=State.currentMember;
-  if(!g||!m)return;
-  State.forMemberModal={groupId:g.id,userId:m.member.user_id,type:type||'plan',goalType:'yearly'};
-  document.getElementById('forMemberTitle').textContent=m.member.name+' uchun yangi';
-  document.getElementById('fmTitle').value='';
-  document.getElementById('fmDesc').value='';
-  document.getElementById('fmTime').value='';
-  document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.fm===State.forMemberModal.type));
-  document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.gt==='yearly'));
-  applyForMemberTypeUI();
-  document.getElementById('forMemberBack').classList.add('show');
-  setTimeout(()=>document.getElementById('fmTitle').focus(),200);
-}
-function applyForMemberTypeUI(){
-  const t=State.forMemberModal.type;
-  document.getElementById('fmTimeFld').classList.toggle('hidden',t!=='plan');
-  document.getElementById('fmGoalTypeFld').classList.toggle('hidden',t!=='goal');
-}
-async function saveForMember(){
-  const s=State.forMemberModal;const title=document.getElementById('fmTitle').value.trim();
-  if(!title){toast('Sarlavha bo\'sh',true);return;}
-  const desc=document.getElementById('fmDesc').value.trim()||null;
-  try{
-    if(s.type==='plan'){
-      const time=(document.getElementById('fmTime').value||'').trim()||null;
-      await apiForMemberPlan(s.groupId,s.userId,{title,description:desc,scheduled_time:time,plan_date:ymd(new Date())});
-    }else if(s.type==='goal'){
-      const gt=(document.querySelector('#fmGoalTypeSeg .hseg-item.active')||{}).dataset?.gt||'yearly';
-      const today=new Date();
-      const period=(gt==='yearly')?String(today.getFullYear()):(today.getFullYear()+'-'+pad(today.getMonth()+1));
-      await apiForMemberGoal(s.groupId,s.userId,{title,description:desc,goal_type:gt,period});
-    }else{
-      await apiForMemberHabit(s.groupId,s.userId,{title,description:desc,frequency:'daily'});
-    }
-    document.getElementById('forMemberBack').classList.remove('show');
-    toast('✨ Yaratildi');
-    // Ma'lumotlarni yangilaymiz
-    await openMember(s.userId);
-  }catch(e){toast('Xato: '+e.message,true);}
-}
+// A'zo uchun eski soddalashgan modal (fmTitle/fmDesc/fmTime/fmGoalType) olib
+// tashlandi — o'rniga o'z-o'zi uchun ishlatiladigan boy modallar
+// (plan/habit/goal) qayta ishlatiladi. `openCreateForMember` va save
+// handlerlar `State.forMemberContext` orqali friends API'ga yo'naltiradi.
 
 function switchPage(n){
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));
@@ -2282,18 +2344,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _geB=document.getElementById('groupEditBack');if(_geB)_geB.onclick=e=>{if(e.target.id==='groupEditBack')_geB.classList.remove('show');};
   const _pC=document.getElementById('permsClose');if(_pC)_pC.onclick=()=>document.getElementById('permsBack').classList.remove('show');
   const _pB=document.getElementById('permsBack');if(_pB)_pB.onclick=e=>{if(e.target.id==='permsBack')_pB.classList.remove('show');};
-  document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(it=>it.onclick=()=>{
-    State.forMemberModal.type=it.dataset.fm;
-    document.querySelectorAll('#fmTypeSeg .hseg-item').forEach(x=>x.classList.toggle('active',x===it));
-    applyForMemberTypeUI();
-  });
-  document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(it=>it.onclick=()=>{
-    State.forMemberModal.goalType=it.dataset.gt;
-    document.querySelectorAll('#fmGoalTypeSeg .hseg-item').forEach(x=>x.classList.toggle('active',x===it));
-  });
-  const _fmC=document.getElementById('fmCancel');if(_fmC)_fmC.onclick=()=>document.getElementById('forMemberBack').classList.remove('show');
-  const _fmS=document.getElementById('fmSave');if(_fmS)_fmS.onclick=saveForMember;
-  const _fmB=document.getElementById('forMemberBack');if(_fmB)_fmB.onclick=e=>{if(e.target.id==='forMemberBack')_fmB.classList.remove('show');};
+  // Eski forMemberBack handlerlari olib tashlandi.
   // Odat (habit) wiring
   const _ah=document.getElementById('addHabitBtn');if(_ah)_ah.onclick=e=>{ripple(e);openHabitModal(null);};
   const _hc=document.getElementById('hCancel');if(_hc)_hc.onclick=closeHabitModal;
@@ -2364,7 +2415,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   const _shareCard=document.getElementById('shareCard');if(_shareCard)_shareCard.onclick=shareInvite;
   const _chBtn=document.getElementById('channelBtn');if(_chBtn)_chBtn.onclick=()=>openTgLink('https://t.me/Intizom_AI');
-  const _adBtn=document.getElementById('adminBtn');if(_adBtn)_adBtn.onclick=()=>openTgLink('https://t.me/Dilshod_Toxirov_adminbot');
+  const _adBtn=document.getElementById('adminBtn');if(_adBtn)_adBtn.onclick=()=>openTgLink('https://t.me/adxamovvvs');
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
 });
