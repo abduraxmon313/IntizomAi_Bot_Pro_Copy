@@ -20,5 +20,7 @@ class Goal(Base):
     period = Column(String(30), nullable=False)       # 2026 | 2026-05
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Kim yaratgan (audit). NULL = foydalanuvchining o'zi yaratgan.
+    created_by_user_id = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="goals")

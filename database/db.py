@@ -93,6 +93,9 @@ PROMOCODE_NEW_COLUMNS = [
     ("is_free", "BOOLEAN DEFAULT FALSE"),
 ]
 
+# plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).
+CREATED_BY_TABLES = ("plans", "goals", "habits")
+
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -111,6 +114,10 @@ NEW_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_habits_user_id ON habits (user_id)",
     "CREATE INDEX IF NOT EXISTS ix_habit_logs_habit_date ON habit_logs (habit_id, log_date)",
     "CREATE INDEX IF NOT EXISTS ix_habit_logs_user_date ON habit_logs (user_id, log_date)",
+    # Do'stlar (guruhlar) moduli
+    "CREATE INDEX IF NOT EXISTS ix_group_members_user ON group_members (user_id)",
+    "CREATE INDEX IF NOT EXISTS ix_group_members_group ON group_members (group_id)",
+    "CREATE INDEX IF NOT EXISTS ix_group_permissions_group ON group_permissions (group_id)",
 ]
 
 
@@ -140,6 +147,16 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip promocodes.{col}: {e}")
+
+    # plans/goals/habits: created_by_user_id — Do'stlar guruhida boshqa a'zo
+    # yaratgan bo'lsa uning users.id si. NULL = foydalanuvchining o'zi yaratgan.
+    for tbl in CREATED_BY_TABLES:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip {tbl}.created_by_user_id: {e}")
 
     # habits uchun yangi ustunlar (frequency/weekdays/duration/start_date...).
     # Jadval shu transaksiyada create_all bilan yaratilgani uchun yangi DB'da
@@ -174,7 +191,7 @@ async def create_tables():
         async with engine.begin() as conn:
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
-                subscription, payment_order, referral, habit,
+                subscription, payment_order, referral, habit, group,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)

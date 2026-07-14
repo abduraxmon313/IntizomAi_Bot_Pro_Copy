@@ -30,6 +30,9 @@ class Plan(Base):
     score_value = Column(Integer, default=5)
     created_at = Column(DateTime, default=datetime.utcnow)
     notified_at = Column(DateTime, nullable=True)
+    # Kim yaratgan (audit). NULL = foydalanuvchining o'zi yaratgan.
+    # Guruh a'zosi boshqa a'zo uchun yaratgan bo'lsa — yaratgan a'zoning users.id.
+    created_by_user_id = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="plans")
     score_logs = relationship("ScoreLog", back_populates="plan", cascade="all, delete")

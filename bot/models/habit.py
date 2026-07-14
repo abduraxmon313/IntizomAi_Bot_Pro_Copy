@@ -53,6 +53,8 @@ class Habit(Base):
     sort_order = Column(Integer, default=0)            # ro'yxatdagi tartib
     archived = Column(Boolean, default=False)          # arxivlangan (yashirilgan)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Kim yaratgan (audit). NULL = foydalanuvchining o'zi yaratgan.
+    created_by_user_id = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="habits")
     logs = relationship("HabitLog", back_populates="habit", cascade="all, delete")
