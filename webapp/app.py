@@ -67,6 +67,25 @@ async def lifespan(app: FastAPI):
     elif RUN_DILSHODBEK_BOT and not DILSHODBEK_BOT_TOKEN:
         logger.info("ℹ️ DILSHODBEK_BOT_TOKEN yo'q — Dilshodbek bot ishga tushirilmadi")
 
+    # Effective tarif narxlari keshini preload qilamiz (admin override'lar bo'lsa).
+    # DB jadval hali yaratilmagan bo'lsa xato bermay skip qiladi — bot startupda
+    # yaratadi va keyingi admin harakati keshni yangilaydi.
+    try:
+        # Kichik kechikish — bot task create_tables tugatishiga imkon beradi
+        # (Postgres'da DDL bir necha yuz ms oladi). Xato bermasa xayrli.
+        async def _preload_plan_pricing():
+            try:
+                await asyncio.sleep(3)
+                from database.db import AsyncSessionLocal
+                from bot.services.plan_pricing import refresh_plans_cache
+                async with AsyncSessionLocal() as s:
+                    await refresh_plans_cache(s)
+            except Exception as e:
+                logger.warning(f"plan_pricing preload skip: {type(e).__name__}: {e}")
+        asyncio.create_task(_preload_plan_pricing())
+    except Exception:
+        pass
+
     logger.info("🌐 FastAPI server tayyor")
     yield
 

@@ -192,6 +192,7 @@ async def create_tables():
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
                 subscription, payment_order, referral, habit, group,
+                plan_override,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)

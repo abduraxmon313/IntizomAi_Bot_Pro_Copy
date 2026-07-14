@@ -75,9 +75,50 @@ def admin_premium_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📋 Promokodlar", callback_data="admin_promo_list"),
         ],
         [
+            InlineKeyboardButton(text="💰 Tariflar narxi", callback_data="admin_plans_prices"),
+        ],
+        [
             InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_panel"),
         ]
     ])
+
+
+def admin_plans_prices_keyboard(effective_plans: dict, overrides: dict[str, int]) -> InlineKeyboardMarkup:
+    """
+    Tariflar ro'yxati — har bir tarif uchun narxni tahrirlash tugmasi.
+    `overrides` — DB'dagi override qiymatlar (default narxdan farqli bo'lsa 🔧 belgi ko'rsatiladi).
+    """
+    from bot.services.premium_service import format_price
+    rows = []
+    for key, plan in effective_plans.items():
+        emoji = plan.get("emoji", "💎")
+        title = plan.get("title", key)
+        price = plan.get("price", 0)
+        is_overridden = key in overrides
+        mark = " 🔧" if is_overridden else ""
+        rows.append([
+            InlineKeyboardButton(
+                text=f"{emoji} {title} — {format_price(price)} so'm{mark}",
+                callback_data=f"admin_plan_edit_{key}",
+            )
+        ])
+    rows.append([
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_premium"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def admin_plan_edit_keyboard(plan_key: str, is_overridden: bool) -> InlineKeyboardMarkup:
+    """Bitta tarif ekranidagi tugmalar: default'ga qaytarish + orqaga."""
+    rows = []
+    if is_overridden:
+        rows.append([
+            InlineKeyboardButton(text="↺ Default narxga qaytarish", callback_data=f"admin_plan_reset_{plan_key}"),
+        ])
+    rows.append([
+        InlineKeyboardButton(text="🔙 Tariflar", callback_data="admin_plans_prices"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def admin_promo_list_keyboard(promos: list) -> InlineKeyboardMarkup:

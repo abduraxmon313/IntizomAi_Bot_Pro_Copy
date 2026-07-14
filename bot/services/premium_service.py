@@ -37,12 +37,22 @@ logger = logging.getLogger(__name__)
 #  PLAN KATALOGI
 # ─────────────────────────────────────────────────────────────
 def get_plans() -> dict:
-    """Barcha obuna planlari: {key: {title, days, price}}."""
-    return SUBSCRIPTION_PLANS
+    """
+    Barcha obuna planlari: {key: {title, days, price}}.
+
+    Bu — DB'dagi admin override'lari config default'lari ustiga qo'yilgan
+    "effective" katalogi (bot/services/plan_pricing.py). Shu yerdan
+    keyboardlar, checkout va admin oynasi bir xil narxni ko'radi.
+    """
+    # Lazy import — plan_pricing modulida `bot.models.plan_override` ni import
+    # qiladigan aylanma bog'lanish (circular import) bo'lmasligi uchun.
+    from bot.services.plan_pricing import get_effective_plans
+    return get_effective_plans()
 
 
 def get_plan(plan_key: str) -> Optional[dict]:
-    return SUBSCRIPTION_PLANS.get(plan_key)
+    from bot.services.plan_pricing import get_effective_plan
+    return get_effective_plan(plan_key)
 
 
 def format_price(price: int) -> str:

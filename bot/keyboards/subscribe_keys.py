@@ -4,8 +4,8 @@ from aiogram.types import (
     WebAppInfo,
 )
 
-from bot.config import SUBSCRIPTION_PLANS, WEBAPP_URL, PAYLOV_PROVIDERS
-from bot.services.premium_service import format_price
+from bot.config import WEBAPP_URL, PAYLOV_PROVIDERS
+from bot.services.premium_service import format_price, get_plans
 
 # Provayder kodlari → foydalanuvchiga ko'rinadigan nom + emoji.
 PROVIDER_LABELS = {
@@ -26,7 +26,8 @@ def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False) -> InlineKe
     kiritilishi bilan darhol (to'lovsiz) faollashtiriladi.
     """
     rows = []
-    for key, plan in SUBSCRIPTION_PLANS.items():
+    # Effective plans — admin o'zgartirgan narxlar keshdan keladi.
+    for key, plan in get_plans().items():
         emoji = plan.get("emoji", "💎")
         tag = plan.get("tag", "")
         tag_str = f" ({tag})" if tag else ""
