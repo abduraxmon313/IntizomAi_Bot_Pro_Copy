@@ -74,8 +74,14 @@ class GroupPermission(Base):
       grantor  = "Men" (kimning ma'lumotlari ustida ishlash mumkin)
       grantee  = "Boshqa odam" (menim ma'lumotlarim ustida ishlashga ruxsat berilgan)
 
-    can_manage=True bo'lsa, grantee guruhda grantor uchun yangi
-    reja / maqsad / odat yarata oladi.
+    Ikki mustaqil huquq:
+      • `can_view`   — grantee grantor'ning reja / odat / maqsadlarini KO'RA oladi.
+      • `can_manage` — grantee grantor uchun yangi reja / maqsad / odat YARATA oladi
+                       (bu avtomatik ko'rish huquqini ham beradi: yaratgan
+                       nimasini yaratayotganini bilmasa mantiqsiz).
+
+    Effective ko'rinish: `can_view OR can_manage`. Default (yozuv yo'q): hech
+    kim boshqaning ma'lumotini ko'rmaydi.
     """
     __tablename__ = "group_permissions"
     __table_args__ = (
@@ -95,7 +101,10 @@ class GroupPermission(Base):
     grantee_user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
     )
-    can_manage = Column(Boolean, default=True, nullable=False)
+    can_manage = Column(Boolean, default=False, nullable=False)
+    # `can_view` — grantee grantor'ning ma'lumotlarini ko'ra oladi.
+    # Effective ko'rinish `can_view OR can_manage`.
+    can_view = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     group = relationship("Group", back_populates="permissions")

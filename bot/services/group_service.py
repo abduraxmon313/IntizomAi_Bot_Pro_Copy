@@ -339,10 +339,33 @@ async def _member_today_summary(session: AsyncSession, user_id: int) -> dict:
     }
 
 
+async def _effective_visible(
+    session: AsyncSession, group_id: int, owner_id: int, viewer_id: int
+) -> bool:
+    """
+    Viewer, guruhda owner'ning ma'lumotlarini ko'ra oladimi?
+      • O'ziga har doim ko'rinadi.
+      • Owner viewer'ga `can_view` yoki `can_manage` bergan bo'lsa → True.
+      • Aks holda → False (default yashirin).
+    """
+    if owner_id == viewer_id:
+        return True
+    row = await session.scalar(
+        select(GroupPermission).where(and_(
+            GroupPermission.group_id == group_id,
+            GroupPermission.grantor_user_id == owner_id,
+            GroupPermission.grantee_user_id == viewer_id,
+        ))
+    )
+    if not row:
+        return False
+    return bool(row.can_view) or bool(row.can_manage)
+
+
 async def get_group_detail(
     session: AsyncSession, user: User, group_id: int
 ) -> dict:
-    """Guruh + a'zolar ro'yxati + bugungi xulosa + joriy user permissions."""
+    """Guruh + a'zolar ro'yxati + bugungi xulosa (visibility bilan) + permissions."""
     g = await get_group(session, group_id)
     await require_member(session, group_id, user.id)
 
@@ -354,8 +377,17 @@ async def get_group_detail(
     )
     members = []
     for gm, u in members_res.all():
-        summary = await _member_today_summary(session, u.id)
-        # Bu a'zo joriy foydalanuvchiga ruxsat berganmi?
+        # Joriy foydalanuvchi shu a'zoning ma'lumotlarini ko'ra oladimi?
+        visible = await _effective_visible(session, group_id, u.id, user.id)
+        # Ko'rinish yopiq bo'lsa summary chip'lari nol qilib yuboriladi
+        # (frontend "🔒 yashirin" belgisini ko'rsatadi).
+        summary = await _member_today_summary(session, u.id) if visible else {
+            "plans_total": 0, "plans_done": 0,
+            "habits_total": 0, "habits_done_today": 0,
+            "goals_total": 0, "goals_done": 0,
+        }
+        # Bu a'zo joriy foydalanuvchiga can_manage bergan bo'lsa — men u uchun
+        # reja/odat/maqsad yarata olaman (member view'da tugmalar chiqishi uchun).
         can_i_manage = False
         if u.id != user.id:
             perm = await session.scalar(
@@ -377,6 +409,7 @@ async def get_group_detail(
             "streak": int(u.streak or 0),
             "summary": summary,
             "can_i_manage": can_i_manage,
+            "visible": visible,
         })
 
     return {
@@ -394,13 +427,15 @@ async def get_member_view(
     session: AsyncSession, user: User, group_id: int, target_user_id: int
 ) -> dict:
     """
-    Guruhning bir a'zosining sahifasi: bugungi rejalari, aktiv odatlari va
-    joriy davr maqsadlari. `can_manage` = joriy foydalanuvchi bu a'zo uchun
-    yangi item yaratishga huquqli.
+    Guruhning bir a'zosining sahifasi. `visible` — target o'z ma'lumotlarini
+    joriy foydalanuvchiga ochganmi:
+      • False → ism va streak (leaderboard'da baribir ochiq) qaytariladi,
+                lekin plans/habits/goals bo'sh ro'yxatlar. Frontend
+                "🔒 Yashirin" xabarini ko'rsatadi.
+      • True  → to'liq ma'lumot.
     """
     g = await get_group(session, group_id)
     await require_member(session, group_id, user.id)
-    # Target ham a'zo bo'lishi kerak
     if not await is_member(session, group_id, target_user_id):
         raise GroupNotFound("Bunday a'zo bu guruhda yo'q.")
 
@@ -408,15 +443,43 @@ async def get_member_view(
     if not target:
         raise GroupNotFound("Foydalanuvchi topilmadi.")
 
+    visible = await _effective_visible(session, group_id, target.id, user.id)
+
+    # Joriy user shu a'zo uchun yozishga huquqlimi (can_manage → visible ham True)
+    can_manage = False
+    if target.id != user.id:
+        can_manage = bool(await session.scalar(
+            select(GroupPermission.can_manage).where(and_(
+                GroupPermission.group_id == group_id,
+                GroupPermission.grantor_user_id == target.id,
+                GroupPermission.grantee_user_id == user.id,
+            ))
+        ))
+
+    # Ko'rinmaydigan a'zo — bo'sh ro'yxatlar bilan qaytariladi.
+    if not visible:
+        return {
+            "group_id": group_id,
+            "member": {
+                "user_id": target.id,
+                "telegram_id": target.telegram_id,
+                "name": (target.display_name or target.full_name or "Foydalanuvchi").strip() or "Foydalanuvchi",
+                "streak": int(target.streak or 0),
+                "total_score": int(target.total_score or 0),
+                "is_me": False,
+            },
+            "plans": [], "habits": [], "goals": [],
+            "can_manage": False,  # ko'rinmasa yaratish ham yo'q (aslida bunday yozuv ham bo'lmasligi kerak)
+            "visible": False,
+        }
+
     today = _today_tashkent()
-    # Bugungi rejalar
     plans = (await session.execute(
         select(Plan).where(
             and_(Plan.user_id == target_user_id, Plan.plan_date == today)
         ).order_by(Plan.scheduled_time.nullslast(), Plan.id)
     )).scalars().all()
 
-    # Odatlar (arxivlanmagan)
     habits = (await session.execute(
         select(Habit).where(and_(
             Habit.user_id == target_user_id, Habit.archived == False,  # noqa: E712
@@ -432,7 +495,6 @@ async def get_member_view(
         )).all()
         logged_today = {r[0] for r in rows}
 
-    # Yillik + oylik maqsadlar (joriy davr)
     year_key = str(today.year)
     month_key = f"{today.year:04d}-{today.month:02d}"
     goals = (await session.execute(
@@ -442,17 +504,6 @@ async def get_member_view(
             Goal.period.in_([year_key, month_key]),
         )).order_by(Goal.goal_type.desc(), Goal.created_at)
     )).scalars().all()
-
-    # Joriy user shu a'zo uchun yozishga huquqlimi
-    can_manage = False
-    if target.id != user.id:
-        can_manage = bool(await session.scalar(
-            select(GroupPermission.can_manage).where(and_(
-                GroupPermission.group_id == group_id,
-                GroupPermission.grantor_user_id == target.id,
-                GroupPermission.grantee_user_id == user.id,
-            ))
-        ))
 
     def _plan_dict(p):
         return {
@@ -491,6 +542,7 @@ async def get_member_view(
         "habits": [_habit_dict(h) for h in habits],
         "goals": [_goal_dict(g) for g in goals],
         "can_manage": can_manage,
+        "visible": True,
     }
 
 
@@ -501,9 +553,9 @@ async def list_permissions(
     session: AsyncSession, user: User, group_id: int
 ) -> dict:
     """
-    Joriy foydalanuvchiga tegishli ruxsatlar:
-      • grants_out — Men KIMLARGA ruxsat berdim (grantor=me)
-      • grants_in  — KIMLAR MENGA ruxsat berdi (grantee=me)
+    Joriy foydalanuvchiga tegishli ruxsatlar (endi ikki bayroq):
+      • grants_out — Men KIMLARGA berdim (grantor=me): can_manage + can_view
+      • grants_in  — KIMLAR MENGA berdi (grantee=me): can_manage + can_view
     """
     await require_member(session, group_id, user.id)
     # a'zolar ro'yxati (o'zim tashqari)
@@ -513,17 +565,25 @@ async def list_permissions(
         .where(and_(GroupMember.group_id == group_id, GroupMember.user_id != user.id))
     )).all()
 
-    perms_out = {
-        int(r[0]): bool(r[1]) for r in (await session.execute(
-            select(GroupPermission.grantee_user_id, GroupPermission.can_manage).where(and_(
+    perms_out: dict[int, tuple[bool, bool]] = {
+        int(r[0]): (bool(r[1]), bool(r[2])) for r in (await session.execute(
+            select(
+                GroupPermission.grantee_user_id,
+                GroupPermission.can_manage,
+                GroupPermission.can_view,
+            ).where(and_(
                 GroupPermission.group_id == group_id,
                 GroupPermission.grantor_user_id == user.id,
             ))
         )).all()
     }
-    perms_in = {
-        int(r[0]): bool(r[1]) for r in (await session.execute(
-            select(GroupPermission.grantor_user_id, GroupPermission.can_manage).where(and_(
+    perms_in: dict[int, tuple[bool, bool]] = {
+        int(r[0]): (bool(r[1]), bool(r[2])) for r in (await session.execute(
+            select(
+                GroupPermission.grantor_user_id,
+                GroupPermission.can_manage,
+                GroupPermission.can_view,
+            ).where(and_(
                 GroupPermission.group_id == group_id,
                 GroupPermission.grantee_user_id == user.id,
             ))
@@ -533,41 +593,109 @@ async def list_permissions(
     def _name(u: User) -> str:
         return (u.display_name or u.full_name or "Foydalanuvchi").strip() or "Foydalanuvchi"
 
-    grants_out = [
-        {"user_id": u.id, "name": _name(u), "can_manage": perms_out.get(u.id, False)}
-        for _, u in members
-    ]
-    grants_in = [
-        {"user_id": u.id, "name": _name(u), "can_manage": perms_in.get(u.id, False)}
-        for _, u in members
-    ]
+    grants_out = []
+    for _, u in members:
+        cm, cv = perms_out.get(u.id, (False, False))
+        grants_out.append({
+            "user_id": u.id,
+            "name": _name(u),
+            "can_manage": cm,
+            "can_view": bool(cv or cm),  # can_manage → auto view
+        })
+    grants_in = []
+    for _, u in members:
+        cm, cv = perms_in.get(u.id, (False, False))
+        grants_in.append({
+            "user_id": u.id,
+            "name": _name(u),
+            "can_manage": cm,
+            "can_view": bool(cv or cm),
+        })
     return {"grants_out": grants_out, "grants_in": grants_in}
 
 
 async def set_permission(
     session: AsyncSession, user: User, group_id: int,
-    grantee_user_id: int, can_manage: bool,
+    grantee_user_id: int,
+    can_manage: Optional[bool] = None,
+    can_view: Optional[bool] = None,
 ) -> None:
-    """Grantor = joriy user; grantee = boshqa a'zo. Ruxsat berish / bekor qilish."""
+    """
+    Grantor = joriy user; grantee = boshqa a'zo.
+    `can_manage` va `can_view` ixtiyoriy — faqat berilganlari yangilanadi.
+    Qoidalar:
+      • can_manage=True bo'lsa can_view avtomatik True qilib qulflanadi
+        (chunki yaratish uchun ko'ra olish shart).
+      • can_manage=False qilinsa can_view saqlanadi (foydalanuvchi ilgari o'zi
+        yoqib qo'ygan bo'lishi mumkin).
+      • Ikkisi ham False bo'lsa qatorni saqlab qolamiz (tarixiy).
+    """
     await require_member(session, group_id, user.id)
     if grantee_user_id == user.id:
         raise GroupError("O'zingizga ruxsat berish shart emas.")
     if not await is_member(session, group_id, grantee_user_id):
         raise GroupNotFound("Bunday a'zo yo'q.")
+    if can_manage is None and can_view is None:
+        return  # hech narsa berilmagan
 
     existing = await session.scalar(select(GroupPermission).where(and_(
         GroupPermission.group_id == group_id,
         GroupPermission.grantor_user_id == user.id,
         GroupPermission.grantee_user_id == grantee_user_id,
     )))
+    new_manage = bool(can_manage) if can_manage is not None else (
+        bool(existing.can_manage) if existing else False
+    )
+    new_view = bool(can_view) if can_view is not None else (
+        bool(existing.can_view) if existing else False
+    )
+    # can_manage bo'lsa can_view majburiy True
+    if new_manage:
+        new_view = True
+
     if existing is None:
-        if can_manage:
+        if new_manage or new_view:
             session.add(GroupPermission(
                 group_id=group_id, grantor_user_id=user.id,
-                grantee_user_id=grantee_user_id, can_manage=True,
+                grantee_user_id=grantee_user_id,
+                can_manage=new_manage, can_view=new_view,
             ))
     else:
-        existing.can_manage = bool(can_manage)
+        existing.can_manage = new_manage
+        existing.can_view = new_view
+    await session.commit()
+
+
+async def remove_member(
+    session: AsyncSession, actor: User, group_id: int, target_user_id: int
+) -> None:
+    """
+    Guruh egasi tomonidan a'zoni chiqarib yuborish.
+    Ega o'zini bu tarzda chiqarolmaydi — u faqat guruhni o'chira oladi.
+    """
+    g = await get_group(session, group_id)
+    if g.owner_user_id != actor.id:
+        raise GroupForbidden("Faqat guruh egasi a'zoni chiqarib yuborishi mumkin.")
+    if target_user_id == actor.id:
+        raise GroupError("Ega o'zini chiqarolmaydi — guruhni o'chiring.")
+    if not await is_member(session, group_id, target_user_id):
+        raise GroupNotFound("Bunday a'zo bu guruhda yo'q.")
+
+    # A'zolikni va u bilan bog'liq barcha permissionlarni tozalaymiz.
+    await session.execute(
+        GroupMember.__table__.delete().where(
+            and_(GroupMember.group_id == group_id, GroupMember.user_id == target_user_id)
+        )
+    )
+    await session.execute(
+        GroupPermission.__table__.delete().where(
+            and_(
+                GroupPermission.group_id == group_id,
+                (GroupPermission.grantor_user_id == target_user_id) |
+                (GroupPermission.grantee_user_id == target_user_id),
+            )
+        )
+    )
     await session.commit()
 
 
