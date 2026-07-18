@@ -96,6 +96,11 @@ PROMOCODE_NEW_COLUMNS = [
 # plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).
 CREATED_BY_TABLES = ("plans", "goals", "habits")
 
+# group_permissions jadvali uchun yangi ustunlar (Do'stlar visibility).
+GROUP_PERMISSIONS_NEW_COLUMNS = [
+    ("can_view", "BOOLEAN DEFAULT FALSE NOT NULL"),
+]
+
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -157,6 +162,17 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip {tbl}.created_by_user_id: {e}")
+
+    # group_permissions: can_view — Do'stlar guruhida "kim mening reja/odat/
+    # maqsadlarimni ko'ra oladi" toggle. Mavjud rowlar can_view=FALSE bilan
+    # keladi; can_manage=TRUE bo'lganlar effective_visible = True (OR).
+    for col, ddl in GROUP_PERMISSIONS_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE group_permissions ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip group_permissions.{col}: {e}")
 
     # habits uchun yangi ustunlar (frequency/weekdays/duration/start_date...).
     # Jadval shu transaksiyada create_all bilan yaratilgani uchun yangi DB'da

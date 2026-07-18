@@ -123,6 +123,20 @@ async def start_handler(message: Message, command: CommandObject, session: Async
 
     name = (user.display_name or user.full_name or "do'st")
 
+    # ── Guruh taklifi orqali kelgan bo'lsa — BIRINCHI qilib guruhga qo'shilish
+    # haqida xabar yuboramiz (foydalanuvchi darhol bilishi uchun), keyin
+    # odatiy /start oqimi davom etadi.
+    if joined_group_name:
+        try:
+            await message.answer(
+                f"👥 <b>Siz «{joined_group_name}» guruhiga qo'shildingiz!</b>\n\n"
+                "Mini App'ning <b>Do'stlar</b> bo'limidan guruh a'zolarini "
+                "va ularning bugungi holatini ko'ring.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
     # ── YANGI yoki onboarding tugatmagan foydalanuvchi: bot ichida onboarding ──
     if is_new or not user.onboarded:
         welcome = (
@@ -134,11 +148,6 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         if trial_days_granted:
             welcome += (
                 f"\n\n🎁 Sizga <b>{trial_days_granted} kunlik Premium</b> sovg'a qilindi!"
-            )
-        if joined_group_name:
-            welcome += (
-                f"\n\n👥 Siz <b>«{joined_group_name}»</b> guruhiga qo'shildingiz! "
-                "Mini App'da <b>Do'stlar</b> bo'limidan a'zolarni ko'ring."
             )
         await message.answer(welcome, parse_mode="HTML", reply_markup=main_reply_keyboard())
         await message.answer(
@@ -152,6 +161,8 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     # ── Mavjud (onboarding tugatgan) foydalanuvchi ──
     lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
     rank, emoji = rank_for_level(lvl)
+    # Xush kelibsiz matni (odatiy /start) — guruh xabari yuqorida alohida
+    # yuborilgan bo'lsa ham, bu qismda takrorlamaymiz.
     text = (
         f"🎯 <b>Xush kelibsiz, {name}!</b>\n\n"
         f"{emoji} <b>{rank}</b>  ·  {lvl}-daraja\n"
@@ -159,11 +170,6 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
         "Bugun nima qilamiz? 👇"
     )
-    if joined_group_name:
-        text += (
-            f"\n\n👥 Siz <b>«{joined_group_name}»</b> guruhiga qo'shildingiz — "
-            "Mini App'ning <b>Do'stlar</b> bo'limidan a'zolarni ko'ring."
-        )
     await message.answer(text, parse_mode="HTML", reply_markup=main_reply_keyboard())
 
     is_premium = user_is_premium(user)

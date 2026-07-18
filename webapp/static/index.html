@@ -295,6 +295,10 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .mem-item .meta{font-size:10.5px;color:var(--text-3);font-weight:600}
 .perm-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px}
 .perm-row .nm{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perm-row .toggle.locked{opacity:.55;pointer-events:none}
+.perm-row .locked-hint{font-size:10.5px;color:var(--text-3);margin-left:8px}
+.mem-kick{width:32px;height:32px;border-radius:10px;background:transparent;border:1px solid var(--border);color:var(--danger,#ef4444);display:grid;place-items:center;cursor:pointer;flex-shrink:0;padding:0}
+.mem-kick:active{transform:scale(.9);background:rgba(239,68,68,.08)}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);z-index:300;opacity:0;transition:all .35s cubic-bezier(.22,1,.36,1)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .confirm-back{position:fixed;inset:0;z-index:650;background:rgba(2,6,23,.62);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s ease}
@@ -1063,16 +1067,33 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   </div>
 </div>
 
-<!-- Friends: ruxsatlar -->
+<!-- Friends: ruxsatlar (2 seksiya — ko'ra oladi + yarata oladi) -->
 <div class="modal-back" id="permsBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Ruxsatlar 🛡</h3>
-    <p style="font-size:12.5px;color:var(--text-2);margin:2px 0 12px">Boshqalarga o'zingiz uchun reja, maqsad va odat yaratishga ruxsat bering.</p>
-    <div id="permsGrantsOut"></div>
-    <h3 style="margin-top:16px;font-size:14px">Menga ruxsat berganlar</h3>
-    <p style="font-size:12px;color:var(--text-3);margin:2px 0 8px">Bu odamlar sizga ular uchun reja/maqsad/odat yaratishga ruxsat berdi.</p>
-    <div id="permsGrantsIn"></div>
+
+    <!-- Ko'rinish (kim mening ma'lumotlarimni ko'radi) -->
+    <div style="margin-top:8px">
+      <h3 style="font-size:14px;margin-bottom:2px">👁 Kim meni ko'radi</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Rejalarim, odat va maqsadlarimni kim ko'ra oladi. Default: yashirin.</p>
+      <div id="permsView"></div>
+    </div>
+
+    <!-- Boshqarish (kim men uchun yarata oladi) -->
+    <div style="margin-top:14px">
+      <h3 style="font-size:14px;margin-bottom:2px">✍️ Kim men uchun yarata oladi</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Reja, odat va maqsadlarni men uchun qo'shish huquqi. Ruxsat berilgan a'zo avtomatik ko'radi ham.</p>
+      <div id="permsGrantsOut"></div>
+    </div>
+
+    <!-- Menga berilgan huquqlar (info) -->
+    <div style="margin-top:14px">
+      <h3 style="font-size:14px;margin-bottom:2px">📥 Menga ruxsat berganlar</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Bu odamlar sizga ular uchun reja/maqsad/odat yaratishga ruxsat berdi.</p>
+      <div id="permsGrantsIn"></div>
+    </div>
+
     <div class="row gap-12 mt-8">
       <button class="btn" id="permsClose">Yopish</button>
     </div>
@@ -1317,7 +1338,11 @@ const apiGroupLeave = (id)=>api('/api/webapp/friends/groups/'+id+'/leave',{metho
 const apiGroupJoin = (code)=>api('/api/webapp/friends/join/'+encodeURIComponent(code),{method:'POST'});
 const apiMemberView = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid);
 const apiPerms = (gid)=>api('/api/webapp/friends/groups/'+gid+'/permissions');
-const apiPermsSet = (gid,granteeId,canManage)=>api('/api/webapp/friends/groups/'+gid+'/permissions/'+granteeId,{method:'PUT',body:JSON.stringify({can_manage:!!canManage})});
+// Ruxsatni yangilash — ikkala bayroq ham ixtiyoriy. Backend can_manage=True
+// bo'lsa can_view'ni avtomatik True qulflaydi.
+const apiPermsSet = (gid,granteeId,body)=>api('/api/webapp/friends/groups/'+gid+'/permissions/'+granteeId,{method:'PUT',body:JSON.stringify(body||{})});
+// Ega tomonidan guruhdan a'zoni chiqarib yuborish
+const apiRemoveMember = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid,{method:'DELETE'});
 const apiForMemberPlan = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/plans',{method:'POST',body:JSON.stringify(body)});
 const apiForMemberGoal = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/goals',{method:'POST',body:JSON.stringify(body)});
 const apiForMemberHabit = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/habits',{method:'POST',body:JSON.stringify(body)});
@@ -2069,7 +2094,10 @@ async function openGroup(gid){
   _showFriendsView('group');
   document.getElementById('friendsGroupName').textContent=d.name;
   document.getElementById('friendsGroupSub').textContent=(d.members||[]).length+' a\'zo · kod: '+d.invite_code;
-  document.getElementById('friendsGroupSettings').style.display=d.is_owner?'':'none';
+  // Sozlamalar tugmasi HAMMAGA ko'rinadi:
+  //   • Ega — tahrirlash / o'chirish (ega chiqolmaydi)
+  //   • A'zo — guruhdan chiqish
+  document.getElementById('friendsGroupSettings').style.display='';
   renderGroupMembers();
 }
 
@@ -2086,19 +2114,50 @@ function renderGroupMembers(){
   const el=document.getElementById('friendsMembersList');
   const g=State.currentGroup;
   if(!el||!g)return;
+  const iAmOwner=!!g.is_owner;
   el.innerHTML=(g.members||[]).map(m=>{
     const initial=(m.name||'?').trim().charAt(0).toUpperCase();
     const role=m.role==='owner'?' <span class="chip mine" style="padding:1px 6px">EGA</span>':'';
+    // Yashirin a'zo (menga ochmagan) — summary chip'lari o'rniga qulf.
+    // O'zim — har doim ochiq. Ko'rinmagan bo'lsa "🔒 yashirin" chip.
+    const visible = m.is_me || m.visible!==false;
+    const chips = visible
+      ? `${_sumChips(m.summary||{})} <span class="chip">🔥 ${m.streak||0}</span>`
+      : `<span class="chip">🔒 yashirin</span> <span class="chip">🔥 ${m.streak||0}</span>`;
+    // Ega uchun har bir non-owner qatorda "chiqarib yuborish" tugmasi.
+    const kickBtn=(iAmOwner && !m.is_me && m.role!=='owner')
+      ? `<button class="mem-kick" data-kick="${m.user_id}" data-name="${esc(m.name)}" aria-label="Chiqarib yuborish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>`
+      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>`;
     return `<div class="mem-card ${m.is_me?'me':''}" data-uid="${m.user_id}">
       <div class="av">${initial}</div>
       <div class="body">
         <div class="nm">${esc(m.name)}${m.is_me?' (siz)':''}${role}</div>
-        <div class="st">${_sumChips(m.summary||{})} <span class="chip">🔥 ${m.streak||0}</span></div>
+        <div class="st">${chips}</div>
       </div>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
+      ${kickBtn}
     </div>`;
   }).join('');
-  el.querySelectorAll('.mem-card').forEach(c=>c.onclick=()=>openMember(+c.dataset.uid));
+  // A'zoni ochish
+  el.querySelectorAll('.mem-card').forEach(c=>c.onclick=(e)=>{
+    if(e.target.closest('.mem-kick'))return; // kick tugmasi ustidan bosilsa row-click ishlamasin
+    openMember(+c.dataset.uid);
+  });
+  // Egalar uchun: chiqarib yuborish tugmalari
+  el.querySelectorAll('.mem-kick').forEach(b=>b.onclick=async(e)=>{
+    e.stopPropagation();
+    const uid=+b.dataset.kick;
+    const name=b.dataset.name||'a\'zo';
+    if(!await confirmDialog({title:'Chiqarib yuborish', message:`«${name}» guruhdan chiqarilsinmi? Uning ushbu guruhga tegishli ruxsatlari ham tozalanadi.`}))return;
+    try{
+      await apiRemoveMember(State.currentGroup.id, uid);
+      toast('👋 A\'zo chiqarildi');
+      await openGroup(State.currentGroup.id);
+    }catch(err){
+      const msg=String(err&&err.message||'');
+      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
+      else toast('Xato: '+msg,true);
+    }
+  });
 }
 
 async function openMember(uid){
@@ -2115,6 +2174,20 @@ function renderMemberContent(){
   const d=State.currentMember;if(!d)return;
   const wrap=document.getElementById('friendsMemberContent');
   const canManage=d.can_manage&&!d.member.is_me;
+
+  // Yashirin a'zo: reja/odat/maqsad ma'lumotlari ko'rsatilmaydi.
+  // Ammo profil (ism, streak, ball) ko'rinadi (leaderboard'da baribir ochiq).
+  if(d.visible===false){
+    wrap.innerHTML=`
+      <div style="margin-top:22px;padding:22px 16px;text-align:center;background:var(--surface);border:1px dashed var(--border);border-radius:16px">
+        <div style="font-size:34px;line-height:1;margin-bottom:8px">🔒</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">Ma'lumotlari yashirin</div>
+        <div style="font-size:12px;color:var(--text-2);line-height:1.5">Bu a'zo o'zining reja, odat va maqsadlarini sizga ko'rsatmagan.<br>Ko'rish uchun undan Ruxsatlar (👁) da sizga ochishini so'rang.</div>
+      </div>
+    `;
+    return;
+  }
+
   const plans=d.plans||[],habits=d.habits||[],goals=d.goals||[];
 
   const plansHtml=plans.length?plans.map(p=>{
@@ -2260,25 +2333,77 @@ async function inviteFriend(){
   window.open(shareUrl,'_blank');
 }
 
-// ── Ruxsatlar modali ─────────────────────────────────────
+// ── Ruxsatlar modali — Ko'rinish (can_view) + Boshqarish (can_manage) ────
 async function openPermsModal(){
   const g=State.currentGroup;if(!g)return;
   let d;try{d=await apiPerms(g.id);}catch(e){toast('Ruxsatlar yuklanmadi',true);return;}
-  const out=document.getElementById('permsGrantsOut');
-  const inp=document.getElementById('permsGrantsIn');
-  out.innerHTML=(d.grants_out||[]).length?(d.grants_out.map(m=>`
-    <div class="perm-row">
-      <div class="nm">${esc(m.name)}</div>
-      <div class="toggle ${m.can_manage?'on':''}" data-uid="${m.user_id}"><i></i></div>
-    </div>`).join('')):'<div style="font-size:12px;color:var(--text-3);padding:6px">Guruhda boshqa a\'zo yo\'q</div>';
-  inp.innerHTML=(d.grants_in||[]).filter(m=>m.can_manage).length?d.grants_in.filter(m=>m.can_manage).map(m=>`
-    <div class="perm-row"><div class="nm">${esc(m.name)}</div><span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">🛡 huquqli</span></div>`).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Hech kim sizga ruxsat bermagan</div>';
-  out.querySelectorAll('.toggle').forEach(t=>t.onclick=async()=>{
-    const uid=+t.dataset.uid;const nv=!t.classList.contains('on');
+
+  const viewEl=document.getElementById('permsView');
+  const manageEl=document.getElementById('permsGrantsOut');
+  const inEl=document.getElementById('permsGrantsIn');
+  const members=d.grants_out||[];
+  const empty='<div style="font-size:12px;color:var(--text-3);padding:6px">Guruhda boshqa a\'zo yo\'q</div>';
+
+  if(!members.length){
+    viewEl.innerHTML=empty; manageEl.innerHTML='';
+  }else{
+    // 👁 Ko'rinish toggle — agar can_manage=True bo'lsa toggle qulflangan (on).
+    viewEl.innerHTML=members.map(m=>{
+      const locked=!!m.can_manage;
+      const on=locked||!!m.can_view;
+      return `<div class="perm-row">
+        <div class="nm">${esc(m.name)}</div>
+        <div class="toggle ${on?'on':''} ${locked?'locked':''}" data-view-uid="${m.user_id}"><i></i></div>
+        ${locked?'<span class="locked-hint">🔒 yarata oladi</span>':''}
+      </div>`;
+    }).join('');
+    // ✍️ Boshqarish toggle — mustaqil
+    manageEl.innerHTML=members.map(m=>`
+      <div class="perm-row">
+        <div class="nm">${esc(m.name)}</div>
+        <div class="toggle ${m.can_manage?'on':''}" data-manage-uid="${m.user_id}"><i></i></div>
+      </div>`).join('');
+  }
+
+  // 📥 Menga berilganlar (info): ikkala bayroq alohida chip'da
+  const givenTo=(d.grants_in||[]).filter(m=>m.can_manage||m.can_view);
+  inEl.innerHTML=givenTo.length?givenTo.map(m=>{
+    const chips=[];
+    if(m.can_manage)chips.push('<span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">✍️ yarata oladi</span>');
+    else if(m.can_view)chips.push('<span class="chip" style="padding:2px 8px;font-size:10.5px;font-weight:700;background:var(--primary-soft);color:var(--primary);border-radius:999px">👁 ko\'radi</span>');
+    return `<div class="perm-row"><div class="nm">${esc(m.name)}</div>${chips.join(' ')}</div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Hech kim sizga ruxsat bermagan</div>';
+
+  // 👁 Ko'rinish toggle handler
+  viewEl.querySelectorAll('.toggle:not(.locked)').forEach(t=>t.onclick=async()=>{
+    const uid=+t.dataset.viewUid;
+    const nv=!t.classList.contains('on');
     t.classList.toggle('on',nv);
-    try{await apiPermsSet(g.id,uid,nv);toast(nv?'🛡 Ruxsat berildi':'Ruxsat olindi');}
-    catch(e){t.classList.toggle('on',!nv);toast('Xato: '+e.message,true);}
+    try{
+      await apiPermsSet(g.id,uid,{can_view:nv});
+      toast(nv?'👁 Ko\'rish yoqildi':'Ko\'rish o\'chirildi');
+    }catch(e){
+      t.classList.toggle('on',!nv);
+      toast('Xato: '+e.message,true);
+    }
   });
+
+  // ✍️ Boshqarish toggle handler — yoqilsa 👁 ni ham auto-on qiladi
+  manageEl.querySelectorAll('.toggle').forEach(t=>t.onclick=async()=>{
+    const uid=+t.dataset.manageUid;
+    const nv=!t.classList.contains('on');
+    t.classList.toggle('on',nv);
+    try{
+      await apiPermsSet(g.id,uid,{can_manage:nv});
+      toast(nv?'✍️ Yaratish huquqi berildi':'Yaratish huquqi olindi');
+      // Modal'ni yangi holat bilan qayta yuklaymiz (view toggle qulf holati o'zgaradi)
+      await openPermsModal();
+    }catch(e){
+      t.classList.toggle('on',!nv);
+      toast('Xato: '+e.message,true);
+    }
+  });
+
   document.getElementById('permsBack').classList.add('show');
 }
 

@@ -34,6 +34,7 @@ from bot.services.group_service import (
     leave_group,
     list_my_groups,
     list_permissions,
+    remove_member,
     rename_group,
     set_permission,
 )
@@ -71,7 +72,11 @@ class GroupPatch(BaseModel):
 
 
 class PermissionUpdate(BaseModel):
-    can_manage: bool
+    # Ikkalasi ham ixtiyoriy — faqat berilgani yangilanadi. Ikkisini bir
+    # so'rovda ham yuborish mumkin. `can_manage=True` bo'lsa `can_view`
+    # avtomatik True qulflanadi (backend'da).
+    can_manage: Optional[bool] = None
+    can_view: Optional[bool] = None
 
 
 class PlanCreateForMember(BaseModel):
@@ -255,7 +260,25 @@ async def set_permission_api(
 ):
     user = await _require_user(session, telegram_id)
     try:
-        await set_permission(session, user, group_id, grantee_id, body.can_manage)
+        await set_permission(
+            session, user, group_id, grantee_id,
+            can_manage=body.can_manage, can_view=body.can_view,
+        )
+    except GroupError as e:
+        raise _map_group_error(e)
+    return {"ok": True}
+
+
+@router.delete("/friends/groups/{group_id}/members/{user_id}")
+async def remove_member_api(
+    group_id: int, user_id: int,
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """Guruh egasi tomonidan a'zoni chiqarib yuborish."""
+    user = await _require_user(session, telegram_id)
+    try:
+        await remove_member(session, user, group_id, user_id)
     except GroupError as e:
         raise _map_group_error(e)
     return {"ok": True}
