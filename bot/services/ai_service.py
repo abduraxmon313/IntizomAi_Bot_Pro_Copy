@@ -37,6 +37,63 @@ async def transcribe_voice(file_bytes: bytes) -> str:
             os.remove(tmp_path)
 
 
+def _has_cyrillic(s: str) -> bool:
+    return any(0x0400 <= ord(c) <= 0x04FF for c in (s or ""))
+
+
+async def _translate_titles_to_latin(titles: list[str]) -> list[str]:
+    """
+    Kirill sarlavhalar ro'yxatini o'zbek (lotin) tiliga BITTA GPT chaqiruvida
+    tarjima qiladi. Xatolik yoki mos kelmaslikda xavfsiz fallback ("Reja").
+    Kirish tartibi bilan bir xil uzunlikdagi ro'yxat qaytaradi.
+    """
+    if not titles:
+        return []
+    # Bitta so'rov: JSON massiv qaytarishni so'raymiz (indeks bo'yicha mos).
+    numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(titles))
+    try:
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "Sen tarjimonsan. Berilgan sarlavhalarni o'zbek tiliga (FAQAT "
+                    "lotin harflarida) tarjima qil. FAQAT JSON massiv qaytar — "
+                    "kirish tartibida, xuddi shuncha element. Boshqa hech narsa yozma. "
+                    'Masalan: ["Uyg\'onish","Kitob o\'qish"]'
+                )},
+                {"role": "user", "content": numbered},
+            ],
+            temperature=0.05,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        # ``` bloklarini tozalaymiz
+        if "```" in raw:
+            parts = raw.split("```")
+            if len(parts) >= 2:
+                raw = parts[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.strip()
+        s = raw.find("[")
+        e = raw.rfind("]") + 1
+        arr = json.loads(raw[s:e]) if (s != -1 and e > s) else []
+    except Exception as ex:
+        logger.warning(f"⚠️ Batch tarjima xatosi: {type(ex).__name__}: {ex}")
+        arr = []
+
+    out: list[str] = []
+    for i, original in enumerate(titles):
+        cand = arr[i] if (isinstance(arr, list) and i < len(arr) and isinstance(arr[i], str)) else ""
+        cand = (cand or "").strip()
+        # Bo'sh yoki hali ham kirill bo'lsa — fallback
+        if not cand or _has_cyrillic(cand):
+            cand = "Reja"
+        out.append(cand)
+        if cand != original:
+            logger.info(f"✅ Tarjima: '{original}' → '{cand}'")
+    return out
+
+
 async def extract_plans_from_text(text: str) -> list[dict]:
     try:
         # O'zbekiston vaqti
@@ -192,27 +249,16 @@ FAQAT JSON QAYTAR, BOSHQA HECH NARSA YOZMA!"""
         data = json.loads(content)
         plans = data.get("plans", [])
 
-        # Kirill harflar → O'zbek
-        for plan in plans:
-            title = plan.get("title", "")
-            # Kirill tekshirish
-            if any(ord(c) >= 0x0400 and ord(c) <= 0x04FF for c in title):
-                logger.warning(f"⚠️ Kirill topildi: '{title}' - tarjima qilamiz")
-                tr_resp = await client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Sen tarjimon. FAQAT o'zbek tilida lotin harflarida javob ber."},
-                        {"role": "user",
-                         "content": f"Bu matnni o'zbek tiliga (lotin harflarida) tarjima qil. Faqat tarjimani yoz, boshqa hech narsa: '{title}'"}
-                    ],
-                    temperature=0.05,
-                )
-                uzbek_title = tr_resp.choices[0].message.content.strip()
-                # Kirill qaytgan bo'lsa — fallback
-                if any(ord(c) >= 0x0400 and ord(c) <= 0x04FF for c in uzbek_title):
-                    uzbek_title = "Reja"
-                plan["title"] = uzbek_title
-                logger.info(f"✅ Tarjima: '{title}' → '{uzbek_title}'")
+        # Kirill harflar → O'zbek (lotin). Avval HAR kirill title uchun ALOHIDA
+        # GPT chaqiruvi bo'lardi (N ta ketma-ket so'rov). Endi barcha kirill
+        # title'lar BITTA chaqiruvda tarjima qilinadi (tarmoq/latensiya tejaladi).
+        cyr_idx = [i for i, p in enumerate(plans) if _has_cyrillic(p.get("title", ""))]
+        if cyr_idx:
+            originals = [plans[i].get("title", "") for i in cyr_idx]
+            logger.warning(f"⚠️ Kirill topildi ({len(originals)} ta) — bitta so'rovda tarjima qilamiz")
+            translated = await _translate_titles_to_latin(originals)
+            for j, i in enumerate(cyr_idx):
+                plans[i]["title"] = translated[j]
 
         logger.info(f"✅ Final rejalar: {plans}")
         return plans
