@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import FREE_DAILY_PLAN_LIMIT, SUBSCRIPTION_PLANS, PAYLOV_ENABLED
 from webapp.security import resolve_telegram_id
-from bot.services.premium_service import get_status, format_price, user_is_premium
+from bot.services.premium_service import get_status, format_price
 from bot.services.user_service import get_user_by_telegram_id
 from database.db import AsyncSessionLocal
 
@@ -113,8 +113,9 @@ async def create_checkout(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Avval botda /start bosing.")
-    if user_is_premium(user):
-        raise HTTPException(409, "Sizda allaqachon faol obuna bor.")
+    # Eslatma: premium foydalanuvchi ham obunani UZAYTIRISHi mumkin — yangi
+    # kunlar mavjud tugash sanasi ustiga additiv qo'shiladi
+    # (activate_subscription ichida). Shuning uchun bloklamaymiz.
 
     from bot.services.payment_service import create_checkout_order
     from bot.services.paylov import PaylovError

@@ -386,7 +386,30 @@ async function loadCheckin(){try{const c=await api('/api/webapp/checkin');if(!c)
 async function saveCheckin(payload){try{await api('/api/webapp/checkin',{method:'POST',body:JSON.stringify(payload)});}catch(_){toast('Saqlashda xato',true);}}
 
 // ── Premium / paywall ───────────────────────────────────────────────────
-function openPaywall(){const ov=document.getElementById('paywall');if(ov){ov.classList.add('show');try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}}}
+function openPaywall(){
+  const ov=document.getElementById('paywall');
+  if(!ov)return;
+  // Paywall matnini kontekstga moslaymiz: premium foydalanuvchi uzaytirish
+  // uchun ochsa — "Uzaytirish" versiyasi, aks holda default "Premium bo'ling".
+  const isPremium=!!(State.sub&&State.sub.is_premium);
+  const h=ov.querySelector('h1');
+  const sb=ov.querySelector('.pw-sub');
+  const nt=ov.querySelector('.pw-note');
+  const cta=document.getElementById('pwCta');
+  if(isPremium){
+    if(h)h.innerHTML='Obunani uzaytirish';
+    if(sb)sb.innerHTML='Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo\'shiladi</b> — premium uzaytiriladi, boshqattan boshlanmaydi.';
+    if(nt)nt.innerHTML='Botga qayting va <b>«💎 Premium» → «💳 Obunani uzaytirish»</b> tugmasini bosing.';
+    if(cta)cta.textContent='💳 Botda uzaytirish';
+  }else{
+    if(h)h.innerHTML='Intizom AI <span class="pw-pro">PRO</span>';
+    if(sb)sb.innerHTML='Mini App — bu <b>premium</b> imkoniyat. Intizomingizni keyingi bosqichga olib chiqing.';
+    if(nt)nt.innerHTML='Obuna sotib olish uchun botga qayting va <b>«💎 Obuna»</b> tugmasini bosing.';
+    if(cta)cta.textContent='💎 Botda obuna sotib olish';
+  }
+  ov.classList.add('show');
+  try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
+}
 function closePaywall(){const ov=document.getElementById('paywall');if(ov)ov.classList.remove('show');}
 // Peak-moment upsell: streak milestone'ida (3,7,14,30,50,100) bepul foydalanuvchiga
 // bir marta (har milestone uchun) yumshoq premium taklifi ko'rsatamiz — eng kuchli
@@ -422,7 +445,9 @@ function applyPremiumUI(s){
     if(s.premium_until){try{const d=new Date(s.premium_until);until=d.getDate()+' '+UZ_MONTHS_SHORT[d.getMonth()]+' '+d.getFullYear();}catch(_){}}
     const dl=s.days_left||0;
     if(sub)sub.textContent=(s.plan_title?s.plan_title:'Obuna')+' · '+dl+' kun qoldi'+(until?' · '+until+' gacha':'');
-    if(cta)cta.style.display='none';
+    // Premium foydalanuvchi ham obunani UZAYTIRISH imkoniyatiga ega bo'lsin
+    // (kunlar joriy tugash sanasi ustiga qo'shiladi).
+    if(cta){cta.style.display='';cta.textContent='💳 Uzaytirish';}
     // progress: qolgan kun / tarif umumiy kuni
     if(bar){
       const totalDays={'Sinov 7 kun':7,'Oylik':30,'3 oy':90,'6 oy':180,'Yillik':365}[s.plan_title]||30;

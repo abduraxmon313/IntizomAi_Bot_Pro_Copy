@@ -130,7 +130,13 @@ def contact_keyboard() -> InlineKeyboardMarkup:
 
 
 def premium_active_keyboard() -> InlineKeyboardMarkup:
-    """Faol obunaga ega foydalanuvchi uchun (Mini App ochish + do'st taklif qilish)."""
+    """
+    Faol obunaga ega foydalanuvchi uchun tugmalar:
+      • Mini App ochish
+      • Obunani uzaytirish (kunlar mavjud premiumga additiv qo'shiladi)
+      • Do'st taklif qilib bonus premium olish
+      • Bosh sahifa
+    """
     rows = []
     if WEBAPP_URL:
         rows.append([
@@ -139,6 +145,9 @@ def premium_active_keyboard() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=WEBAPP_URL),
             )
         ])
+    rows.append([
+        InlineKeyboardButton(text="💳 Obunani uzaytirish", callback_data="sub_extend")
+    ])
     rows.append([
         InlineKeyboardButton(text="🎁 Do'st taklif qilib +1 hafta olish", callback_data="free_premium")
     ])
