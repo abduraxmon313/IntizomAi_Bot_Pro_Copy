@@ -73,8 +73,16 @@ async def render_subscription(
     telegram_id: int,
     bonus_days: int = 0,
     promo_code: str | None = None,
+    force_plans: bool = False,
 ):
-    """Obuna sahifasini ko'rsatadi (holatga qarab)."""
+    """
+    Obuna sahifasini ko'rsatadi (holatga qarab).
+
+    `force_plans=True` bo'lsa — foydalanuvchi allaqachon premium bo'lsa ham
+    tariflar ro'yxati ko'rsatiladi (obunani UZAYTIRISH oqimi). Yangi kunlar
+    mavjud premium tugash sanasi ustiga qo'shiladi (`activate_subscription`
+    ichida hisoblanadi).
+    """
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         user = await get_or_create_user(
@@ -83,8 +91,9 @@ async def render_subscription(
 
     status = await get_status(session, user)
 
-    if status.is_premium:
-        # Faol obuna — sotib olish tugmalari YO'Q
+    if status.is_premium and not force_plans:
+        # Faol obuna — asosiy holatda sotib olish tugmalari YO'Q,
+        # lekin "💳 Obunani uzaytirish" tugmasi orqali qayta kirsa bo'ladi.
         text = (
             "💎 <b>Premium faol!</b>\n\n"
             f"📦 Tarif: <b>{status.plan_title or 'Premium'}</b>\n"
@@ -101,19 +110,30 @@ async def render_subscription(
         )
         return
 
-    # Bepul foydalanuvchi — planlarni (sotib olish uchun) taklif qilamiz.
+    # Tariflar ro'yxati (yangi obuna YOKI uzaytirish).
     # Eslatma: bepul (`-`) promokodlar bu yerga kelmaydi — ular kiritilishi
     # bilan darhol (to'lovsiz) faollashtiriladi (receive_promocode ichida).
-    text = (
-        "💎 <b>Intizom AI Premium</b>\n\n"
-        "Premium bilan to'liq imkoniyatlar ochiladi:\n"
-        "• <b>Mini App</b> — kalendar, statistika, AI Coach\n"
-        "• Cheksiz reja va maqsadlar\n"
-        "• Streak Freeze (streakni himoya qilish)\n"
-        "• Chuqur tahlil va elite belgilar\n"
-        "• Premium temalar\n\n"
-        f"🆓 <b>Bepul rejim:</b> Mini App'ni ko'rish mumkin — lekin kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja va cheklangan AI.\n\n"
-    )
+    if status.is_premium and force_plans:
+        # UZAYTIRISH matnli sarlavha — foydalanuvchi bilishi kerak: kunlar
+        # mavjud obuna tugash sanasi USTIGA qo'shiladi.
+        text = (
+            "💎 <b>Obunani uzaytirish</b>\n\n"
+            f"📅 Joriy tugash: <b>{_fmt_date(status.premium_until)}</b>\n"
+            f"⏳ Qolgan kun: <b>{status.days_left} kun</b>\n\n"
+            "Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo'shiladi</b> — "
+            "ya'ni premium uzaytiriladi, boshqattan boshlanmaydi. ✅\n\n"
+        )
+    else:
+        text = (
+            "💎 <b>Intizom AI Premium</b>\n\n"
+            "Premium bilan to'liq imkoniyatlar ochiladi:\n"
+            "• <b>Mini App</b> — kalendar, statistika, AI Coach\n"
+            "• Cheksiz reja va maqsadlar\n"
+            "• Streak Freeze (streakni himoya qilish)\n"
+            "• Chuqur tahlil va elite belgilar\n"
+            "• Premium temalar\n\n"
+            f"🆓 <b>Bepul rejim:</b> Mini App'ni ko'rish mumkin — lekin kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja va cheklangan AI.\n\n"
+        )
     if bonus_days > 0 and promo_code:
         text += (
             f"🎟 <b>Promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
@@ -174,6 +194,22 @@ async def open_subscription_cb(callback: CallbackQuery, state: FSMContext, sessi
     await render_subscription(
         callback.message, session, callback.from_user.id,
         bonus_days=bonus_days, promo_code=promo_code,
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "sub_extend")
+async def sub_extend_cb(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    """
+    «💳 Obunani uzaytirish» — premium foydalanuvchi allaqachon obunali bo'lsa ham
+    tariflar ro'yxati chiqadi. To'lovdan so'ng kunlar mavjud tugash sanasi ustiga
+    additiv qo'shiladi (activate_subscription ichida).
+    """
+    bonus_days, promo_code = await _state_promo(state)
+    await render_subscription(
+        callback.message, session, callback.from_user.id,
+        bonus_days=bonus_days, promo_code=promo_code,
+        force_plans=True,
     )
     await callback.answer()
 
@@ -401,9 +437,10 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
             session, callback.from_user.id,
             callback.from_user.full_name, callback.from_user.username or "",
         )
-    if user_is_premium(user):
-        await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
-        return
+    # Diqqat: premium foydalanuvchi bu yerga UZAYTIRISH oqimi orqali ham kelishi
+    # mumkin. Shuning uchun bloklamaymiz — `activate_subscription` mavjud premium
+    # tugash sanasi USTIGA kunlarni additiv qo'shadi.
+    is_extending = user_is_premium(user)
 
     bonus_days, promo_code = await _state_promo(state)
 
@@ -418,24 +455,31 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
             bonus_days, promo_code = 0, None
             await state.update_data(promo_code=None, promo_bonus_days=0)
 
-    # To'lov oynasi (obuna sotib olinadi)
+    # To'lov oynasi (obuna sotib olinadi yoki uzaytiriladi)
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     if PAYLOV_ENABLED:
-        note = (
+        note_open = (
             "💳 <b>To'lov usulini tanlang</b> 👇\n"
             "To'lov muvaffaqiyatli bo'lgach, premium <b>avtomatik</b> ochiladi 🔔"
         )
+        note_extend = (
+            "💳 <b>To'lov usulini tanlang</b> 👇\n"
+            "To'lov muvaffaqiyatli bo'lgach, ushbu kunlar <b>joriy obuna tugash "
+            "sanasi ustiga qo'shiladi</b> 🔁"
+        )
+        note = note_extend if is_extending else note_open
     else:
         note = (
             "<i>💳 To'lov tizimi tez orada ulanadi. Hozircha obunani admin yoki "
             "promokod orqali ochishingiz mumkin.</i>"
         )
+    title_line = "💳 <b>Obunani uzaytirish</b>" if is_extending else "💳 <b>To'lov</b>"
     text = (
-        "💳 <b>To'lov</b>\n"
+        f"{title_line}\n"
         "━━━━━━━━━━━━━━━\n"
         f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
-        f"📅 Muddat: <b>{total_days} kun</b>\n"
+        f"📅 Qo'shiladigan kun: <b>{total_days} kun</b>\n"
         f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
         f"{note}"
     )
@@ -476,9 +520,9 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
             session, callback.from_user.id,
             callback.from_user.full_name, callback.from_user.username or "",
         )
-    if user_is_premium(user):
-        await callback.answer("Sizda allaqachon faol obuna bor ✅", show_alert=True)
-        return
+    # Premium foydalanuvchini bloklamaymiz — uzaytirish oqimi orqali bu yerga
+    # kelishi mumkin. `activate_subscription` webhook'da kunlarni mavjud tugash
+    # sanasi ustiga additiv qo'shadi.
 
     bonus_days, promo_code = await _state_promo(state)
 
