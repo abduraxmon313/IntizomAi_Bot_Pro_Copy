@@ -233,7 +233,24 @@ function renderTracker(){
 
 function renderHabitSummary(){const el=document.getElementById('habitSummary');if(!el)return;const tot=State.habits.length;const dueToday=State.habits.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;const best=State.habits.reduce((m,h)=>Math.max(m,h.streak||0),0);if(!tot){el.innerHTML='';return;}el.innerHTML=`<div class="hs-card"><div class="v">${doneToday}/${dueToday.length}</div><div class="l">Bugun bajarildi</div></div><div class="hs-card"><div class="v">${best}</div><div class="l">Eng uzun streak</div></div><div class="hs-card"><div class="v">${tot}</div><div class="l">Jami odat</div></div>`;}
 
-function renderHabits(){const w=document.getElementById('habitsList');if(!w)return;if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}w.innerHTML=State.habits.map((h,i)=>{const m=habitMetaLabel(h);const notDue=!h.due_today||h.finished;const checkInner=h.finished?'🏁':(h.done_today?'✓':esc(h.icon||'✅'));return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta"><span class="hstreak">🔥 ${h.streak||0} kun</span><span class="hbadge">🔁 ${esc(m.rep)}</span><span class="hbadge">⏳ ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;}).join('');bindHabitActions();}
+// Odatlar ro'yxati — vaqti bo'yicha saralanadi (erta eslatma tepada,
+// vaqtsizlar oxirda). Qo'shilgan tartibi bo'yicha emas.
+function _habitSortKey(h){return (h.reminder_time && /^\d\d:\d\d/.test(h.reminder_time))?h.reminder_time:'99:99';}
+function _sortHabitsByTime(arr){return arr.slice().sort((a,b)=>_habitSortKey(a).localeCompare(_habitSortKey(b)));}
+function renderHabits(){
+  const w=document.getElementById('habitsList');if(!w)return;
+  if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}
+  const sorted=_sortHabitsByTime(State.habits);
+  w.innerHTML=sorted.map((h,i)=>{
+    const m=habitMetaLabel(h);
+    const notDue=!h.due_today||h.finished;
+    const checkInner=h.finished?'🏁':(h.done_today?'✓':esc(h.icon||'✅'));
+    // Meta chapdan: eslatma vaqti (bo'lsa), streak, takrorlanish, davomiylik.
+    const timeBadge=h.reminder_time?`<span class="hbadge">⏰ ${esc(h.reminder_time)}</span>`:'';
+    return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta">${timeBadge}<span class="hstreak">🔥 ${h.streak||0} kun</span><span class="hbadge">🔁 ${esc(m.rep)}</span><span class="hbadge">⏳ ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;
+  }).join('');
+  bindHabitActions();
+}
 
 function bindHabitActions(){document.querySelectorAll('#habitsList .habit').forEach(row=>{const id=+row.dataset.id;
   row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;if(h.finished){toast('🏁 Bu odat muddati tugagan',true);return;}if(!h.due_today){toast('📅 Bu odat bugun rejada yo\'q',true);return;}const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){confetti(28);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}}catch(err){toast('Xato!',true);}};
@@ -1085,6 +1102,34 @@ function _shiftMemberDate(deltaDays){
   const nd=addDays(new Date(cur+'T00:00:00'),deltaDays);
   if(State.memberUid!=null)openMember(State.memberUid,ymd(nd));
 }
+// Bir oy oldinga yoki keyinga sakrash — maqsadlar boshqa oy/yilga o'tadi.
+// Kun raqami saqlanadi (yo'q bo'lsa oyning oxirgi kuniga tushiriladi).
+function _shiftMemberMonth(deltaMonths){
+  const cur=State.memberDate||ymd(new Date());
+  const d=new Date(cur+'T00:00:00');
+  const targetY=d.getFullYear(), targetM=d.getMonth()+deltaMonths;
+  const nd=new Date(targetY, targetM, 1);
+  // Kun raqamini asosiy sanadan olishga urinamiz (yoki oxirgi kun)
+  const lastDayOfTarget=new Date(nd.getFullYear(), nd.getMonth()+1, 0).getDate();
+  nd.setDate(Math.min(d.getDate(), lastDayOfTarget));
+  if(State.memberUid!=null)openMember(State.memberUid,ymd(nd));
+}
+// Goal davrini o'qish uchun qulay label.
+//   yearly "2026"      -> "📅 2026-yil"
+//   monthly "2026-07"  -> "🗓 Iyul 2026"
+function _formatGoalPeriod(gt, period){
+  try{
+    const p=String(period||'').trim();
+    if(!p)return (gt==='monthly'?'oylik':'yillik');
+    if(gt==='yearly'){return '📅 '+p+'-yil';}
+    if(gt==='monthly'){
+      const [y,m]=p.split('-').map(n=>parseInt(n,10));
+      if(!y||!m||m<1||m>12)return '🗓 '+p;
+      return '🗓 '+UZ_MONTHS[m-1]+' '+y;
+    }
+    return p;
+  }catch(_){return String(period||'');}
+}
 
 function renderMemberContent(){
   const d=State.currentMember;if(!d)return;
@@ -1113,19 +1158,36 @@ function renderMemberContent(){
 
   const plans=d.plans||[],habits=d.habits||[],goals=d.goals||[];
 
-  const plansHtml=plans.length?plans.map(p=>{
-    const done=p.status==='done';const tag=p.scheduled_time?`<span class="meta">${esc(p.scheduled_time)}</span>`:'';
+  // Rejalar — vaqti bo'yicha saralanadi (erta vaqt tepada; vaqtsiz oxirda).
+  const _sortedPlans=plans.slice().sort((a,b)=>{
+    const ta=a.scheduled_time||'99:99', tb=b.scheduled_time||'99:99';
+    return ta.localeCompare(tb);
+  });
+  const plansHtml=_sortedPlans.length?_sortedPlans.map(p=>{
+    const done=p.status==='done';const tag=p.scheduled_time?`<span class="meta">⏰ ${esc(p.scheduled_time)}</span>`:'';
     return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(p.title)}</div>${tag}</div>`;
-  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Bugun reja yo\'q</div>';
+  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Reja yo\'q</div>';
 
-  const habitsHtml=habits.length?habits.map(h=>{
+  // Odatlar — eslatma vaqti bo'yicha saralanadi (backend allaqachon saralab
+  // qaytaradi, lekin himoya sifatida frontendda ham).
+  const _sortedHabits=habits.slice().sort((a,b)=>{
+    const ta=a.reminder_time||'99:99', tb=b.reminder_time||'99:99';
+    return ta.localeCompare(tb);
+  });
+  const habitsHtml=_sortedHabits.length?_sortedHabits.map(h=>{
     const done=h.done_today;
-    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}</div><span class="meta">${h.frequency==='weekly'?'haftalik':'har kuni'}</span></div>`;
+    // Meta chapdan o'ngga: ⏰ eslatma vaqti (bo'lsa) · takrorlanish turi.
+    const timePart=h.reminder_time?`⏰ ${esc(h.reminder_time)}`:'';
+    const freqPart=h.frequency==='weekly'?'haftalik':'har kuni';
+    const meta=timePart?`${timePart} · ${freqPart}`:freqPart;
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}</div><span class="meta">${meta}</span></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Odat yo\'q</div>';
 
+  // Maqsad davri o'qish uchun qulay ko'rinish (masalan "🗓 Iyul 2026" yoki "📅 2026-yil")
   const goalsHtml=goals.length?goals.map(g=>{
     const done=!!g.completed;
-    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(g.title)}</div><span class="meta">${g.goal_type==='yearly'?'yillik':'oylik'} · ${esc(g.period)}</span></div>`;
+    const label=_formatGoalPeriod(g.goal_type, g.period);
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(g.title)}</div><span class="meta">${esc(label)}</span></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Maqsad yo\'q</div>';
 
   // Yaratish tugmalari — endi maqsad turi (Yillik/Oylik) va davri
@@ -1430,6 +1492,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _fBack2=document.getElementById('friendsMemberBack');if(_fBack2)_fBack2.onclick=()=>_showFriendsView('group');
   const _mDP=document.getElementById('memDatePrev');if(_mDP)_mDP.onclick=()=>_shiftMemberDate(-1);
   const _mDN=document.getElementById('memDateNext');if(_mDN)_mDN.onclick=()=>_shiftMemberDate(1);
+  const _mMP=document.getElementById('memMonthPrev');if(_mMP)_mMP.onclick=()=>_shiftMemberMonth(-1);
+  const _mMN=document.getElementById('memMonthNext');if(_mMN)_mMN.onclick=()=>_shiftMemberMonth(1);
   const _fInv=document.getElementById('friendsInviteBtn');if(_fInv)_fInv.onclick=inviteFriend;
   const _fPerms=document.getElementById('friendsPermsBtn');if(_fPerms)_fPerms.onclick=openPermsModal;
   const _fSet=document.getElementById('friendsGroupSettings');if(_fSet)_fSet.onclick=openGroupEditModal;

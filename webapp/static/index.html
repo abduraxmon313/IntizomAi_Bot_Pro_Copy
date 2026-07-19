@@ -250,11 +250,15 @@
       <button class="mode-btn friends-back" id="friendsMemberBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
       <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsMemberName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsMemberSub">bugungi holat</p></div>
     </div>
-    <!-- Sana navigatsiyasi — o'tgan davrni ham ko'rish uchun -->
+    <!-- Sana navigatsiyasi — o'tgan/kelajak davrni ko'rish uchun.
+         «/» = oy oldinga/keyinga (maqsadlar boshqa oyga sakraydi).
+         ‹/› = kun oldinga/keyinga. Yorliqni bosish "Bugun"ga qaytaradi. -->
     <div class="mem-datenav">
-      <button class="nav-btn" id="memDatePrev" aria-label="Oldingi kun">‹</button>
+      <button class="nav-btn" id="memMonthPrev" aria-label="Oldingi oy" title="Oldingi oy">«</button>
+      <button class="nav-btn" id="memDatePrev" aria-label="Oldingi kun" title="Oldingi kun">‹</button>
       <div class="mem-datelabel" id="memDateLabel">Bugun</div>
-      <button class="nav-btn" id="memDateNext" aria-label="Keyingi kun">›</button>
+      <button class="nav-btn" id="memDateNext" aria-label="Keyingi kun" title="Keyingi kun">›</button>
+      <button class="nav-btn" id="memMonthNext" aria-label="Keyingi oy" title="Keyingi oy">»</button>
     </div>
     <div id="friendsMemberContent"></div>
   </div>
