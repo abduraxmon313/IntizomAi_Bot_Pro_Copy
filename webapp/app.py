@@ -1,13 +1,15 @@
 import asyncio
+import hashlib
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends
 from webapp.security import (
@@ -19,6 +21,44 @@ from webapp.security import (
 
 logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
+
+
+# ─────────────────────────────────────────────────────────────
+# Statik aktivlar avtomatik cache-busting versiyasi.
+# ─────────────────────────────────────────────────────────────
+# app.js va app.css `Cache-Control: immutable` bilan uzoq muddat keshlanadi
+# (foydalanuvchi qurilmasida va Telegram Mini App'da). Yangi deployda kesh
+# yangilanishi uchun ular URL'da `?v=<hash>` versiyaga bog'lanadi. Bu hash
+# fayl mazmunidan hisoblanadi — mazmun o'zgarsa hash ham o'zgaradi va client
+# yangi versiyani yuklab oladi. Qattiq kodlangan versiya YO'Q.
+def _compute_asset_version() -> str:
+    """app.js + app.css tarkibi asosidagi qisqa SHA256 hash (12 ta belgi)."""
+    try:
+        h = hashlib.sha256()
+        for name in ("app.js", "app.css"):
+            p = STATIC_DIR / name
+            if p.exists():
+                h.update(p.read_bytes())
+                h.update(b"|")
+        return h.hexdigest()[:12]
+    except Exception as e:  # pragma: no cover
+        logger.warning(f"asset version compute failed: {e}")
+        # Fallback — bo'sh bo'lsa ham o'ziga xos deployga bog'liq qiymat.
+        return "dev"
+
+
+ASSET_VERSION = _compute_asset_version()
+_VERSION_QS_RE = re.compile(r"\?v=[A-Za-z0-9]+")
+
+
+def _render_index_html() -> str:
+    """
+    index.html ichidagi `?v=<hardcoded>` qatorlarini joriy `ASSET_VERSION`
+    bilan almashtiradi. Shu bilan yangi deployda barcha clientlar avtomatik
+    yangi CSS/JS oladi (kesh baribir server tomondagi `immutable` qoladi).
+    """
+    raw = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    return _VERSION_QS_RE.sub(f"?v={ASSET_VERSION}", raw)
 
 # Bot'ni shu server jarayonida ishga tushirishni boshqarish.
 # Default = true. Agar bot alohida jarayonda ishga tushsa yoki uvicorn bir
@@ -191,16 +231,19 @@ app.include_router(payments.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "asset_version": ASSET_VERSION}
 
 
 @app.get("/")
 async def root():
     # index.html — har doim revalidatsiya (yangi deploy darhol ko'rinsin).
     # Og'ir CSS/JS alohida versiyalangan fayllarda (uzoq muddat keshlanadi).
-    return FileResponse(
-        STATIC_DIR / "index.html",
-        headers={"Cache-Control": "no-cache"},
+    # `?v=<hash>` avtomatik yangilanadi — CSS/JS o'zgarsa clientlar avtomatik
+    # yangi versiyani yuklab oladi.
+    html = _render_index_html()
+    return HTMLResponse(
+        html,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
 
 
