@@ -31,6 +31,7 @@ from bot.models.plan import Plan, PlanStatus
 from bot.models.goal import Goal
 from bot.models.user import User
 from bot.services.goal_service import ALLOWED_GOAL_TYPES
+from bot.services.habit_service import is_due_on as _habit_is_due_on, is_finished as _habit_is_finished
 
 logger = logging.getLogger(__name__)
 
@@ -569,11 +570,27 @@ async def get_member_view(
         ).order_by(Plan.scheduled_time.nullslast(), Plan.id)
     )).scalars().all()
 
-    habits = (await session.execute(
+    # Odatlarni yuklab olamiz; keyin `on_date` ga qarab shu kunda bajarilishi
+    # kerak (due) va tugamagan (finished emas) bo'lganlarini qoldiramiz.
+    # Saralash: eslatma vaqti erta bo'lganlar TEPADA, vaqtsizlar OXIRDA.
+    all_habits = (await session.execute(
         select(Habit).where(and_(
             Habit.user_id == target_user_id, Habit.archived == False,  # noqa: E712
-        )).order_by(Habit.sort_order, Habit.id)
+        ))
     )).scalars().all()
+
+    def _habit_sort_key(h: Habit):
+        # ("HH:MM" yoki None) — None ni oxirga qo'yamiz.
+        rt = (h.reminder_time or "").strip()
+        return (0, rt) if rt else (1, "")
+
+    habits = [
+        h for h in all_habits
+        if not _habit_is_finished(h, today) and _habit_is_due_on(h, today)
+    ]
+    habits.sort(key=_habit_sort_key)
+
+    # Faqat ko'rilayotgan sana odatlarining loglarini olamiz.
     habit_ids = [h.id for h in habits]
     logged_today: set[int] = set()
     if habit_ids:
@@ -603,9 +620,19 @@ async def get_member_view(
         }
 
     def _habit_dict(h):
+        # Weekdays "0,2,4" → [0,2,4] (haftalik uchun).
+        wd = []
+        if (h.frequency or "daily") == "weekly" and h.weekdays:
+            try:
+                wd = sorted({int(x) for x in str(h.weekdays).split(",") if x.strip().isdigit() and 0 <= int(x) <= 6})
+            except Exception:
+                wd = []
         return {
             "id": h.id, "title": h.title, "icon": h.icon or "✅",
-            "frequency": h.frequency, "done_today": h.id in logged_today,
+            "frequency": h.frequency or "daily",
+            "reminder_time": h.reminder_time,
+            "weekdays": wd,
+            "done_today": h.id in logged_today,
             "created_by_user_id": h.created_by_user_id,
         }
 
