@@ -203,7 +203,7 @@
 <div class="section-title"><h2>🎨 Tema</h2></div>
 <div class="theme-grid" id="themeGrid"></div>
 <div class="section-title"><h2>Do'stlarni taklif qil 🎁</h2></div>
-<div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Har taklif uchun ikkalangizga ham Premium</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+<div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Do'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do'stga 7 kun</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
 <div class="setting" id="channelBtn"><div class="ic">📢</div><div class="body"><div class="ttl">Telegram kanal</div><div class="dsc">Yangiliklar va maslahatlar</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="setting" id="adminBtn"><div class="ic">💬</div><div class="body"><div class="ttl">Admin bilan bog'lanish</div><div class="dsc">Savol, taklif va yordam</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Hisob</h2></div>
@@ -400,24 +400,25 @@
   </div>
 </div>
 
-<!-- Premium paywall (faqat limit oshganda yoki premium funksiya bosilganda ochiladi) -->
+<!-- Premium paywall — Mini App ichidan direct checkout -->
 <div class="paywall" id="paywall" aria-hidden="true">
   <div class="pw-orbs"><span></span><span></span><span></span></div>
   <div class="pw-inner">
     <div class="pw-crown">👑</div>
-    <h1>Intizom AI <span class="pw-pro">PRO</span></h1>
-    <div class="pw-sub">Mini App — bu <b>premium</b> imkoniyat. Intizomingizni keyingi bosqichga olib chiqing.</div>
+    <h1>Intizom AI <span class="pw-pro">PREMIUM</span></h1>
+    <div class="pw-sub">Cheksiz reja, maqsad va odat. Cheksiz AI Coach.</div>
     <div class="pw-feats">
-      <div class="pw-feat"><span class="fic">📅</span><span>Kalendar, haftalik va oylik reja</span></div>
-      <div class="pw-feat"><span class="fic">📊</span><span>Chuqur statistika va 30 kunlik tahlil</span></div>
-      <div class="pw-feat"><span class="fic">✨</span><span>AI Coach — shaxsiy psixolog-murabbiy</span></div>
-      <div class="pw-feat"><span class="fic">🎯</span><span>Cheksiz reja va maqsadlar</span></div>
-      <div class="pw-feat"><span class="fic">🛡</span><span>Streak Freeze va premium temalar</span></div>
+      <div class="pw-feat"><span class="fic">🎯</span><span>Cheksiz reja, maqsad va odat</span></div>
+      <div class="pw-feat"><span class="fic">🤖</span><span>Cheksiz AI Coach suhbat</span></div>
+      <div class="pw-feat"><span class="fic">📅</span><span>Kalendar va o'tgan kunlar tarixi</span></div>
+      <div class="pw-feat"><span class="fic">📊</span><span>Kengaytirilgan statistika</span></div>
     </div>
-    <div class="pw-note">Obuna sotib olish uchun botga qayting va <b>«💎 Obuna»</b> tugmasini bosing.</div>
-    <button class="pw-cta" id="pwCta">💎 Botda obuna sotib olish</button>
+    <!-- Tariflar shu yerga JavaScript'dan render qilinadi -->
+    <div class="pw-plans" id="pwPlans"></div>
+    <div class="pw-note" id="pwNote">Tarifni tanlang — to'lov sahifasi darhol ochiladi. Muvaffaqiyatli to'lovdan so'ng Premium avtomatik faollashadi.</div>
+    <button class="pw-cta" id="pwCta">💎 Tarifni tanlang</button>
     <button class="pw-back" id="pwBack">⬅️ Orqaga qaytish</button>
-    <span class="pw-badge">✦ INTIZOM AI PRO ✦</span>
+    <span class="pw-badge">✦ INTIZOM AI PREMIUM ✦</span>
   </div>
 </div>
 

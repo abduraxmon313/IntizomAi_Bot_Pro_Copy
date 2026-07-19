@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import FREE_DAILY_PLAN_LIMIT, SUBSCRIPTION_PLANS, PAYLOV_ENABLED
+from bot.config import FREE_DAILY_PLAN_LIMIT, PAYLOV_ENABLED
 from webapp.security import resolve_telegram_id
-from bot.services.premium_service import get_status, format_price
+from bot.services.premium_service import get_status, format_price, get_plans
 from bot.services.user_service import get_user_by_telegram_id
 from database.db import AsyncSessionLocal
 
@@ -30,6 +30,8 @@ class PlanOut(BaseModel):
     days: int
     price: int
     price_label: str
+    emoji: Optional[str] = None
+    tag: Optional[str] = None
 
 
 class SubscriptionOut(BaseModel):
@@ -43,6 +45,11 @@ class SubscriptionOut(BaseModel):
 
 
 def _plans_catalog() -> list[PlanOut]:
+    """
+    Mini App katalogi — bot bilan bir xil "effective" (admin override qilgan)
+    tariflardan olinadi. Shu tariqa foydalanuvchi ko'rgan narx checkout paytida
+    to'lanadigan narxga aynan mos keladi (bot/webapp mismatch bo'lmaydi).
+    """
     return [
         PlanOut(
             key=key,
@@ -50,8 +57,10 @@ def _plans_catalog() -> list[PlanOut]:
             days=p["days"],
             price=p["price"],
             price_label=format_price(p["price"]),
+            emoji=p.get("emoji"),
+            tag=p.get("tag") or None,
         )
-        for key, p in SUBSCRIPTION_PLANS.items()
+        for key, p in get_plans().items()
     ]
 
 
@@ -106,7 +115,9 @@ async def create_checkout(
     if not PAYLOV_ENABLED:
         raise HTTPException(503, "To'lov tizimi hozircha sozlanmagan.")
 
-    plan = SUBSCRIPTION_PLANS.get(body.plan)
+    # Effective plans (admin override + config default) — checkout paytida
+    # o'shanda ko'ringan aynan narx qulflanadi.
+    plan = get_plans().get(body.plan)
     if not plan:
         raise HTTPException(400, "Noma'lum tarif.")
 

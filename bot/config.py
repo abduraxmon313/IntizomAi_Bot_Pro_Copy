@@ -75,12 +75,13 @@ HABIT_REMINDER_MINUTE = int(os.getenv("HABIT_REMINDER_MINUTE", 0))
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", 3))
 
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
+# Faqat 3 ta tarif — 7 kunlik va 6 oylik olib tashlandi (paywall soddaligi uchun).
+# Admin `/admin → 💎 Premium → 💰 Tariflar narxi` orqali NOMI VA NARXINI
+# o'zgartira oladi (title/tag/emoji ham override qilinadi).
 SUBSCRIPTION_PLANS = {
-    "7d":  {"title": "Sinov 7 kun", "days": 7,   "price": 9900,  "emoji": "🔥", "tag": "sinov"},
-    "1m":  {"title": "Oylik",       "days": 30,  "price": 19900, "emoji": "💎", "tag": ""},
-    "3m":  {"title": "3 oy",        "days": 90,  "price": 39900, "emoji": "🌟", "tag": "TOP tanlov"},
-    "6m":  {"title": "6 oy",        "days": 180, "price": 59900, "emoji": "🚀", "tag": ""},
-    "12m": {"title": "Yillik",      "days": 365, "price": 99900, "emoji": "👑", "tag": ""},
+    "1m":  {"title": "1 oy",  "days": 30,  "price": 39900,  "emoji": "✅", "tag": ""},
+    "3m":  {"title": "3 oy",  "days": 90,  "price": 79900,  "emoji": "⭐", "tag": "33% tejaysiz"},
+    "12m": {"title": "12 oy", "days": 365, "price": 179900, "emoji": "💎", "tag": "≈ 14 990 so'm/oy"},
 }
 
 # Obuna tugashidan necha kun oldin eslatma yuborilsin.
@@ -104,8 +105,10 @@ REFERRAL_INVITEE_REWARD_DAYS = int(os.getenv("REFERRAL_INVITEE_REWARD_DAYS", 3))
 # Mukofot sifatida beriladigan premium kunlari (har bir to'plam uchun).
 REFERRAL_REWARD_DAYS = int(os.getenv("REFERRAL_REWARD_DAYS", 7))
 
-# Mukofot premiumi yoziladigan tarif kaliti (Subscription tarixi uchun).
-REFERRAL_REWARD_PLAN = os.getenv("REFERRAL_REWARD_PLAN", "7d").strip()
+# Mukofot premiumi manba nomi (Subscription tarixi uchun) — plan_key emas, chunki
+# referral mukofoti tarif katalogiga bog'liq bo'lmasligi kerak. Bu manba
+# `grant_bonus_premium(..., source=<bu>)` ga uzatiladi.
+REFERRAL_REWARD_SOURCE = os.getenv("REFERRAL_REWARD_SOURCE", "referral").strip()
 
 # Deep-link payload prefiksi: https://t.me/<bot>?start=ref_<telegram_id>
 REFERRAL_PAYLOAD_PREFIX = "ref_"

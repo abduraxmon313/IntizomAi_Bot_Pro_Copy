@@ -160,6 +160,15 @@ async def toggle_habit(
     snap = await toggle_habit_log(session, user, habit_id, on=body.done, target_date=target_date)
     if snap is None:
         raise HTTPException(status_code=404, detail="Odat topilmadi")
+
+    # Odat bajarilgan (done_today=True) bo'lsa — aktivatsiya (trial + referral).
+    # Idempotent: bir marta bajarilgach keyingi safar no-op.
+    if snap.get("done_today"):
+        try:
+            from bot.services.activation import on_first_completion
+            await on_first_completion(session, user, bot=None)
+        except Exception:
+            pass
     return snap
 
 

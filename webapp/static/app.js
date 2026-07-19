@@ -131,17 +131,45 @@ const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
 const apiHabitToggle=(id,done,date)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done:done,date:date||null})});
 const apiProfileUpdate=(name,notif,photo)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;if(photo!=null)b.photo_url=photo;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
 function openTgLink(u){try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');}catch(_){try{window.open(u,'_blank');}catch(__){}}}
-async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' do\'st taklif qilingan · ikkalangizga Premium'):'Har taklif uchun ikkalangizga ham Premium';}}catch(_){}}
+async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
 
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
+// Bot va Mini App bir xil xabarni ulashadi (foydalanuvchi bir xil natija ko'radi):
+// reklama matni + botga olib boradigan shaxsiy deep-link.
+const REFERRAL_SHARE_TEXT=[
+  "Siz Intizomlimisiz ⁉️",
+  "",
+  "📚 Kitob o'qish bilim beradi.",
+  "",
+  "💡Lekin bilimni natijaga aylantiradigan narsa — intizom.",
+  "",
+  "Ko'pchilik:",
+  "❌ Maqsad qo'yadi",
+  "❌ Reja tuzadi",
+  "❌ Lekin oxirigacha yetib bormaydi",
+  "",
+  "⌛️ IntizomAi esa sizning maqsadlaringiz, rejalaringiz va odatlaringizni kuzatib boradi.",
+  "",
+  "🧠 AI vaqt o'tishi bilan sizni o'rganadi:",
+  "✅ Progressingizni kuzatadi",
+  "✅ Odatlaringizni tahlil qiladi",
+  "✅ Sizga mos tavsiyalar beradi",
+  "",
+  "📊 Statistika",
+  "⚡️ Maqsadlar",
+  "⌛️ Eslatmalar",
+  "🤖 AI mentor",
+  "",
+  "🌐 Hammasi bitta qulay Web App ichida.",
+  "",
+  "⭐️ Bilim + Intizom = Natija"
+].join("\n");
+
 function shareInvite(){
   const link=State.profile&&State.profile.referral_link;
-  const snap=State.snap||{};const streak=snap.streak||0;
-  const txt=streak>0
-    ? ('Men IntizomAI bilan '+streak+' kun streak yig\'dim 🔥 Sen ham intizomli bo\'l — qo\'shil:')
-    : 'IntizomAI — har kuni intizomli bo\'lishga yordam beradigan bot. Qo\'shil:';
   if(!link){toast('Havola tayyorlanmoqda…');return;}
-  const url='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(txt);
+  // Telegram share URL — foydalanuvchi kimlarga forward qilishni tanlaydi.
+  const url='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(REFERRAL_SHARE_TEXT);
   try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(url);else window.open(url,'_blank');}catch(_){try{window.open(url,'_blank');}catch(__){}}
 }
 
@@ -407,8 +435,6 @@ async function saveCheckin(payload){try{await api('/api/webapp/checkin',{method:
 function openPaywall(){
   const ov=document.getElementById('paywall');
   if(!ov)return;
-  // Paywall matnini kontekstga moslaymiz: premium foydalanuvchi uzaytirish
-  // uchun ochsa — "Uzaytirish" versiyasi, aks holda default "Premium bo'ling".
   const isPremium=!!(State.sub&&State.sub.is_premium);
   const h=ov.querySelector('h1');
   const sb=ov.querySelector('.pw-sub');
@@ -416,15 +442,17 @@ function openPaywall(){
   const cta=document.getElementById('pwCta');
   if(isPremium){
     if(h)h.innerHTML='Obunani uzaytirish';
-    if(sb)sb.innerHTML='Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo\'shiladi</b> — premium uzaytiriladi, boshqattan boshlanmaydi.';
-    if(nt)nt.innerHTML='Botga qayting va <b>«💎 Premium» → «💳 Obunani uzaytirish»</b> tugmasini bosing.';
-    if(cta)cta.textContent='💳 Botda uzaytirish';
+    if(sb)sb.innerHTML='Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo\'shiladi</b> — Premium uzaytiriladi, boshqatdan boshlanmaydi.';
+    if(nt)nt.innerHTML='Tarifni tanlang — to\'lov sahifasi darhol ochiladi.';
+    if(cta)cta.textContent='💳 Uzaytirish uchun tarifni tanlang';
   }else{
-    if(h)h.innerHTML='Intizom AI <span class="pw-pro">PRO</span>';
-    if(sb)sb.innerHTML='Mini App — bu <b>premium</b> imkoniyat. Intizomingizni keyingi bosqichga olib chiqing.';
-    if(nt)nt.innerHTML='Obuna sotib olish uchun botga qayting va <b>«💎 Obuna»</b> tugmasini bosing.';
-    if(cta)cta.textContent='💎 Botda obuna sotib olish';
+    if(h)h.innerHTML='Intizom AI <span class="pw-pro">PREMIUM</span>';
+    if(sb)sb.innerHTML='Cheksiz reja, maqsad va odat. Cheksiz AI Coach.';
+    if(nt)nt.innerHTML='Tarifni tanlang — to\'lov sahifasi darhol ochiladi. Muvaffaqiyatli to\'lovdan so\'ng Premium avtomatik faollashadi.';
+    if(cta)cta.textContent='💎 Tarifni tanlang';
   }
+  // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
+  renderPaywallPlans(State.sub&&State.sub.plans);
   ov.classList.add('show');
   try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
 }
@@ -446,7 +474,59 @@ function maybePeakUpsell(snap){
     setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
   }catch(_){}
 }
-function renderPaywallPlans(plans){const el=document.getElementById('pwPlans');if(!el)return;if(!plans||!plans.length){el.innerHTML='';return;}el.innerHTML=plans.map(p=>`<div class="pw-plan"><span class="pn">${esc(p.title)}</span><span class="pp">${esc(p.price_label)} so'm</span></div>`).join('');}
+function renderPaywallPlans(plans){
+  const el=document.getElementById('pwPlans');if(!el)return;
+  if(!plans||!plans.length){el.innerHTML='';return;}
+  // Har bir tarif — bosiladigan tugma. Bosilganda `/api/webapp/checkout`
+  // chaqiriladi va Telegram to'lov sahifasi ochiladi.
+  el.innerHTML=plans.map(p=>{
+    const tag=(p.tag||'').trim();
+    const emoji=(p.emoji||'💎');
+    return `<button class="pw-plan pw-plan-btn" data-plan="${esc(p.key)}" type="button">
+      <span class="pn">${emoji} ${esc(p.title)}${tag?` <span class="pw-plan-tag">${esc(tag)}</span>`:''}</span>
+      <span class="pp">${esc(p.price_label)} so'm</span>
+    </button>`;
+  }).join('');
+  el.querySelectorAll('.pw-plan-btn').forEach(btn=>{
+    btn.onclick=()=>startCheckout(btn.dataset.plan,btn);
+  });
+}
+
+// Mini App ichidan direct checkout — foydalanuvchini botga qaytarmaydi.
+async function startCheckout(planKey,btn){
+  if(!planKey)return;
+  try{tg?.HapticFeedback?.impactOccurred?.('medium');}catch(_){}
+  const orig=btn?btn.innerHTML:null;
+  if(btn){btn.disabled=true;btn.classList.add('loading');btn.innerHTML='<span class="pn">⏳ To\'lov sahifasi ochilmoqda…</span>';}
+  try{
+    const res=await api('/api/webapp/checkout',{method:'POST',body:JSON.stringify({plan:planKey})});
+    const url=res&&res.checkout_url;
+    if(!url){throw new Error('Checkout URL olinmadi');}
+    // Telegram Mini App'da tashqi URLni ochish. openLink ustuvor — Telegram
+    // browser'ida ochib, to'lovdan keyin foydalanuvchi bir tap bilan botga
+    // qayta olishi mumkin.
+    try{
+      if(tg&&tg.openLink){tg.openLink(url,{try_instant_view:false});}
+      else{window.open(url,'_blank');}
+    }catch(_){
+      try{window.open(url,'_blank');}catch(__){}
+    }
+    // Foydalanuvchi to'lovni to'lagach webhook keladi. Bu yerda foydalanuvchiga
+    // yumshoq eslatma qoldiramiz — u qaytganda subscription yangilanadi.
+    toast('To\'lovdan so\'ng Premium avtomatik faollashadi 🔔');
+  }catch(e){
+    const m=String(e&&e.message||e);
+    if(m.includes('503')){
+      toast('To\'lov tizimi hozircha sozlanmagan. Adminga murojaat qiling.',true);
+    }else if(m.includes('404')){
+      toast('Avval botda /start bosing.',true);
+    }else{
+      toast('To\'lov sahifasini ochib bo\'lmadi. Birozdan so\'ng urinib ko\'ring.',true);
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.classList.remove('loading');if(orig)btn.innerHTML=orig;}
+  }
+}
 function applyPremiumUI(s){
   const box=document.getElementById('subStatus');
   const icon=document.getElementById('ssIcon');
@@ -468,7 +548,15 @@ function applyPremiumUI(s){
     if(cta){cta.style.display='';cta.textContent='💳 Uzaytirish';}
     // progress: qolgan kun / tarif umumiy kuni
     if(bar){
-      const totalDays={'Sinov 7 kun':7,'Oylik':30,'3 oy':90,'6 oy':180,'Yillik':365}[s.plan_title]||30;
+      // Tarif nomi admin tomonidan o'zgartirilishi mumkin — shuning uchun
+      // avval `s.plans` ichidan mos "days" ni qidiramiz (title bilan), aks
+      // holda eski/yangi nomlar bilan fallback qilamiz.
+      let totalDays=30;
+      try{
+        const found=((s.plans||[]).find(p=>p.title===s.plan_title||p.key===s.plan));
+        if(found&&found.days)totalDays=found.days;
+        else totalDays={'1 oy':30,'3 oy':90,'12 oy':365,'Oylik':30,'6 oy':180,'Yillik':365,'Sinov 7 kun':7}[s.plan_title]||30;
+      }catch(_){}
       const pct=Math.max(4,Math.min(100,Math.round(dl*100/totalDays)));
       setTimeout(()=>{bar.style.width=pct+'%';},150);
     }
@@ -1561,7 +1649,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#moodRow .mood-pill').forEach(p=>p.onclick=()=>{document.querySelectorAll('#moodRow .mood-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');State.checkinMood=p.dataset.mood;saveCheckin({mood:State.checkinMood});});
   document.querySelectorAll('#energyRow .energy-cell').forEach(c=>c.onclick=()=>{document.querySelectorAll('#energyRow .energy-cell').forEach(x=>x.classList.remove('active'));c.classList.add('active');State.checkinEnergy=+c.dataset.en;saveCheckin({energy:State.checkinEnergy});});
   const _ssCta=document.getElementById('ssCta');if(_ssCta)_ssCta.onclick=()=>{openPaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
-  const _pwCta=document.getElementById('pwCta');if(_pwCta)_pwCta.onclick=()=>{try{tg?.HapticFeedback?.impactOccurred('medium');}catch(_){}try{tg?.close();}catch(_){toast('Botga qaytib «💎 Obuna» tugmasini bosing');}};
+  const _pwCta=document.getElementById('pwCta');if(_pwCta)_pwCta.onclick=()=>{
+    // Default CTA: birinchi (yoki "TOP tanlov"/tag bor bo'lgan) tarifni tanlab yuborish.
+    try{tg?.HapticFeedback?.impactOccurred('medium');}catch(_){}
+    const plans=(State.sub&&State.sub.plans)||[];
+    if(!plans.length){toast('Tariflar yuklanmoqda…');return;}
+    const featured=plans.find(p=>(p.tag||'').trim())||plans[0];
+    // Foydalanuvchi tarif tugmasini ham ko'rishi kerak — plan buttonni topib
+    // vizual "tanlangan" holatini ko'rsatib, checkoutni ochamiz.
+    const btn=document.querySelector('.pw-plan-btn[data-plan="'+featured.key+'"]');
+    startCheckout(featured.key,btn||null);
+  };
   const _pwBack=document.getElementById('pwBack');if(_pwBack)_pwBack.onclick=()=>{closePaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
   document.getElementById('unlockOk').onclick=()=>document.getElementById('unlockOverlay').classList.remove('show');
 

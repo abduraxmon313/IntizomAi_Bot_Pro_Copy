@@ -1002,7 +1002,7 @@ async def admin_premium_grant_start(callback: CallbackQuery, state: FSMContext, 
         "➕ <b>Premium berish</b>\n\n"
         "Telegram ID va tarifni yuboring.\n"
         "Format: <code>ID tarif</code>\n\n"
-        "Tariflar: <code>7d</code> / <code>1m</code> / <code>3m</code> / <code>6m</code> / <code>12m</code>\n"
+        "Tariflar: <code>1m</code> / <code>3m</code> / <code>12m</code>\n"
         "Masalan: <code>123456789 3m</code>",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
@@ -1037,7 +1037,7 @@ async def admin_premium_grant_process(message: Message, state: FSMContext, sessi
     plan_key = parts[1].strip().lower()
     if plan_key not in SUBSCRIPTION_PLANS:
         await message.answer(
-            "❌ Noma'lum tarif. 1m / 3m / 6m / 12m dan birini yozing."
+            "❌ Noma'lum tarif. 1m / 3m / 12m dan birini yozing."
         )
         return
 
@@ -1426,15 +1426,25 @@ async def admin_plan_edit_start(callback: CallbackQuery, state: FSMContext, sess
 
     await state.update_data(plan_key=plan_key)
     await state.set_state(AdminState.plan_price_edit)
+    current_title = plan.get("title", plan_key)
+    current_tag = plan.get("tag", "") or ""
+    tag_line = f"\n🏷 Teg: <b>{current_tag}</b>" if current_tag else ""
     await callback.message.edit_text(
-        f"💰 <b>Tarif: {plan.get('emoji','💎')} {plan.get('title', plan_key)}</b>\n\n"
+        f"💰 <b>Tarif: {plan.get('emoji','💎')} {current_title}</b>\n\n"
         f"Joriy narx: <b>{format_price(current_price)} so'm</b>"
         + (f" <i>(default: {format_price(default_price)})</i>" if is_overridden and current_price != default_price else "") +
-        f"\n\nYangi narxni <b>so'mda</b> yuboring (faqat raqam).\n"
-        f"Masalan: <code>29900</code>\n\n"
-        f"<i>Foydalanuvchilar yangi narxni darhol ko'radi. "
-        f"Ushbu tarif uchun avval yaratilgan pending buyurtmalar o'z summasida qoladi "
-        f"(webhook'dagi anti-tamper tekshiruvi buzilmaydi).</i>",
+        f"\n📝 Nom: <b>{current_title}</b>{tag_line}\n\n"
+        "<b>Yangi qiymatlarni yuboring.</b> Uch xil format qo'llab-quvvatlanadi:\n\n"
+        "1) Faqat narx (nom va teg o'zgarmaydi):\n"
+        "   <code>29900</code>\n\n"
+        "2) Nom va narx (teg tegilmaydi):\n"
+        "   <code>1 oy | 29900</code>\n\n"
+        "3) Nom, narx va teg (teg uchun uchinchi <code>|</code>):\n"
+        "   <code>3 oy | 79900 | 33% tejaysiz</code>\n\n"
+        "Tegni <b>o'chirish</b> uchun uchinchi qism sifatida <code>-</code> yuboring:\n"
+        "   <code>1 oy | 29900 | -</code>\n\n"
+        "<i>Foydalanuvchilar yangi tugma yozuvi va narxni darhol ko'radi. "
+        "Avval yaratilgan pending buyurtmalar o'z summasida qoladi (anti-tamper).</i>",
         parse_mode="HTML",
         reply_markup=admin_plan_edit_keyboard(plan_key, is_overridden and current_price != default_price),
     )
@@ -1454,20 +1464,53 @@ async def admin_plan_price_process(message: Message, state: FSMContext, session:
         await message.answer("❌ Tarif yo'qoldi. Qaytadan urinib ko'ring.", reply_markup=back_to_premium_keyboard())
         return
 
-    raw = (message.text or "").strip().replace(" ", "").replace(",", "").replace("_", "")
-    try:
-        price = int(raw)
-    except ValueError:
+    raw = (message.text or "").strip()
+    if not raw:
+        await message.answer("❌ Bo'sh xabar. Qayta yuboring.")
+        return
+
+    # Uch xil format:
+    #   "29900"                          → faqat narx
+    #   "1 oy | 29900"                   → nom + narx
+    #   "3 oy | 79900 | 33% tejaysiz"    → nom + narx + teg
+    parts = [p.strip() for p in raw.split("|")]
+    new_title = None
+    new_tag = None
+    price_str = raw
+    if len(parts) == 1:
+        price_str = parts[0]
+    elif len(parts) == 2:
+        new_title, price_str = parts[0], parts[1]
+    elif len(parts) >= 3:
+        new_title, price_str, new_tag = parts[0], parts[1], parts[2]
+    else:
         await message.answer(
-            "❌ Faqat butun raqam yuboring (so'mda). Masalan: <code>29900</code>",
+            "❌ Format xato. Namunalar: <code>29900</code> yoki "
+            "<code>1 oy | 29900</code> yoki <code>3 oy | 79900 | 33% tejaysiz</code>",
             parse_mode="HTML",
         )
         return
 
-    from bot.services.plan_pricing import set_plan_price, get_effective_plan
+    normalized_price = price_str.replace(" ", "").replace(",", "").replace("_", "")
+    try:
+        price = int(normalized_price)
+    except ValueError:
+        await message.answer(
+            "❌ Narx qismi butun raqam bo'lishi kerak (so'mda). Masalan: <code>29900</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    from bot.services.plan_pricing import set_plan_meta, get_effective_plan
     from bot.services.premium_service import format_price
     try:
-        await set_plan_price(session, plan_key, price, updated_by=message.from_user.id)
+        await set_plan_meta(
+            session, plan_key,
+            price=price,
+            title=(new_title if new_title else None),
+            tag=(new_tag if new_tag is not None else None),
+            updated_by=message.from_user.id,
+        )
     except ValueError as e:
         await message.answer(f"❌ {e}", parse_mode="HTML")
         return
@@ -1480,12 +1523,15 @@ async def admin_plan_price_process(message: Message, state: FSMContext, session:
     default_price = int(SUBSCRIPTION_PLANS[plan_key].get("price", 0))
     delta = ""
     if price != default_price:
-        delta = f"\n<i>Default: {format_price(default_price)} so'm</i>"
+        delta = f"\n<i>Default narx: {format_price(default_price)} so'm</i>"
+    tag_line = ""
+    if plan.get("tag"):
+        tag_line = f"\n🏷 Teg: <b>{plan['tag']}</b>"
     await message.answer(
-        f"✅ <b>Yangi narx saqlandi!</b>\n\n"
-        f"{plan.get('emoji','💎')} <b>{plan.get('title', plan_key)}</b>\n"
+        f"✅ <b>Tarif yangilandi!</b>\n\n"
+        f"{plan.get('emoji','💎')} <b>{plan.get('title', plan_key)}</b>{tag_line}\n"
         f"💰 <b>{format_price(price)} so'm</b>{delta}\n\n"
-        f"Foydalanuvchilar endi obuna oynasida yangi narxni ko'radi.",
+        f"Foydalanuvchilar (bot va Mini App) endi yangi tugma yozuvi va narxni ko'radi.",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
     )

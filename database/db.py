@@ -93,6 +93,20 @@ PROMOCODE_NEW_COLUMNS = [
     ("is_free", "BOOLEAN DEFAULT FALSE"),
 ]
 
+# subscription_plan_overrides jadvaliga tugma yozuvi va bezaklarini ham
+# override qilish uchun ustunlar (admin narxni o'zgartirsa nom ham o'zgarishi).
+PLAN_OVERRIDE_NEW_COLUMNS = [
+    ("title", "VARCHAR(64)"),
+    ("emoji", "VARCHAR(8)"),
+    ("tag", "VARCHAR(64)"),
+]
+
+# referrals jadvaliga activation flag — sifatsiz /start-only takliflarni
+# hisobga olmaslik uchun; invitee birinchi item bajargandan keyin bonus beriladi.
+REFERRAL_NEW_COLUMNS = [
+    ("activated_at", "TIMESTAMP"),
+]
+
 # plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).
 CREATED_BY_TABLES = ("plans", "goals", "habits")
 
@@ -152,6 +166,24 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip promocodes.{col}: {e}")
+
+    # subscription_plan_overrides — title/emoji/tag override uchun.
+    for col, ddl in PLAN_OVERRIDE_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE subscription_plan_overrides ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip subscription_plan_overrides.{col}: {e}")
+
+    # referrals.activated_at — sifatli takliflarni belgilash uchun.
+    for col, ddl in REFERRAL_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE referrals ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip referrals.{col}: {e}")
 
     # plans/goals/habits: created_by_user_id — Do'stlar guruhida boshqa a'zo
     # yaratgan bo'lsa uning users.id si. NULL = foydalanuvchining o'zi yaratgan.
