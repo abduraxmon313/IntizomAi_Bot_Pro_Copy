@@ -49,6 +49,35 @@ SEND_DELAY = 0.05
 # Bildirishnoma yoqilgan foydalanuvchilar filtri (NULL ham yoqilgan deb hisoblanadi).
 NOTIF_ON = or_(User.notifications_enabled == True, User.notifications_enabled.is_(None))  # noqa: E712
 
+# Broadcast jobs uchun sahifa (batch) hajmi — bir vaqtda xotirada shuncha User.
+_USER_BATCH = 500
+
+
+async def _iter_users(session, stmt, batch: int = _USER_BATCH):
+    """
+    Foydalanuvchilarni KEYSET (id > last) sahifalab, oqim (stream) ko'rinishida
+    beradi. Avval broadcast jobs `.scalars().all()` bilan BARCHA userlarni
+    xotiraga yuklardi — 100k userда bu xotira portlashi (scalability cliff).
+    Endi bir vaqtda ko'pi bilan `batch` ta User obyekti xotirada bo'ladi.
+
+    Keyset (id bo'yicha) ishlatiladi — OFFSET emas — chunki sikl ichida ba'zi
+    userlar is_active=False qilinadi; keyset bunda sahifa "siljib ketishi"dan
+    xoli (allaqachon o'tilgan userlar qayta chiqmaydi).
+    `stmt` — bazaviy `select(User).where(...)`; unga id filtri/tartibi qo'shiladi.
+    """
+    last_id = 0
+    while True:
+        page = (await session.execute(
+            stmt.where(User.id > last_id).order_by(User.id).limit(batch)
+        )).scalars().all()
+        if not page:
+            break
+        for u in page:
+            yield u
+        if len(page) < batch:
+            break
+        last_id = page[-1].id
+
 
 async def _deliver(bot, user, text, reply_markup=None) -> str:
     """
@@ -85,11 +114,20 @@ async def send_plan_notifications(bot):
         from bot.services.plan_service import get_pending_plans_to_notify
         from bot.keyboards.plan_keys import done_failed_keyboard
         plans = await get_pending_plans_to_notify(session)
+        if not plans:
+            return
+
+        # N+1 yo'q: barcha kerakli userlarni BITTA so'rov bilan oldindan olamiz
+        # (avval har plan uchun alohida SELECT user bo'lardi).
+        user_ids = {p.user_id for p in plans}
+        users_by_id = {
+            u.id: u for u in (await session.execute(
+                select(User).where(User.id.in_(user_ids))
+            )).scalars().all()
+        }
 
         for plan in plans:
-            user = (await session.execute(
-                select(User).where(User.id == plan.user_id)
-            )).scalar_one_or_none()
+            user = users_by_id.get(plan.user_id)
             if not user:
                 continue
 
@@ -119,16 +157,12 @@ async def send_plan_notifications(bot):
 async def send_morning_nudge(bot):
     """07:00 — energising, identity-affirming."""
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(
-            select(User).where(and_(User.is_active == True, NOTIF_ON))
-        )).scalars().all()
-
         blocked = False
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📋 Bugungi rejam", callback_data="my_plans")],
             [InlineKeyboardButton(text="➕ Reja qo'sh", callback_data="add_plan")],
         ])
-        for user in users:
+        async for user in _iter_users(session, select(User).where(and_(User.is_active == True, NOTIF_ON))):
             st = await _deliver(bot, user, message_for_morning(), kb)
             if st == "blocked":
                 user.is_active = False
@@ -147,14 +181,10 @@ async def send_streak_warning(bot):
     async with AsyncSessionLocal() as session:
         today = datetime.now(TIMEZONE).date()
 
-        users = (await session.execute(
-            select(User).where(
-                and_(User.is_active == True, User.streak > 1, NOTIF_ON)
-            )
-        )).scalars().all()
-
         blocked = False
-        for user in users:
+        async for user in _iter_users(session, select(User).where(
+            and_(User.is_active == True, User.streak > 1, NOTIF_ON)
+        )):
             if user.last_completed_date == today:
                 continue
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -178,12 +208,8 @@ async def send_inactivity_comeback(bot):
     async with AsyncSessionLocal() as session:
         today = datetime.now(TIMEZONE).date()
 
-        users = (await session.execute(
-            select(User).where(and_(User.is_active == True, NOTIF_ON))
-        )).scalars().all()
-
         blocked = False
-        for user in users:
+        async for user in _iter_users(session, select(User).where(and_(User.is_active == True, NOTIF_ON))):
             last = user.last_completed_date
             if last is None:
                 continue
@@ -215,15 +241,11 @@ async def send_inactivity_comeback(bot):
 async def send_evening_reflection(bot):
     """21:00 — invite reflection."""
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(
-            select(User).where(User.is_active == True)
-        )).scalars().all()
-
         blocked = False
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📊 Bugungi hisobot", callback_data="report")],
         ])
-        for user in users:
+        async for user in _iter_users(session, select(User).where(User.is_active == True)):
             st = await _deliver(bot, user, message_for_evening(), kb)
             if st == "blocked":
                 user.is_active = False
@@ -242,11 +264,7 @@ async def send_daily_summary(bot):
     async with AsyncSessionLocal() as session:
         today = datetime.now(TIMEZONE).date()
 
-        users = (await session.execute(
-            select(User).where(User.is_active == True)
-        )).scalars().all()
-
-        for user in users:
+        async for user in _iter_users(session, select(User).where(User.is_active == True)):
             # ── Oylik "grace": oyning 1-kunida har bir faol foydalanuvchiga
             #    1 ta streak freeze beriladi (maks. 2 ta to'planadi). Bu engaged
             #    foydalanuvchining bitta yomon kunini kechiradi (P1).
@@ -342,11 +360,16 @@ async def check_pending_plans(bot):
         for plan in pending_plans:
             by_user.setdefault(plan.user_id, []).append(plan)
 
+        # N+1 yo'q: barcha userlarni bitta so'rov bilan olamiz.
+        users_by_id = {
+            u.id: u for u in (await session.execute(
+                select(User).where(User.id.in_(by_user.keys()))
+            )).scalars().all()
+        }
+
         blocked = False
         for user_id, plans in by_user.items():
-            user = (await session.execute(
-                select(User).where(User.id == user_id)
-            )).scalar_one_or_none()
+            user = users_by_id.get(user_id)
             if not user:
                 continue
             if user.notifications_enabled is False:
@@ -431,17 +454,13 @@ async def premium_expiry_reminder(bot):
     """10:30 — obuna tugashiga 3 va 1 kun qolganda eslatma."""
     async with AsyncSessionLocal() as session:
         now = datetime.utcnow()
-        users = (await session.execute(
-            select(User).where(
-                and_(
-                    User.premium_until != None,  # noqa: E711
-                    User.premium_until > now,
-                )
-            )
-        )).scalars().all()
-
         blocked = False
-        for user in users:
+        async for user in _iter_users(session, select(User).where(
+            and_(
+                User.premium_until != None,  # noqa: E711
+                User.premium_until > now,
+            )
+        )):
             left = days_left(user)
             if left not in PREMIUM_EXPIRY_REMINDER_DAYS:
                 continue
@@ -471,12 +490,8 @@ async def send_habit_reminders(bot):
     """19:00 — bugun rejalashtirilgan, lekin hali belgilanmagan odatlar eslatmasi."""
     from bot.services.habit_service import get_due_unchecked_habits
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(
-            select(User).where(and_(User.is_active == True, NOTIF_ON))
-        )).scalars().all()
-
         blocked = False
-        for user in users:
+        async for user in _iter_users(session, select(User).where(and_(User.is_active == True, NOTIF_ON))):
             try:
                 due = await get_due_unchecked_habits(session, user)
             except Exception:
@@ -532,11 +547,16 @@ async def send_habit_time_reminders(bot):
         for habit, uid in pairs:
             by_user.setdefault(uid, []).append(habit)
 
+        # N+1 yo'q: barcha userlarni bitta so'rov bilan olamiz.
+        users_by_id = {
+            u.id: u for u in (await session.execute(
+                select(User).where(User.id.in_(by_user.keys()))
+            )).scalars().all()
+        }
+
         blocked = False
         for uid, habits in by_user.items():
-            user = (await session.execute(
-                select(User).where(User.id == uid)
-            )).scalar_one_or_none()
+            user = users_by_id.get(uid)
             if not user or not user.is_active:
                 continue
             if user.notifications_enabled is False:

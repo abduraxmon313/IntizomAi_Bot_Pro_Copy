@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import TIMEZONE
@@ -362,6 +362,67 @@ async def _effective_visible(
     return bool(row.can_view) or bool(row.can_manage)
 
 
+def _empty_summary() -> dict:
+    return {
+        "plans_total": 0, "plans_done": 0,
+        "habits_total": 0, "habits_done_today": 0,
+        "goals_total": 0, "goals_done": 0,
+    }
+
+
+async def _bulk_today_summary(session: AsyncSession, user_ids: list[int]) -> dict:
+    """
+    BARCHA (ko'rinadigan) a'zolarning bugungi xulosasini FAQAT 4 ta guruhli
+    (GROUP BY) so'rov bilan hisoblaydi — avvalgi N+1 (har a'zoga 3 ta so'rov)
+    o'rniga. 50 a'zoli guruh: 150+ so'rov → 4 so'rov. {user_id: summary}.
+    """
+    out = {uid: _empty_summary() for uid in user_ids}
+    if not user_ids:
+        return out
+
+    today = _today_tashkent()
+    year_key = str(today.year)
+    month_key = f"{today.year:04d}-{today.month:02d}"
+
+    done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
+    for uid, total, done in (await session.execute(
+        select(Plan.user_id, func.count(Plan.id), done_case)
+        .where(and_(Plan.user_id.in_(user_ids), Plan.plan_date == today))
+        .group_by(Plan.user_id)
+    )).all():
+        out[uid]["plans_total"] = int(total or 0)
+        out[uid]["plans_done"] = int(done or 0)
+
+    for uid, total in (await session.execute(
+        select(Habit.user_id, func.count(Habit.id))
+        .where(and_(Habit.user_id.in_(user_ids), Habit.archived == False))  # noqa: E712
+        .group_by(Habit.user_id)
+    )).all():
+        out[uid]["habits_total"] = int(total or 0)
+
+    for uid, done in (await session.execute(
+        select(HabitLog.user_id, func.count(HabitLog.id))
+        .where(and_(HabitLog.user_id.in_(user_ids), HabitLog.log_date == today))
+        .group_by(HabitLog.user_id)
+    )).all():
+        out[uid]["habits_done_today"] = int(done or 0)
+
+    goal_done_case = func.sum(case((Goal.completed == True, 1), else_=0))  # noqa: E712
+    for uid, total, done in (await session.execute(
+        select(Goal.user_id, func.count(Goal.id), goal_done_case)
+        .where(and_(
+            Goal.user_id.in_(user_ids),
+            Goal.goal_type.in_(ALLOWED_GOAL_TYPES),
+            Goal.period.in_([year_key, month_key]),
+        ))
+        .group_by(Goal.user_id)
+    )).all():
+        out[uid]["goals_total"] = int(total or 0)
+        out[uid]["goals_done"] = int(done or 0)
+
+    return out
+
+
 async def get_group_detail(
     session: AsyncSession, user: User, group_id: int
 ) -> dict:
@@ -375,31 +436,42 @@ async def get_group_detail(
         .where(GroupMember.group_id == group_id)
         .order_by(GroupMember.joined_at)
     )
+    rows = members_res.all()
+    member_ids = [u.id for _gm, u in rows]
+
+    # ── N+1 yo'q: barcha ruxsatlar BITTA so'rovda (visible + can_i_manage) ──
+    # Bu a'zolar MENGA (grantee=user.id) qanday ruxsat bergan: {grantor_id: (view, manage)}
+    perms: dict[int, tuple[bool, bool]] = {}
+    if member_ids:
+        for gid, cv, cm in (await session.execute(
+            select(
+                GroupPermission.grantor_user_id,
+                GroupPermission.can_view,
+                GroupPermission.can_manage,
+            ).where(and_(
+                GroupPermission.group_id == group_id,
+                GroupPermission.grantee_user_id == user.id,
+                GroupPermission.grantor_user_id.in_(member_ids),
+            ))
+        )).all():
+            perms[int(gid)] = (bool(cv), bool(cm))
+
+    def _is_visible(uid: int) -> bool:
+        if uid == user.id:
+            return True
+        cv, cm = perms.get(uid, (False, False))
+        return cv or cm
+
+    # Faqat KO'RINADIGAN a'zolar uchun xulosa hisoblaymiz (4 guruhli so'rov).
+    visible_ids = [uid for uid in member_ids if _is_visible(uid)]
+    summaries = await _bulk_today_summary(session, visible_ids)
+
     members = []
-    for gm, u in members_res.all():
-        # Joriy foydalanuvchi shu a'zoning ma'lumotlarini ko'ra oladimi?
-        visible = await _effective_visible(session, group_id, u.id, user.id)
-        # Ko'rinish yopiq bo'lsa summary chip'lari nol qilib yuboriladi
-        # (frontend "🔒 yashirin" belgisini ko'rsatadi).
-        summary = await _member_today_summary(session, u.id) if visible else {
-            "plans_total": 0, "plans_done": 0,
-            "habits_total": 0, "habits_done_today": 0,
-            "goals_total": 0, "goals_done": 0,
-        }
-        # Bu a'zo joriy foydalanuvchiga can_manage bergan bo'lsa — men u uchun
-        # reja/odat/maqsad yarata olaman (member view'da tugmalar chiqishi uchun).
-        can_i_manage = False
-        if u.id != user.id:
-            perm = await session.scalar(
-                select(GroupPermission.can_manage).where(
-                    and_(
-                        GroupPermission.group_id == group_id,
-                        GroupPermission.grantor_user_id == u.id,
-                        GroupPermission.grantee_user_id == user.id,
-                    )
-                )
-            )
-            can_i_manage = bool(perm)
+    for gm, u in rows:
+        vis = _is_visible(u.id)
+        summary = summaries.get(u.id, _empty_summary()) if vis else _empty_summary()
+        _cv, cm = perms.get(u.id, (False, False))
+        can_i_manage = (u.id != user.id) and cm
         members.append({
             "user_id": u.id,
             "telegram_id": u.telegram_id,
@@ -409,7 +481,7 @@ async def get_group_detail(
             "streak": int(u.streak or 0),
             "summary": summary,
             "can_i_manage": can_i_manage,
-            "visible": visible,
+            "visible": vis,
         })
 
     return {
