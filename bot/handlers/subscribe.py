@@ -100,9 +100,9 @@ async def render_subscription(
             f"📅 Tugaydi: <b>{_fmt_date(status.premium_until)}</b>\n"
             f"⏳ Qolgan kun: <b>{status.days_left} kun</b>\n\n"
             "✨ Sizda barcha imkoniyatlar ochiq:\n"
-            "• Cheksiz reja va maqsadlar\n"
-            "• Mini App (kalendar, statistika, AI Coach)\n"
-            "• Streak Freeze va chuqur tahlil\n\n"
+            "• Cheksiz reja, maqsad va odat\n"
+            "• Cheksiz AI Coach suhbat\n"
+            "• Mini App (kalendar, statistika)\n\n"
             "Rahmat! Intizomingiz davom etsin 🔥"
         )
         await message.answer(
@@ -126,13 +126,12 @@ async def render_subscription(
     else:
         text = (
             "💎 <b>Intizom AI Premium</b>\n\n"
-            "Premium bilan to'liq imkoniyatlar ochiladi:\n"
-            "• <b>Mini App</b> — kalendar, statistika, AI Coach\n"
-            "• Cheksiz reja va maqsadlar\n"
-            "• Streak Freeze (streakni himoya qilish)\n"
-            "• Chuqur tahlil va elite belgilar\n"
-            "• Premium temalar\n\n"
-            f"🆓 <b>Bepul rejim:</b> Mini App'ni ko'rish mumkin — lekin kuniga {FREE_DAILY_PLAN_LIMIT} tagacha reja va cheklangan AI.\n\n"
+            "Premium bilan ochiladi:\n"
+            "• <b>Cheksiz reja, maqsad va odat</b>\n"
+            "• <b>Cheksiz AI Coach</b> suhbat (bepulda kuniga 3 ta)\n"
+            "• Mini App — kalendar va statistika\n\n"
+            f"🆓 <b>Bepul rejim:</b> kuniga {FREE_DAILY_PLAN_LIMIT} ta reja, 3 ta maqsad, "
+            "3 ta odat va 3 ta AI xabar.\n\n"
         )
     if bonus_days > 0 and promo_code:
         text += (
@@ -180,8 +179,8 @@ async def subscription_button(message: Message, state: FSMContext, session: Asyn
     # Obunasiz — qisqa promo + 2 variant (sotib olish / Premium haqida).
     await message.answer(
         "💎 <b>Premium</b>\n\n"
-        "Premium bilan <b>cheksiz</b> reja va maqsadlar, cheksiz AI Coach, "
-        "Streak Freeze va premium temalar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+        "Premium bilan <b>cheksiz</b> reja, maqsad, odat va AI Coach ochiladi.\n\n"
+        "Quyidagidan birini tanlang 👇",
         parse_mode="HTML",
         reply_markup=premium_promo_keyboard(),
     )
@@ -217,8 +216,9 @@ async def sub_extend_cb(callback: CallbackQuery, state: FSMContext, session: Asy
 # ─────────────────────────────────────────────────────────────
 #  BEPUL PREMIUM — DO'ST TAKLIF QILISH (REFERRAL)
 # ─────────────────────────────────────────────────────────────
-# Do'stlar bilan ulashish uchun reklama matni. Bu xabar foydalanuvchi tomonidan
-# forward qilinadi; tagidagi tugma botga taklif havolasi orqali olib o'tadi.
+# Do'stlar bilan ulashish uchun yagona reklama matni. Bot va Mini App shu
+# matnni bir xil ko'rinishda ulashadi. Foydalanuvchi tomonidan forward
+# qilinadi; tagidagi tugma botga taklif havolasi orqali olib o'tadi.
 REFERRAL_SHARE_TEXT = (
     "Siz Intizomlimisiz ⁉️\n\n"
     "📚 Kitob o'qish bilim beradi.\n\n"
@@ -238,8 +238,6 @@ REFERRAL_SHARE_TEXT = (
     "⌛️ Eslatmalar\n"
     "🤖 AI mentor\n\n"
     "🌐 Hammasi bitta qulay Web App ichida.\n\n"
-    "<b>\"Intizom\"</b> promokodi yordamida siz qo'shimcha <b>30 kun bepul</b> "
-    "foydalanish imkoniga ega bo'lasiz.\n\n"
     "⭐️ Bilim + Intizom = Natija"
 )
 
@@ -280,19 +278,20 @@ async def free_premium_cb(callback: CallbackQuery, session: AsyncSession):
             callback.from_user.full_name, callback.from_user.username or "",
         )
 
+    from bot.config import REFERRAL_INVITEE_REWARD_DAYS, REFERRAL_REWARD_DAYS
     stats = await get_referral_stats(session, user)
 
     text = (
         "🎁 <b>Bepul Premium olish</b>\n\n"
-        "Taklif havolangizni do'stlaringiz bilan bo'lishing va <b>bepul premium</b> "
-        "qo'lga kiriting! 🎉\n\n"
-        f"👥 <b>{stats.threshold} ta</b> do'stingizni taklif qiling — sizga "
-        f"<b>1 haftalik (7 kun) Premium</b> sovg'a qilinadi!\n\n"
-        f"📊 Hozirgi takliflaringiz: <b>{stats.total} ta</b>\n"
-        f"🎯 Keyingi bepul premiumgacha: <b>{stats.remaining} ta</b> do'st qoldi\n"
+        "Taklif qilgan do'stingiz birinchi rejasini bajarsa:\n"
+        f"• <b>Unga</b> — <b>{REFERRAL_INVITEE_REWARD_DAYS} kun</b> Premium sovg'a\n"
+        f"• <b>Sizga</b> — har <b>{stats.threshold} ta faol do'st</b> uchun "
+        f"<b>{REFERRAL_REWARD_DAYS} kun</b> Premium\n\n"
+        f"📊 Faol takliflaringiz: <b>{stats.total} ta</b>\n"
+        f"🎯 Keyingi {REFERRAL_REWARD_DAYS} kunlik Premiumgacha: <b>{stats.remaining} ta</b> faol do'st qoldi\n"
     )
     if stats.rewards_count > 0:
-        text += f"🏆 Olingan bepul premiumlar: <b>{stats.rewards_count} ta</b>\n"
+        text += f"🏆 Olingan bepul Premiumlar: <b>{stats.rewards_count} ta</b>\n"
     text += (
         "\nQuyidagi tugma orqali shaxsiy havolangizni oling va ulashing 👇"
     )
@@ -310,27 +309,24 @@ async def free_premium_cb(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data == "referral_link")
 async def referral_link_cb(callback: CallbackQuery, session: AsyncSession):
-    """Shaxsiy taklif havolasini va ulashish uchun tayyor xabarni yuboradi."""
+    """
+    Shaxsiy taklif havolasi bilan ulashiladigan reklama xabarini yuboradi.
+
+    Bir xillik uchun bot va Mini App ikkalasi ham AYNAN bir xil xabarni
+    ko'rsatadi: reklama matni + botga olib boradigan deep-link tugmasi.
+    """
     username = await get_bot_username(callback.bot)
     link = build_referral_link(username, callback.from_user.id)
 
-    # 1) Ko'rsatma + havola (foydalanuvchi uchun)
-    await callback.message.answer(
-        "🔗 <b>Sizning taklif havolangiz tayyor!</b>\n\n"
-        f"<code>{link}</code>\n\n"
-        "👇 Quyidagi xabarni do'stlaringizga <b>yo'llang (forward)</b> yoki "
-        "havolani nusxalab ulashing. Har 5 ta yangi do'st = <b>1 hafta bepul Premium</b>! 🎁",
-        parse_mode="HTML",
-    )
-
-    # 2) Ulashiladigan reklama xabari (forward qilish uchun) — tagida deep-link tugma
+    # Yagona xabar — ulashish/forward qilish uchun tayyor. Bot va Mini Appda
+    # bir xil, ortiqcha "havola tayyor" xabari yo'q.
     await callback.message.answer(
         REFERRAL_SHARE_TEXT,
         parse_mode="HTML",
         reply_markup=referral_share_keyboard(link),
         disable_web_page_preview=True,
     )
-    await callback.answer("Havola tayyor! 🔗")
+    await callback.answer()
 
 
 # ─────────────────────────────────────────────────────────────

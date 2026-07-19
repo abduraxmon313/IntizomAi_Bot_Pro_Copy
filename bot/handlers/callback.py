@@ -9,6 +9,7 @@ from bot.services.plan_service import (
 )
 from bot.services.habit_service import toggle_habit_log
 from bot.services.score_service import process_plan_result_full
+from bot.services.activation import on_first_completion
 from bot.config import HABIT_DONE_SCORE
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.coach_service import (
@@ -35,6 +36,11 @@ async def habit_done_handler(callback: CallbackQuery, session: AsyncSession):
     if snap is None:
         await callback.answer("Odat topilmadi!", show_alert=True)
         return
+    # Aktivatsiya: birinchi muvaffaqiyat trial va referral mukofotlarini ochadi.
+    try:
+        await on_first_completion(session, user, bot=callback.bot)
+    except Exception:
+        pass
     try:
         await callback.message.edit_text(
             f"✅ <b>{snap['title']}</b> bajarildi!\n\n"
@@ -87,6 +93,12 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
         return
 
     reward = await process_plan_result_full(session, user, plan, is_done=True)
+
+    # Aktivatsiya: birinchi muvaffaqiyat trial va referral mukofotlarini ochadi.
+    try:
+        await on_first_completion(session, user, bot=callback.bot)
+    except Exception:
+        pass
 
     try:
         lines = [

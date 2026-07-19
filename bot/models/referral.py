@@ -28,3 +28,7 @@ class Referral(Base):
     referred_telegram_id = Column(BigInteger, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Taklif qilingan foydalanuvchi birinchi reja/odat bajarganda qo'yiladi.
+    # Faqat shundan keyin invitee'ga bonus va referrer'ning sanog'i beriladi
+    # (sifatsiz /start-only takliflarni sanamaslik uchun).
+    activated_at = Column(DateTime, nullable=True)

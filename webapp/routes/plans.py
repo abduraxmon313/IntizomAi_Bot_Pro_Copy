@@ -196,6 +196,15 @@ async def edit_plan(
         }[body.status]
         await set_plan_status(session, user, plan, target)
 
+        # Reja "done" bo'lgan bo'lsa — aktivatsiya (trial + referral mukofoti).
+        # Idempotent: bir marta bajarilgach keyingi safar no-op.
+        if target == PlanStatus.done:
+            try:
+                from bot.services.activation import on_first_completion
+                await on_first_completion(session, user, bot=None)
+            except Exception:
+                pass
+
         # set_plan_status ichida bir nechta commit/rollback bo'lgani uchun,
         # plan obyekti stale bo'lishi mumkin — xavfsiz re-read.
         try:

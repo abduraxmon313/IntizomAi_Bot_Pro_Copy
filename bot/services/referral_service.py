@@ -25,17 +25,19 @@ from aiogram.exceptions import TelegramForbiddenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from datetime import datetime as _dt
+
 from bot.config import (
     BOT_USERNAME,
     REFERRAL_INVITEE_REWARD_DAYS,
     REFERRAL_PAYLOAD_PREFIX,
     REFERRAL_REWARD_DAYS,
-    REFERRAL_REWARD_PLAN,
+    REFERRAL_REWARD_SOURCE,
     REFERRAL_THRESHOLD,
 )
 from bot.models.referral import Referral
 from bot.models.user import User
-from bot.services.premium_service import activate_subscription, days_left, grant_bonus_premium
+from bot.services.premium_service import days_left, grant_bonus_premium
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +150,14 @@ async def register_referral(
     bot=None,
 ) -> RegisterResult:
     """
-    Yangi foydalanuvchi taklif havolasi orqali kelganini ro'yxatga oladi.
-    Kerak bo'lsa taklif qiluvchiga premium beradi va xabar yuboradi.
+    Yangi foydalanuvchi taklif havolasi orqali kelganini FAQAT ro'yxatga oladi.
+
+    Muhim: /start bosishning o'zi mukofot BERMAYDI. Invitee birinchi reja/odat
+    bajarganidan keyin `activate_referral()` chaqiriladi va shundagina:
+      • invitee — bonus premium oladi
+      • referrer — sanog'i ko'payadi va har `REFERRAL_THRESHOLD` uchun premium oladi
+
+    Bu sifatsiz (bo'sh registratsiya) taklif fraud'ini oldini oladi.
     """
     # 1) O'z-o'zini taklif qilish — hisoblanmaydi
     if referrer_telegram_id == new_user.telegram_id:
@@ -174,14 +182,14 @@ async def register_referral(
     if not referrer:
         return RegisterResult(counted=False, reason="referrer_not_found")
 
-    # 4) Taklifni yozamiz
+    # 4) Taklifni yozamiz — activated_at hozircha NULL. Mukofot invitee birinchi
+    # item bajargandan keyin `activate_referral()` orqali beriladi.
     ref = Referral(
         referrer_telegram_id=referrer_telegram_id,
         referred_telegram_id=new_user.telegram_id,
     )
     session.add(ref)
     new_user.referred_by = referrer_telegram_id
-    referrer.referral_count = int(referrer.referral_count or 0) + 1
     try:
         await session.commit()
     except Exception as e:
@@ -189,25 +197,75 @@ async def register_referral(
         logger.warning(f"Referral yozishda xato: {e}")
         return RegisterResult(counted=False, reason="db_error")
 
+    return RegisterResult(counted=True, referrer=referrer, total=int(referrer.referral_count or 0))
+
+
+async def activate_referral(
+    session: AsyncSession,
+    invitee: User,
+    bot=None,
+) -> RegisterResult:
+    """
+    Invitee birinchi reja/odat bajargandan keyin chaqiriladi. Idempotent:
+    faqat activated_at hali NULL bo'lgan referralni "activated" qiladi va
+    mukofotlarni beradi. Bir marta bajarilgach, keyingi chaqiruvlarda no-op.
+
+    Chaqirish joyi: reja `done` bo'lganda va odat `done` bo'lganda
+    (callback.py va webapp/routes/plans.py, webapp/routes/habits.py).
+    """
+    if not invitee or not getattr(invitee, "referred_by", None):
+        return RegisterResult(counted=False, reason="no_referrer")
+
+    # Referral qatorini topamiz — hali aktivatsiya qilinmagan bo'lishi kerak.
+    ref = await session.scalar(
+        select(Referral).where(Referral.referred_telegram_id == invitee.telegram_id)
+    )
+    if ref is None:
+        return RegisterResult(counted=False, reason="ref_not_found")
+    if getattr(ref, "activated_at", None) is not None:
+        return RegisterResult(counted=False, reason="already_activated")
+
+    referrer = await session.scalar(
+        select(User).where(User.telegram_id == ref.referrer_telegram_id)
+    )
+    if not referrer:
+        # Referrer o'chirilgan bo'lsa faqat rowni belgilaymiz va chiqamiz.
+        ref.activated_at = _dt.utcnow()
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+        return RegisterResult(counted=False, reason="referrer_not_found")
+
+    # Referralni "activated" deb belgilaymiz va referrer sanog'ini oshiramiz.
+    ref.activated_at = _dt.utcnow()
+    referrer.referral_count = int(referrer.referral_count or 0) + 1
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        logger.warning(f"Referral activation yozishda xato: {e}")
+        return RegisterResult(counted=False, reason="db_error")
+
     await session.refresh(referrer)
     total = int(referrer.referral_count or 0)
 
-    # 4b) IKKI TOMONLAMA: taklif qilingan yangi do'stga ham bonus premium beramiz.
+    # Invitee'ga bonus premium (ikki tomonlama mukofot).
     if REFERRAL_INVITEE_REWARD_DAYS > 0:
         try:
             await grant_bonus_premium(
-                session, new_user, REFERRAL_INVITEE_REWARD_DAYS,
+                session, invitee, REFERRAL_INVITEE_REWARD_DAYS,
                 source="referral_invitee",
             )
             if bot is not None:
                 try:
                     await bot.send_message(
-                        new_user.telegram_id,
+                        invitee.telegram_id,
                         (
-                            "🎁 <b>Sovg'a!</b>\n\n"
-                            f"Do'stingiz havolasi orqali qo'shilganingiz uchun sizga "
-                            f"<b>{REFERRAL_INVITEE_REWARD_DAYS} kunlik Premium</b> berildi!\n\n"
-                            "✨ Mini App, cheksiz reja va AI Coach — bahridan foydalaning."
+                            "🎁 <b>Birinchi qadam uchun sovg'a!</b>\n\n"
+                            f"Do'stingiz taklifi orqali qo'shilib, birinchi vazifangizni bajardingiz — "
+                            f"sizga <b>{REFERRAL_INVITEE_REWARD_DAYS} kunlik Premium</b> berildi!\n\n"
+                            "✨ Mini App va cheksiz imkoniyatlar ochiq."
                         ),
                         parse_mode="HTML",
                     )
@@ -218,17 +276,16 @@ async def register_referral(
         except Exception as e:
             logger.warning(f"Invitee mukofotini berishda xato: {e}")
 
-    # 5) Mukofot tekshiruvi — har THRESHOLD ta uchun bir marta premium
+    # Referrer uchun mukofot: har THRESHOLD ta faol do'st = REFERRAL_REWARD_DAYS kun.
     rewarded = False
     while (total - int(referrer.referral_rewards_given or 0)) >= REFERRAL_THRESHOLD:
         try:
-            await activate_subscription(
-                session, referrer,
-                plan_key=REFERRAL_REWARD_PLAN,
-                source="referral",
+            await grant_bonus_premium(
+                session, referrer, REFERRAL_REWARD_DAYS,
+                source=REFERRAL_REWARD_SOURCE,
             )
         except Exception as e:
-            logger.error(f"Referral mukofotini berishda xato: {e}")
+            logger.error(f"Referrer mukofotini berishda xato: {e}")
             break
         referrer.referral_rewards_given = int(referrer.referral_rewards_given or 0) + REFERRAL_THRESHOLD
         try:
@@ -237,25 +294,22 @@ async def register_referral(
             await session.rollback()
         rewarded = True
 
-    # 6) Taklif qiluvchiga xabar
     if bot is not None:
         await _notify_referrer(bot, referrer, total, rewarded)
 
-    return RegisterResult(
-        counted=True, referrer=referrer, rewarded=rewarded, total=total,
-    )
+    return RegisterResult(counted=True, referrer=referrer, rewarded=rewarded, total=total)
 
 
 async def _notify_referrer(bot, referrer: User, total: int, rewarded: bool) -> None:
-    """Taklif qiluvchiga taraqqiyot yoki mukofot haqida xabar yuboradi."""
+    """Taklif qiluvchiga faol taklif yoki mukofot haqida xabar yuboradi."""
     try:
         if rewarded:
             text = (
                 "🎉 <b>Tabriklaymiz!</b>\n\n"
-                f"Siz <b>{REFERRAL_THRESHOLD} ta</b> do'stingizni taklif qildingiz va "
-                f"<b>{REFERRAL_REWARD_DAYS} kunlik Premium</b> sovg'aga ega bo'ldingiz! 🎁\n\n"
+                f"Siz <b>{REFERRAL_THRESHOLD} ta</b> faol do'stingiz uchun "
+                f"<b>{REFERRAL_REWARD_DAYS} kunlik Premium</b> qo'lga kiritdingiz! 🎁\n\n"
                 f"💎 Premium faol — <b>{days_left(referrer)} kun</b> qoldi.\n\n"
-                "Davom eting — yana 5 ta do'st = yana 1 hafta Premium! 🚀"
+                f"Davom eting — yana {REFERRAL_THRESHOLD} ta faol do'st = yana {REFERRAL_REWARD_DAYS} kun! 🚀"
             )
         else:
             remaining = REFERRAL_THRESHOLD - (
@@ -264,10 +318,10 @@ async def _notify_referrer(bot, referrer: User, total: int, rewarded: bool) -> N
             if remaining == REFERRAL_THRESHOLD:
                 remaining = REFERRAL_THRESHOLD
             text = (
-                "👏 <b>Yangi do'st qo'shildi!</b>\n\n"
-                f"Havolangiz orqali yana bir do'stingiz qo'shildi.\n"
-                f"📊 Jami takliflar: <b>{total} ta</b>\n"
-                f"🎁 Bepul premiumgacha yana <b>{remaining} ta</b> do'st qoldi!"
+                "🔥 <b>Do'stingiz faol!</b>\n\n"
+                f"Taklif qilgan do'stingiz birinchi vazifasini bajardi va Premium oldi.\n"
+                f"📊 Faol takliflar: <b>{total} ta</b>\n"
+                f"🎁 Sizga {REFERRAL_REWARD_DAYS} kun Premiumgacha yana <b>{remaining} ta</b> faol do'st qoldi!"
             )
         await bot.send_message(referrer.telegram_id, text, parse_mode="HTML")
     except TelegramForbiddenError:

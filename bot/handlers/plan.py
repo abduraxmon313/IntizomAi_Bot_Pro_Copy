@@ -363,9 +363,9 @@ async def confirm_plans_handler(callback: CallbackQuery, state: FSMContext, sess
             f"Bepul rejimda kuniga <b>{limit.limit} tagacha</b> reja qo'shasiz.\n"
             f"Bugun ishlatildi: <b>{limit.used}/{limit.limit}</b>\n\n"
             "💎 <b>Premium</b> bilan ochiladi:\n"
-            "• Cheksiz reja va maqsadlar\n"
-            "• Mini App — kalendar, statistika, AI Coach\n"
-            "• Streak Freeze va chuqur tahlil",
+            "• Cheksiz reja, maqsad va odat\n"
+            "• Cheksiz AI Coach suhbat\n"
+            "• Mini App — kalendar va statistika",
             parse_mode="HTML",
             reply_markup=buy_subscription_keyboard(),
         )

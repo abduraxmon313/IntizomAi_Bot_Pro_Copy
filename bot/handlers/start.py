@@ -14,10 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards.main_menu import main_menu_keyboard
 from bot.keyboards.reply_keys import main_reply_keyboard
 from bot.keyboards.subscribe_keys import contact_keyboard, premium_promo_keyboard
-from bot.config import TRIAL_DAYS
 from bot.services.gamification_service import xp_progress, rank_for_level
 from bot.services.user_service import get_or_create_user, get_user_by_telegram_id
-from bot.services.premium_service import user_is_premium, days_left, grant_bonus_premium
+from bot.services.premium_service import user_is_premium, days_left
 from bot.services.referral_service import parse_referrer_id, register_referral
 from bot.services.group_service import (
     GroupError, join_by_code, parse_invite_code_from_payload,
@@ -108,18 +107,9 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         except Exception:
             joined_group_name = None
 
-    # ── Yangi foydalanuvchiga avtomatik Premium sinov (trial) — loss aversion.
-    #    Referral orqali kelgan bo'lsa allaqachon premium bo'lishi mumkin (invitee
-    #    bonusi) — bunday holda trial o'tkazib yuboriladi.
-    trial_days_granted = 0
-    if is_new and TRIAL_DAYS > 0 and not user.trial_used and not user_is_premium(user):
-        try:
-            await grant_bonus_premium(session, user, TRIAL_DAYS, source="trial")
-            user.trial_used = True
-            await session.commit()
-            trial_days_granted = TRIAL_DAYS
-        except Exception:
-            await session.rollback()
+    # Eslatma: trial `/start`da avtomatik BERILMAYDI. Foydalanuvchi birinchi
+    # reja/odat bajarganda `bot/services/activation.py` ichida beriladi — shunda
+    # 3 kunlik Premium haqiqiy tajriba davriga aylanadi (sovuq /start emas).
 
     name = (user.display_name or user.full_name or "do'st")
 
@@ -141,14 +131,11 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     if is_new or not user.onboarded:
         welcome = (
             f"🎯 <b>Salom, {name}!</b>\n\n"
-            "Men <b>Intizom AI</b> — shaxsiy intizom yordamchingizman. "
-            "Rejalaringizni eslatib, har bir bajarilgan ish uchun ball, streak va "
-            "daraja beraman."
+            "Men — <b>Intizom AI</b>.\n\n"
+            "🗒 <b>Rejangizni yozing</b> → 🔔 <b>vaqtida eslataman</b> → "
+            "✅ <b>bajarganingizni kuzataman</b> → 🔥 <b>streakingizni saqlayman</b>.\n\n"
+            "Bugundan boshlab bitta oddiy va'da: <b>har kuni kamida 1 ta narsa bajarish</b>."
         )
-        if trial_days_granted:
-            welcome += (
-                f"\n\n🎁 Sizga <b>{trial_days_granted} kunlik Premium</b> sovg'a qilindi!"
-            )
         await message.answer(welcome, parse_mode="HTML", reply_markup=main_reply_keyboard())
         await message.answer(
             "🧭 <b>Avval bitta savol — siz kimsiz?</b>\n\n"
