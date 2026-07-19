@@ -250,6 +250,12 @@
       <button class="mode-btn friends-back" id="friendsMemberBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
       <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsMemberName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsMemberSub">bugungi holat</p></div>
     </div>
+    <!-- Sana navigatsiyasi — o'tgan davrni ham ko'rish uchun -->
+    <div class="mem-datenav">
+      <button class="nav-btn" id="memDatePrev" aria-label="Oldingi kun">‹</button>
+      <div class="mem-datelabel" id="memDateLabel">Bugun</div>
+      <button class="nav-btn" id="memDateNext" aria-label="Keyingi kun">›</button>
+    </div>
     <div id="friendsMemberContent"></div>
   </div>
 </section>
@@ -289,7 +295,12 @@
       <button class="btn btn-ghost" id="geCancel">Bekor</button>
       <button class="btn" id="geSave">Saqlash</button>
     </div>
-    <button class="btn btn-danger" id="geDelete" style="margin-top:10px;width:100%">🗑 Guruhni o'chirish</button>
+    <div id="geMembersWrap" style="margin-top:16px;display:none">
+      <h3 style="font-size:14px;margin-bottom:2px">👥 A'zolar</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">A'zoni guruhdan chiqarib yuborish.</p>
+      <div id="geMembers"></div>
+    </div>
+    <button class="btn btn-danger" id="geDelete" style="margin-top:14px;width:100%">🗑 Guruhni o'chirish</button>
     <button class="btn btn-ghost" id="geLeave" style="margin-top:6px;width:100%">🚪 Guruhdan chiqish</button>
   </div>
 </div>

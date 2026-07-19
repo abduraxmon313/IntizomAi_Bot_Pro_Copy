@@ -228,12 +228,21 @@ async def join_group_api(
 @router.get("/friends/groups/{group_id}/members/{user_id}")
 async def member_view_api(
     group_id: int, user_id: int,
+    date: Optional[str] = None,
     telegram_id: int = Depends(resolve_telegram_id),
     session: AsyncSession = Depends(get_session),
 ):
+    # `date` (YYYY-MM-DD) — o'tgan davrni ko'rish uchun (ixtiyoriy).
+    on_date = None
+    if date:
+        from datetime import date as _date
+        try:
+            on_date = _date.fromisoformat(date)
+        except Exception:
+            on_date = None
     user = await _require_user(session, telegram_id)
     try:
-        return await get_member_view(session, user, group_id, user_id)
+        return await get_member_view(session, user, group_id, user_id, on_date=on_date)
     except GroupError as e:
         raise _map_group_error(e)
 
