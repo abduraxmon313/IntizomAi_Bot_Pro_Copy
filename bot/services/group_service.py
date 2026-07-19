@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import TIMEZONE
@@ -339,6 +339,72 @@ async def _member_today_summary(session: AsyncSession, user_id: int) -> dict:
     }
 
 
+def _empty_summary() -> dict:
+    return {
+        "plans_total": 0, "plans_done": 0,
+        "habits_total": 0, "habits_done_today": 0,
+        "goals_total": 0, "goals_done": 0,
+    }
+
+
+async def _bulk_today_summary(session: AsyncSession, user_ids: list[int]) -> dict:
+    """
+    BARCHA a'zolarning bugungi xulosasini FAQAT 4 ta guruhli (GROUP BY) so'rov
+    bilan hisoblaydi — avvalgi N+1 (har a'zoga 3 ta so'rov) o'rniga. Katta
+    guruhlarda (masalan 50 a'zo) 150+ so'rov → 4 so'rovga tushadi.
+    Qaytaradi: {user_id: summary_dict}.
+    """
+    out = {uid: _empty_summary() for uid in user_ids}
+    if not user_ids:
+        return out
+
+    today = _today_tashkent()
+    year_key = str(today.year)
+    month_key = f"{today.year:04d}-{today.month:02d}"
+
+    done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
+    # 1) Rejalar (bugun) — jami + bajarilgan, user bo'yicha
+    for uid, total, done in (await session.execute(
+        select(Plan.user_id, func.count(Plan.id), done_case)
+        .where(and_(Plan.user_id.in_(user_ids), Plan.plan_date == today))
+        .group_by(Plan.user_id)
+    )).all():
+        out[uid]["plans_total"] = int(total or 0)
+        out[uid]["plans_done"] = int(done or 0)
+
+    # 2) Aktiv odatlar soni, user bo'yicha
+    for uid, total in (await session.execute(
+        select(Habit.user_id, func.count(Habit.id))
+        .where(and_(Habit.user_id.in_(user_ids), Habit.archived == False))  # noqa: E712
+        .group_by(Habit.user_id)
+    )).all():
+        out[uid]["habits_total"] = int(total or 0)
+
+    # 3) Bugun bajarilgan odatlar (HabitLog.user_id mavjud), user bo'yicha
+    for uid, done in (await session.execute(
+        select(HabitLog.user_id, func.count(HabitLog.id))
+        .where(and_(HabitLog.user_id.in_(user_ids), HabitLog.log_date == today))
+        .group_by(HabitLog.user_id)
+    )).all():
+        out[uid]["habits_done_today"] = int(done or 0)
+
+    # 4) Joriy davr maqsadlari — jami + bajarilgan, user bo'yicha
+    goal_done_case = func.sum(case((Goal.completed == True, 1), else_=0))  # noqa: E712
+    for uid, total, done in (await session.execute(
+        select(Goal.user_id, func.count(Goal.id), goal_done_case)
+        .where(and_(
+            Goal.user_id.in_(user_ids),
+            Goal.goal_type.in_(ALLOWED_GOAL_TYPES),
+            Goal.period.in_([year_key, month_key]),
+        ))
+        .group_by(Goal.user_id)
+    )).all():
+        out[uid]["goals_total"] = int(total or 0)
+        out[uid]["goals_done"] = int(done or 0)
+
+    return out
+
+
 async def get_group_detail(
     session: AsyncSession, user: User, group_id: int
 ) -> dict:
@@ -352,22 +418,27 @@ async def get_group_detail(
         .where(GroupMember.group_id == group_id)
         .order_by(GroupMember.joined_at)
     )
+    rows = members_res.all()
+    member_ids = [u.id for _gm, u in rows]
+
+    # ── N+1 yo'q: barcha xulosalar 4 so'rov, ruxsatlar 1 so'rov ──
+    summaries = await _bulk_today_summary(session, member_ids)
+    # Bu foydalanuvchiga qaysi a'zolar can_manage bergan (bir so'rovda)
+    granted_to_me: set[int] = set()
+    if member_ids:
+        for (grantor_id,) in (await session.execute(
+            select(GroupPermission.grantor_user_id).where(and_(
+                GroupPermission.group_id == group_id,
+                GroupPermission.grantee_user_id == user.id,
+                GroupPermission.can_manage == True,  # noqa: E712
+            ))
+        )).all():
+            granted_to_me.add(int(grantor_id))
+
     members = []
-    for gm, u in members_res.all():
-        summary = await _member_today_summary(session, u.id)
-        # Bu a'zo joriy foydalanuvchiga ruxsat berganmi?
-        can_i_manage = False
-        if u.id != user.id:
-            perm = await session.scalar(
-                select(GroupPermission.can_manage).where(
-                    and_(
-                        GroupPermission.group_id == group_id,
-                        GroupPermission.grantor_user_id == u.id,
-                        GroupPermission.grantee_user_id == user.id,
-                    )
-                )
-            )
-            can_i_manage = bool(perm)
+    for gm, u in rows:
+        summary = summaries.get(u.id, _empty_summary())
+        can_i_manage = (u.id != user.id) and (u.id in granted_to_me)
         members.append({
             "user_id": u.id,
             "telegram_id": u.telegram_id,

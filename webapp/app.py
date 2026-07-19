@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends
@@ -54,6 +55,18 @@ async def run_dilshodbek_bot():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # DB jadvallari tayyorligini KAFOLATLAYMIZ.
+    # Bot alohida jarayonda ishlasa (RUN_BOT=false), jadvallarni bot yaratmaydi —
+    # shuning uchun web jarayoni ham o'zi create_tables() chaqiradi. Funksiya
+    # idempotent (_tables_ready flag + IF NOT EXISTS), shuning uchun bot bilan
+    # bir jarayonda ishlaganda ham xavfsiz (ikki marta yaratmaydi).
+    try:
+        from database.db import create_tables
+        await create_tables()
+        logger.info("✅ Database tayyor (web lifespan)")
+    except Exception as e:
+        logger.warning(f"create_tables (web) skip/xato: {type(e).__name__}: {e}")
+
     bot_task = None
     dilshodbek_task = None
     if RUN_BOT:
@@ -68,23 +81,14 @@ async def lifespan(app: FastAPI):
         logger.info("ℹ️ DILSHODBEK_BOT_TOKEN yo'q — Dilshodbek bot ishga tushirilmadi")
 
     # Effective tarif narxlari keshini preload qilamiz (admin override'lar bo'lsa).
-    # DB jadval hali yaratilmagan bo'lsa xato bermay skip qiladi — bot startupda
-    # yaratadi va keyingi admin harakati keshni yangilaydi.
+    # create_tables() yuqorida tugagani uchun endi kechikish (sleep) shart emas.
     try:
-        # Kichik kechikish — bot task create_tables tugatishiga imkon beradi
-        # (Postgres'da DDL bir necha yuz ms oladi). Xato bermasa xayrli.
-        async def _preload_plan_pricing():
-            try:
-                await asyncio.sleep(3)
-                from database.db import AsyncSessionLocal
-                from bot.services.plan_pricing import refresh_plans_cache
-                async with AsyncSessionLocal() as s:
-                    await refresh_plans_cache(s)
-            except Exception as e:
-                logger.warning(f"plan_pricing preload skip: {type(e).__name__}: {e}")
-        asyncio.create_task(_preload_plan_pricing())
-    except Exception:
-        pass
+        from database.db import AsyncSessionLocal
+        from bot.services.plan_pricing import refresh_plans_cache
+        async with AsyncSessionLocal() as s:
+            await refresh_plans_cache(s)
+    except Exception as e:
+        logger.warning(f"plan_pricing preload skip: {type(e).__name__}: {e}")
 
     logger.info("🌐 FastAPI server tayyor")
     yield
@@ -104,6 +108,11 @@ app = FastAPI(
     redoc_url=None,
     lifespan=lifespan,
 )
+
+# GZip — HTML/JS/CSS/JSON javoblarni siqadi (~70% kichrayadi). 500 baytdan
+# katta javoblar siqiladi; rasm (avatar) allaqachon siqilgan bo'lgani uchun
+# GZip ularga deyarli ta'sir qilmaydi (zararsiz).
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 app.add_middleware(
     CORSMiddleware,
@@ -187,4 +196,33 @@ async def health():
 
 @app.get("/")
 async def root():
-    return FileResponse(STATIC_DIR / "index.html")
+    # index.html — har doim revalidatsiya (yangi deploy darhol ko'rinsin).
+    # Og'ir CSS/JS alohida versiyalangan fayllarda (uzoq muddat keshlanadi).
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+# Versiyalangan statik aktivlar (app.css / app.js) — uzoq muddat keshlanadi.
+# URL'da ?v=<versiya> bo'lgani uchun yangi deployda avtomatik yangilanadi
+# (cache-busting), shuning uchun "immutable" xavfsiz.
+_STATIC_MAX_AGE = "public, max-age=31536000, immutable"
+
+
+@app.get("/static/app.css")
+async def static_css():
+    return FileResponse(
+        STATIC_DIR / "app.css",
+        media_type="text/css",
+        headers={"Cache-Control": _STATIC_MAX_AGE},
+    )
+
+
+@app.get("/static/app.js")
+async def static_js():
+    return FileResponse(
+        STATIC_DIR / "app.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": _STATIC_MAX_AGE},
+    )

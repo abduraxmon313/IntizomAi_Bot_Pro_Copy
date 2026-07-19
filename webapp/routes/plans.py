@@ -232,7 +232,7 @@ async def remove_plan(
 
     # O'tib ketgan kundagi rejani o'chirib bo'lmaydi — adashib o'chirib qo'yib,
     # keyin qayta belgilab bo'lmay qolmasligi uchun (tarix saqlanadi).
-    from bot.models.plan import Plan
+    from bot.models.plan import Plan, PlanStatus
     from sqlalchemy import and_, select
     from bot.services.plan_service import plan_block_reason
 
@@ -248,7 +248,20 @@ async def remove_plan(
             detail="O'tib ketgan kundagi rejani o'chirib bo'lmaydi.",
         )
 
+    was_done = plan.status == PlanStatus.done
+
     ok = await delete_plan_by_id(session, plan_id, user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Reja topilmadi")
+
+    # Bajarilgan reja o'chirilsa — XP/total_score kamayishi kerak. /stats endi
+    # o'qishda qayta hisoblamaydi (tezlik uchun), shuning uchun bu yerda (yozuv
+    # paytida) qayta hisoblab qo'yamiz. Boshqa holatlarda (bajarilmagan reja)
+    # jami o'zgarmagani uchun shart emas.
+    if was_done:
+        try:
+            from bot.services.gamification_service import recompute_user_stats
+            await recompute_user_stats(session, user)
+        except Exception:
+            pass
     return {"ok": True}

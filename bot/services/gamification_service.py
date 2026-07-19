@@ -622,15 +622,12 @@ async def _reconcile_user_stats(session: AsyncSession, user: User) -> None:
     await _recompute_discipline_score(session, user)
 
 
-async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
+async def recompute_user_stats(session: AsyncSession, user: User) -> None:
     """
-    Webapp uchun foydalanuvchi holatini qaytaradi.
-
-    MUHIM: bu funksiya HECH QACHON xato ko'tarmasligi kerak — aks holda
-    frontend hero default qiymatlarni (0 XP, 50 discipline, 0/0 bugun)
-    ko'rsatib qoladi. Shuning uchun har bir bosqich himoyalangan.
+    XP/streak/discipline'ni HAQIQIY manbadan qayta hisoblab, DB'ga saqlaydi.
+    Yozuv yo'llari uchun (masalan bajarilgan rejani o'chirishda total kamayishi
+    kerak). Read-path o'rniga bu yerda chaqiriladi — read tez qoladi.
     """
-    # 1) Statistikani moslashtirish (xp/score/level/discipline) — best-effort.
     try:
         await _reconcile_user_stats(session, user)
         await session.commit()
@@ -639,10 +636,38 @@ async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
             await session.rollback()
         except Exception:
             pass
+
+
+async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
+    """
+    Webapp uchun foydalanuvchi holatini qaytaradi.
+
+    MUHIM: bu funksiya HECH QACHON xato ko'tarmasligi kerak — aks holda
+    frontend hero default qiymatlarni (0 XP, 50 discipline, 0/0 bugun)
+    ko'rsatib qoladi. Shuning uchun har bir bosqich himoyalangan.
+    """
+    # 1) Statistikani moslashtirish — FAQAT kerak bo'lganda.
+    #    Yozuv yo'llari (set_plan_status → _run_gamification, habit toggle) XP/
+    #    streak/discipline/level ni allaqachon DB'ga izchil yozib qo'yadi.
+    #    Shuning uchun O'QISHDA har safar qayta hisoblash (SUM/COUNT + commit)
+    #    keraksiz va sekin — /stats juda tez-tez chaqiriladi. Faqat statistika
+    #    hali initsializatsiya qilinmagan (legacy/yangi user: xp==0 yoki streak
+    #    hisoblanmagan) bo'lsagina qayta hisoblab, saqlab qo'yamiz (bir martalik
+    #    self-heal). Aks holda saqlangan ustunlarga ishonamiz (tez o'qish).
+    needs_reconcile = (int(user.xp or 0) == 0) or (user.last_completed_date is None)
+    if needs_reconcile:
         try:
-            await session.refresh(user)
+            await _reconcile_user_stats(session, user)
+            await session.commit()
         except Exception:
-            pass
+            try:
+                await session.rollback()
+            except Exception:
+                pass
+            try:
+                await session.refresh(user)
+            except Exception:
+                pass
 
     lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
     title, emoji = rank_for_level(lvl)

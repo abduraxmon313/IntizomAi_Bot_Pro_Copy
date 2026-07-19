@@ -48,6 +48,32 @@ _MAX_CACHE = 3000
 _client: Optional[httpx.AsyncClient] = None
 _client_lock = asyncio.Lock()
 
+# In-flight dedupe: bir foydalanuvchi rasmi ayni paytda yuklanayotgan bo'lsa,
+# xuddi shu user uchun kelgan boshqa so'rovlar YANGI Telegram chaqiruvi
+# qilmaydi — mavjud Future'ni kutadi. Reyting sahifasida 20 ta <img> bir
+# vaqtda kelganda dublikat tashqi chaqiruvlar (thundering herd) oldini oladi.
+_inflight: dict[int, "asyncio.Future"] = {}
+
+
+def _cache_put(telegram_id: int, content, ct: str, ttl: float) -> None:
+    """
+    Keshга yozadi. To'lganda BUTUN keshni tozalamaymiz (avvalgi xatti-harakat —
+    thundering herd) — o'rniga eng eski muddati tugaydigan ~10% yozuvni chiqaramiz
+    (yumshoq LRU/TTL evraksiyasi).
+    """
+    now = time.time()
+    if len(_CACHE) >= _MAX_CACHE:
+        # Avval muddati o'tganlarni tozalaymiz
+        expired = [k for k, v in _CACHE.items() if v[2] <= now]
+        for k in expired:
+            _CACHE.pop(k, None)
+        # Hali ham to'la bo'lsa — eng erta tugaydigan 10% ni chiqaramiz
+        if len(_CACHE) >= _MAX_CACHE:
+            victims = sorted(_CACHE.items(), key=lambda kv: kv[1][2])[: max(1, _MAX_CACHE // 10)]
+            for k, _v in victims:
+                _CACHE.pop(k, None)
+    _CACHE[telegram_id] = (content, ct, now + ttl)
+
 
 async def get_session():
     async with AsyncSessionLocal() as session:
@@ -114,6 +140,20 @@ async def _fetch_photo_bytes(telegram_id: int) -> tuple[Optional[bytes], str]:
         return None, "image/jpeg"
 
 
+def _resp(content, ct: str):
+    if content:
+        return Response(content=content, media_type=ct,
+                        headers={"Cache-Control": "public, max-age=43200"})
+    return Response(status_code=404, headers={"Cache-Control": "public, max-age=3600"})
+
+
+async def _fetch_and_cache(telegram_id: int):
+    """Yuklab, keshга yozadi. In-flight dedupe orqali chaqiriladi."""
+    content, ct = await _fetch_photo_bytes(telegram_id)
+    _cache_put(telegram_id, content, ct, _CACHE_TTL if content else _NEG_TTL)
+    return content, ct
+
+
 @router.get("/avatar/{telegram_id}")
 async def avatar(telegram_id: int, session: AsyncSession = Depends(get_session)):
     """Foydalanuvchi profil rasmini qaytaradi (yo'q bo'lsa 404 — frontend emojiga tushadi)."""
@@ -121,28 +161,33 @@ async def avatar(telegram_id: int, session: AsyncSession = Depends(get_session))
 
     cached = _CACHE.get(telegram_id)
     if cached and cached[2] > now:
-        content, ct, _ = cached
-        if content:
-            return Response(
-                content=content, media_type=ct,
-                headers={"Cache-Control": "public, max-age=43200"},
-            )
-        return Response(status_code=404, headers={"Cache-Control": "public, max-age=3600"})
+        return _resp(cached[0], cached[1])
 
     # Ochiq proksi bo'lmasligi uchun — faqat bazadagi foydalanuvchilar.
     exists = await session.scalar(select(User.id).where(User.telegram_id == telegram_id))
     if not exists:
         return Response(status_code=404)
 
-    content, ct = await _fetch_photo_bytes(telegram_id)
-    ttl = _CACHE_TTL if content else _NEG_TTL
-    if len(_CACHE) > _MAX_CACHE:
-        _CACHE.clear()
-    _CACHE[telegram_id] = (content, ct, now + ttl)
+    # In-flight dedupe: shu user rasmi allaqachon yuklanayotgan bo'lsa — kutamiz.
+    fut = _inflight.get(telegram_id)
+    if fut is None:
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()
+        _inflight[telegram_id] = fut
+        try:
+            content, ct = await _fetch_and_cache(telegram_id)
+            if not fut.done():
+                fut.set_result((content, ct))
+        except Exception as e:
+            if not fut.done():
+                fut.set_result((None, "image/jpeg"))
+            logger.warning(f"avatar inflight fail user={telegram_id}: {e}")
+        finally:
+            _inflight.pop(telegram_id, None)
+    else:
+        try:
+            content, ct = await asyncio.wait_for(asyncio.shield(fut), timeout=12.0)
+        except Exception:
+            content, ct = None, "image/jpeg"
 
-    if not content:
-        return Response(status_code=404, headers={"Cache-Control": "public, max-age=3600"})
-    return Response(
-        content=content, media_type=ct,
-        headers={"Cache-Control": "public, max-age=43200"},
-    )
+    return _resp(content, ct)
