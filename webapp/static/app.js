@@ -75,10 +75,11 @@ function renderDayStrip(){
   const strip=document.getElementById('dayStrip');if(!strip)return;
   const sel=ymd(State.selectedDate||new Date());
   const todayStr=ymd(new Date());
-  // Xronologik tartib: o'tgan 14 kun ... BUGUN ... kelgusi 3 kun
-  // (eng eski chapda, bugun o'rtada, kelajak o'ngda)
+  // Xronologik tartib: o'tgan 14 kun ... BUGUN ... kelgusi 30 kun.
+  // Foydalanuvchi ertangi va undan keyingi kunlarni ham ko'ra oladi va
+  // ular uchun reja yarata oladi (plan modali sana tanlashni beradi).
   let html='';
-  for(let off=-14;off<=3;off++){
+  for(let off=-14;off<=30;off++){
     const d=addDays(new Date(),off);
     const k=ymd(d);
     const isToday=k===todayStr;
@@ -718,8 +719,87 @@ function openModal(period,periodKey,goal){
   document.getElementById('modalTitle').textContent=(goal?'Tahrirlash: ':'Yangi ')+lb[period]+' maqsad';
   document.getElementById('mTitle').value=goal?goal.title:'';
   document.getElementById('mDesc').value=goal?goal.description||'':'';
+  // Davr tanlash — faqat a'zo uchun YANGI maqsad yaratganda. Aks holda tur
+  // va davr chaqirilgan joydan (yoki tahrirlanayotgan maqsaddan) olinadi.
+  const isMemberCreate=!goal && !!State.forMemberContext;
+  _setupModalPeriodPicker(isMemberCreate, period, periodKey);
   document.getElementById('modalBack').classList.add('show');
   setTimeout(()=>document.getElementById('mTitle').focus(),300);
+}
+
+// Modal ichidagi davr tanlash (Yillik/Oylik + yil + oy). Faqat a'zo uchun
+// yangi maqsad yaratayotganda ko'rinadi — o'zi uchun yaratishda Maqsadlar
+// sahifasidagi chiplar allaqachon davrni belgilagan bo'ladi.
+function _setupModalPeriodPicker(visible, initialType, initialKey){
+  const pick=document.getElementById('mPeriodPicker');
+  const row=document.getElementById('mPeriodYMRow');
+  if(!pick||!row)return;
+  if(!visible){pick.style.display='none';row.style.display='none';return;}
+  pick.style.display='';row.style.display='';
+
+  // Yil dropdown — joriy yildan -3 dan +10 yilgacha (kelajak ham).
+  const yearSel=document.getElementById('mYear');
+  const monthSel=document.getElementById('mMonth');
+  const curY=new Date().getFullYear();
+  if(yearSel && !yearSel.dataset.built){
+    let opts='';
+    for(let y=curY-3;y<=curY+10;y++)opts+=`<option value="${y}">${y}</option>`;
+    yearSel.innerHTML=opts;
+    yearSel.dataset.built='1';
+  }
+  if(monthSel && !monthSel.dataset.built){
+    let opts='';
+    for(let i=0;i<12;i++)opts+=`<option value="${pad(i+1)}">${UZ_MONTHS[i]}</option>`;
+    monthSel.innerHTML=opts;
+    monthSel.dataset.built='1';
+  }
+
+  // Boshlang'ich qiymatlar — chaqirilgan davrdan olamiz.
+  let type=initialType==='monthly'?'monthly':'yearly';
+  let y=curY, m=(new Date().getMonth()+1);
+  try{
+    if(type==='yearly' && initialKey){y=parseInt(String(initialKey),10)||curY;}
+    else if(type==='monthly' && initialKey){
+      const [yy,mm]=String(initialKey).split('-').map(n=>parseInt(n,10));
+      if(yy)y=yy; if(mm)m=mm;
+    }
+  }catch(_){}
+  if(yearSel)yearSel.value=String(y);
+  if(monthSel)monthSel.value=pad(m);
+
+  // Type seg
+  document.querySelectorAll('#mPeriodTypeSeg .seg-item').forEach(it=>{
+    it.classList.toggle('active', it.dataset.mpt===type);
+    it.onclick=()=>{
+      document.querySelectorAll('#mPeriodTypeSeg .seg-item').forEach(x=>x.classList.remove('active'));
+      it.classList.add('active');
+      _syncModalMonthVisibility();
+      _moveModalTypeInd();
+    };
+  });
+  _syncModalMonthVisibility();
+  requestAnimationFrame(_moveModalTypeInd);
+}
+function _syncModalMonthVisibility(){
+  const t=document.querySelector('#mPeriodTypeSeg .seg-item.active');
+  const type=t?t.dataset.mpt:'yearly';
+  const monthFld=document.getElementById('mMonthFld');
+  if(monthFld)monthFld.style.display=(type==='monthly')?'':'none';
+}
+function _moveModalTypeInd(){
+  const ind=document.getElementById('mPeriodTypeInd');
+  const a=document.querySelector('#mPeriodTypeSeg .seg-item.active');
+  if(!ind||!a)return;
+  ind.style.left=a.offsetLeft+'px';
+  ind.style.width=a.offsetWidth+'px';
+}
+// Modaldan tanlangan davrni o'qib qaytaradi: {goal_type, period}
+function _readModalPeriod(){
+  const t=document.querySelector('#mPeriodTypeSeg .seg-item.active');
+  const type=t?t.dataset.mpt:'yearly';
+  const y=document.getElementById('mYear')?.value||String(new Date().getFullYear());
+  const m=document.getElementById('mMonth')?.value||pad(new Date().getMonth()+1);
+  return {goal_type:type, period:(type==='yearly')?y:(y+'-'+m)};
 }
 function closeModal(){
   document.getElementById('modalBack').classList.remove('show');
@@ -733,10 +813,13 @@ async function saveModal(){
   // ── Boshqa a'zo uchun maqsad yaratish ──
   if(!isEdit && State.forMemberContext){
     const ctx=State.forMemberContext;
+    // Davr modal ichidan tanlanadi (Yillik/Oylik + yil + oy). Foydalanuvchi
+    // istagan yil va oyi uchun (o'tgan/joriy/kelajak) maqsad qo'sha oladi.
+    const per=_readModalPeriod();
     try{
       await apiForMemberGoal(ctx.groupId, ctx.userId, {
         title:t, description:d||null,
-        goal_type:State.modal.period, period:State.modal.periodKey,
+        goal_type:per.goal_type, period:per.period,
       });
     }catch(e){
       const msg=String(e&&e.message||'');
@@ -744,10 +827,11 @@ async function saveModal(){
       if(msg.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
       toast('Xato: '+msg,true);return;
     }
+    const savedDate=State.memberDate; // saqlashdan oldingi sana
     State.forMemberContext=null;
     closeModal();
     toast('✨ '+ctx.name+' uchun maqsad qo\'shildi');
-    try{await openMember(ctx.userId);}catch(_){}
+    try{await openMember(ctx.userId, savedDate);}catch(_){}
     return;
   }
   try{
@@ -973,37 +1057,46 @@ async function openMember(uid,dateStr){
   renderMemberContent();
 }
 
-// Sana navigatsiyasi holati (label + tugmalar). "next" bugungacha cheklangan.
+// Sana navigatsiyasi holati (label). Chegara YO'Q — foydalanuvchi istagan
+// yo'nalishga (o'tgan/kelajak) o'tishi mumkin. Bugundan uzoq bo'lgan sana
+// yorlig'i "Bugun+N kun" / "Bugun-N kun" ko'rinishida ham tuslanmaydi — to'la
+// sana ko'rsatiladi (masalan "Chorshanba, 15 iyul"). Bir tez qaytish uchun
+// yorliqni bosish "Bugun"ga qaytaradi.
 function _updateMemberDateNav(){
-  const d=State.currentMember;
   const lbl=document.getElementById('memDateLabel');
-  const nextBtn=document.getElementById('memDateNext');
-  const isToday=d?(d.is_today!==false):true;
   const todayStr=ymd(new Date());
   const yStr=ymd(addDays(new Date(),-1));
+  const tStr=ymd(addDays(new Date(),1));
   const cur=State.memberDate||todayStr;
   let text;
   if(cur===todayStr)text='Bugun';
   else if(cur===yStr)text='Kecha';
+  else if(cur===tStr)text='Ertaga';
   else{try{text=formatDateLong(new Date(cur+'T00:00:00'));}catch(_){text=cur;}}
-  if(lbl)lbl.textContent=text;
-  if(nextBtn)nextBtn.disabled=isToday;   // kelajakka o'tib bo'lmaydi
+  if(lbl){
+    lbl.textContent=text;
+    lbl.style.cursor='pointer';
+    lbl.title='Bugunga qaytish uchun bosing';
+    lbl.onclick=()=>{ if(State.memberDate!==todayStr && State.memberUid!=null) openMember(State.memberUid,todayStr); };
+  }
 }
 function _shiftMemberDate(deltaDays){
   const cur=State.memberDate||ymd(new Date());
   const nd=addDays(new Date(cur+'T00:00:00'),deltaDays);
-  const todayStr=ymd(new Date());
-  const ndStr=ymd(nd);
-  if(ndStr>todayStr)return;              // kelajak — bloklanadi
-  if(State.memberUid!=null)openMember(State.memberUid,ndStr);
+  if(State.memberUid!=null)openMember(State.memberUid,ymd(nd));
 }
 
 function renderMemberContent(){
   const d=State.currentMember;if(!d)return;
   const wrap=document.getElementById('friendsMemberContent');
   const isToday=d.is_today!==false;
-  // Yaratish faqat BUGUN uchun (o'tgan kunga reja/odat qo'shib bo'lmaydi).
-  const canManage=d.can_manage&&!d.member.is_me&&isToday;
+  const isFuture=!!d.is_future;
+  const isPast=!!d.is_past;
+  // Yaratish tugmalari har doim ko'rinadi (agar ruxsat bo'lsa): plan modali
+  // sana tanlashni, habit modali muddat, goal modali esa davrni (yillik/oylik +
+  // yil + oy) o'zi so'raydi. Ya'ni o'tgan yoki kelajakdagi kun ko'rinishida
+  // ham foydalanuvchi istagan davri uchun qo'sha oladi.
+  const canManage=d.can_manage&&!d.member.is_me;
 
   // Yashirin a'zo: reja/odat/maqsad ma'lumotlari ko'rsatilmaydi.
   // Ammo profil (ism, streak, ball) ko'rinadi (leaderboard'da baribir ochiq).
@@ -1035,20 +1128,27 @@ function renderMemberContent(){
     return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(g.title)}</div><span class="meta">${g.goal_type==='yearly'?'yillik':'oylik'} · ${esc(g.period)}</span></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Maqsad yo\'q</div>';
 
+  // Yaratish tugmalari — endi maqsad turi (Yillik/Oylik) va davri
+  // (yil/oy) modal ichida tanlanadi, shuning uchun bitta "+ Maqsad" tugmasi.
   const createBtns=canManage?`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
       <button class="btn btn-ghost" data-fmnew="plan" style="font-size:12.5px">+ Reja</button>
       <button class="btn btn-ghost" data-fmnew="habit" style="font-size:12.5px">+ Odat</button>
-      <button class="btn btn-ghost" data-fmnew="goal_yearly" style="font-size:12.5px">+ Yillik maqsad</button>
-      <button class="btn btn-ghost" data-fmnew="goal_monthly" style="font-size:12.5px">+ Oylik maqsad</button>
+      <button class="btn btn-ghost" data-fmnew="goal" style="font-size:12.5px">+ Maqsad</button>
     </div>
     <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja/maqsad/odat yaratishga ruxsat bergan.</p>`:'';
 
   const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">🛡 Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
 
-  const plansTitle=isToday?'📅 Bugungi rejalar':'📅 Rejalar';
-  const goalsTitle=isToday?'🎯 Maqsadlar (joriy davr)':'🎯 Maqsadlar (o\'sha davr)';
-  const pastBanner=isToday?'':`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🕰 O'tgan kun ko'rinishi — faqat o'qish</div>`;
+  const plansTitle=isToday?'📅 Bugungi rejalar':(isFuture?'📅 Kelajakdagi rejalar':'📅 Rejalar');
+  const goalsTitle=isToday?'🎯 Maqsadlar (joriy davr)':(isFuture?'🎯 Maqsadlar (kelajakdagi davr)':'🎯 Maqsadlar (o\'sha davr)');
+  let banner='';
+  if(isPast){
+    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🕰 O'tgan kun ko'rinishi</div>`;
+  }else if(isFuture){
+    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🔮 Kelajakdagi kun ko'rinishi</div>`;
+  }
+  const pastBanner=banner;
   wrap.innerHTML=`
     ${pastBanner}
     <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">${plansTitle} (${plans.filter(p=>p.status==='done').length}/${plans.length})</h2></div>
@@ -1077,13 +1177,14 @@ function openCreateForMember(kind){
   }else if(kind==='habit'){
     openHabitModal(null);
     setText('habitModalTitle', m.member.name+' uchun yangi odat');
-  }else if(kind==='goal_yearly' || kind==='goal_monthly'){
-    const today=new Date();
+  }else if(kind==='goal_yearly' || kind==='goal_monthly' || kind==='goal'){
+    // Default: joriy ko'rilayotgan sana asosida (past/future ham bo'lishi mumkin)
+    const base=(State.memberDate && /^\d{4}-\d{2}-\d{2}$/.test(State.memberDate))
+      ? new Date(State.memberDate+'T00:00:00') : new Date();
     const gt=(kind==='goal_monthly')?'monthly':'yearly';
-    const period=(gt==='yearly')?String(today.getFullYear()):(today.getFullYear()+'-'+pad(today.getMonth()+1));
+    const period=(gt==='yearly')?String(base.getFullYear()):(base.getFullYear()+'-'+pad(base.getMonth()+1));
     openModal(gt, period, null);
-    const lb=gt==='yearly'?'yillik':'oylik';
-    document.getElementById('modalTitle').textContent=m.member.name+' uchun yangi '+lb+' maqsad';
+    document.getElementById('modalTitle').textContent=m.member.name+' uchun yangi maqsad';
   }
 }
 
