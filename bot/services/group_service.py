@@ -496,7 +496,8 @@ async def get_group_detail(
 
 
 async def get_member_view(
-    session: AsyncSession, user: User, group_id: int, target_user_id: int
+    session: AsyncSession, user: User, group_id: int, target_user_id: int,
+    on_date: Optional[date] = None,
 ) -> dict:
     """
     Guruhning bir a'zosining sahifasi. `visible` — target o'z ma'lumotlarini
@@ -505,6 +506,11 @@ async def get_member_view(
                 lekin plans/habits/goals bo'sh ro'yxatlar. Frontend
                 "🔒 Yashirin" xabarini ko'rsatadi.
       • True  → to'liq ma'lumot.
+
+    `on_date` — ko'riladigan sana (o'tgan davrni ham ko'rish uchun). None bo'lsa
+    bugun. Rejalar shu kunga, odatlar shu kunda bajarilgan-yo'qligiga,
+    maqsadlar shu kunning yil+oy davriga tegishli qaytariladi.
+    Kelajak sana so'ralsa — bugungacha cheklaymiz.
     """
     g = await get_group(session, group_id)
     await require_member(session, group_id, user.id)
@@ -528,6 +534,13 @@ async def get_member_view(
             ))
         ))
 
+    # Ko'riladigan sana (kelajak bo'lsa — bugungacha cheklaymiz).
+    real_today = _today_tashkent()
+    today = on_date or real_today
+    if today > real_today:
+        today = real_today
+    is_today = today == real_today
+
     # Ko'rinmaydigan a'zo — bo'sh ro'yxatlar bilan qaytariladi.
     if not visible:
         return {
@@ -543,9 +556,10 @@ async def get_member_view(
             "plans": [], "habits": [], "goals": [],
             "can_manage": False,  # ko'rinmasa yaratish ham yo'q (aslida bunday yozuv ham bo'lmasligi kerak)
             "visible": False,
+            "date": today.isoformat(),
+            "is_today": is_today,
         }
 
-    today = _today_tashkent()
     plans = (await session.execute(
         select(Plan).where(
             and_(Plan.user_id == target_user_id, Plan.plan_date == today)
@@ -615,6 +629,8 @@ async def get_member_view(
         "goals": [_goal_dict(g) for g in goals],
         "can_manage": can_manage,
         "visible": True,
+        "date": today.isoformat(),
+        "is_today": is_today,
     }
 
 

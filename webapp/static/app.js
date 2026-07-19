@@ -109,7 +109,7 @@ const apiGroupPatch = (id,body)=>api('/api/webapp/friends/groups/'+id,{method:'P
 const apiGroupDelete = (id)=>api('/api/webapp/friends/groups/'+id,{method:'DELETE'});
 const apiGroupLeave = (id)=>api('/api/webapp/friends/groups/'+id+'/leave',{method:'POST'});
 const apiGroupJoin = (code)=>api('/api/webapp/friends/join/'+encodeURIComponent(code),{method:'POST'});
-const apiMemberView = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid);
+const apiMemberView = (gid,uid,dateStr)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+(dateStr?('?date='+encodeURIComponent(dateStr)):''));
 const apiPerms = (gid)=>api('/api/webapp/friends/groups/'+gid+'/permissions');
 // Ruxsatni yangilash — ikkala bayroq ham ixtiyoriy. Backend can_manage=True
 // bo'lsa can_view'ni avtomatik True qulflaydi.
@@ -499,11 +499,20 @@ function xpPop(amount){const el=document.createElement('div');el.className='xp-p
 
 const HABIT_SCORE=5;
 function planRowHTML(p,i){return `<div class="plan ${p.status==='done'?'done':''}" data-id="${p.id}" style="animation-delay:${i*60}ms"><div class="cbx ${p.status==='done'?'done':''}" data-act="toggle">${p.status==='done'?'✓':''}</div><div class="body"><div class="ttl">${esc(p.title)}</div><div class="meta">${p.scheduled_time||'Vaqt yo\'q'}${p.description?' • '+esc(p.description):''}</div></div><div class="score">+${p.score_value||0}</div><div class="actions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;}
-function habitRowHTML(h,i){const done=h.done_today;return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}" style="animation-delay:${i*60}ms"><div class="cbx ${done?'done':''}" data-act="htoggle">${done?'✓':''}</div><div class="body"><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">⏰ ${esc(h.reminder_time||'')}  ·  🔥 ${h.streak||0} kun</div></div><div class="score">+${HABIT_SCORE}</div></div>`;}
+function habitRowHTML(h,i){
+  const done=h.done_today;
+  // Eslatma vaqti bo'lsa ⏰ vaqt, bo'lmasa takrorlanish (🔁) ko'rsatiladi —
+  // shunda vaqtsiz odatlar ham asosiy sahifada ma'noli ko'rinadi.
+  const freqLabel=(h.frequency==='weekly')?'Haftalik':'Har kuni';
+  const timePart=h.reminder_time?('⏰ '+esc(h.reminder_time)):('🔁 '+freqLabel);
+  return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}" style="animation-delay:${i*60}ms"><div class="cbx ${done?'done':''}" data-act="htoggle">${done?'✓':''}</div><div class="body"><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">${timePart}  ·  🔥 ${h.streak||0} kun</div></div><div class="score">+${HABIT_SCORE}</div></div>`;
+}
 function renderPlans(){
   const w=document.getElementById('plansList');if(!w)return;
   const isToday=ymd(State.selectedDate||new Date())===ymd(new Date());
-  const habitItems=isToday?(State.habits||[]).filter(h=>h.due_today&&!h.finished&&h.reminder_time):[];
+  // Bugun uchun rejalar YONIDA odatlar ham ko'rsatiladi (faqat odatlar bo'limida
+  // emas). Vaqtli/vaqtsiz — hammasi, agar bugun bajarilishi kerak bo'lsa.
+  const habitItems=isToday?(State.habits||[]).filter(h=>h.due_today&&!h.finished):[];
   if(!State.plans.length&&!habitItems.length){w.innerHTML=emptyState('📋','Hozircha rejalar yo\'q','+ tugmasi orqali yangi reja yoki Odat bo\'limidan odat qo\'shing');return;}
   const items=[];
   State.plans.forEach(p=>items.push({t:p.scheduled_time||'99:99',kind:'plan',p}));
@@ -901,66 +910,75 @@ function renderGroupMembers(){
   const el=document.getElementById('friendsMembersList');
   const g=State.currentGroup;
   if(!el||!g)return;
-  const iAmOwner=!!g.is_owner;
   el.innerHTML=(g.members||[]).map(m=>{
     const initial=(m.name||'?').trim().charAt(0).toUpperCase();
     const role=m.role==='owner'?' <span class="chip mine" style="padding:1px 6px">EGA</span>':'';
     // Yashirin a'zo (menga ochmagan) — summary chip'lari o'rniga qulf.
-    // O'zim — har doim ochiq. Ko'rinmagan bo'lsa "🔒 yashirin" chip.
     const visible = m.is_me || m.visible!==false;
     const chips = visible
       ? `${_sumChips(m.summary||{})} <span class="chip">🔥 ${m.streak||0}</span>`
       : `<span class="chip">🔒 yashirin</span> <span class="chip">🔥 ${m.streak||0}</span>`;
-    // Ega uchun har bir non-owner qatorda "chiqarib yuborish" tugmasi.
-    const kickBtn=(iAmOwner && !m.is_me && m.role!=='owner')
-      ? `<button class="mem-kick" data-kick="${m.user_id}" data-name="${esc(m.name)}" aria-label="Chiqarib yuborish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>`
-      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>`;
+    // Chiqarib yuborish tugmasi kartada YO'Q — u guruh sozlamalari ichida
+    // (faqat ega uchun). Bu yerda har doim chevron ko'rinadi.
     return `<div class="mem-card ${m.is_me?'me':''}" data-uid="${m.user_id}">
       <div class="av">${initial}</div>
       <div class="body">
         <div class="nm">${esc(m.name)}${m.is_me?' (siz)':''}${role}</div>
         <div class="st">${chips}</div>
       </div>
-      ${kickBtn}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`;
   }).join('');
   // A'zoni ochish
-  el.querySelectorAll('.mem-card').forEach(c=>c.onclick=(e)=>{
-    if(e.target.closest('.mem-kick'))return; // kick tugmasi ustidan bosilsa row-click ishlamasin
-    openMember(+c.dataset.uid);
-  });
-  // Egalar uchun: chiqarib yuborish tugmalari
-  el.querySelectorAll('.mem-kick').forEach(b=>b.onclick=async(e)=>{
-    e.stopPropagation();
-    const uid=+b.dataset.kick;
-    const name=b.dataset.name||'a\'zo';
-    if(!await confirmDialog({title:'Chiqarib yuborish', message:`«${name}» guruhdan chiqarilsinmi? Uning ushbu guruhga tegishli ruxsatlari ham tozalanadi.`}))return;
-    try{
-      await apiRemoveMember(State.currentGroup.id, uid);
-      toast('👋 A\'zo chiqarildi');
-      await openGroup(State.currentGroup.id);
-    }catch(err){
-      const msg=String(err&&err.message||'');
-      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
-      else toast('Xato: '+msg,true);
-    }
-  });
+  el.querySelectorAll('.mem-card').forEach(c=>c.onclick=()=>openMember(+c.dataset.uid));
 }
 
-async function openMember(uid){
+async function openMember(uid,dateStr){
   const g=State.currentGroup;if(!g)return;
-  let d;try{d=await apiMemberView(g.id,uid);}catch(e){toast('A\'zo yuklanmadi',true);return;}
+  State.memberUid=uid;
+  State.memberDate=dateStr||ymd(new Date());
+  let d;try{d=await apiMemberView(g.id,uid,State.memberDate);}catch(e){toast('A\'zo yuklanmadi',true);return;}
   State.currentMember=d;
+  // Server sana'ni normallashtirishi mumkin (kelajak → bugun); moslaymiz.
+  if(d.date)State.memberDate=d.date;
   _showFriendsView('member');
   document.getElementById('friendsMemberName').textContent=(d.member.name||'—')+(d.member.is_me?' (siz)':'');
   document.getElementById('friendsMemberSub').textContent='🔥 '+(d.member.streak||0)+' kun · ⭐ '+(d.member.total_score||0)+' ball';
+  _updateMemberDateNav();
   renderMemberContent();
+}
+
+// Sana navigatsiyasi holati (label + tugmalar). "next" bugungacha cheklangan.
+function _updateMemberDateNav(){
+  const d=State.currentMember;
+  const lbl=document.getElementById('memDateLabel');
+  const nextBtn=document.getElementById('memDateNext');
+  const isToday=d?(d.is_today!==false):true;
+  const todayStr=ymd(new Date());
+  const yStr=ymd(addDays(new Date(),-1));
+  const cur=State.memberDate||todayStr;
+  let text;
+  if(cur===todayStr)text='Bugun';
+  else if(cur===yStr)text='Kecha';
+  else{try{text=formatDateLong(new Date(cur+'T00:00:00'));}catch(_){text=cur;}}
+  if(lbl)lbl.textContent=text;
+  if(nextBtn)nextBtn.disabled=isToday;   // kelajakka o'tib bo'lmaydi
+}
+function _shiftMemberDate(deltaDays){
+  const cur=State.memberDate||ymd(new Date());
+  const nd=addDays(new Date(cur+'T00:00:00'),deltaDays);
+  const todayStr=ymd(new Date());
+  const ndStr=ymd(nd);
+  if(ndStr>todayStr)return;              // kelajak — bloklanadi
+  if(State.memberUid!=null)openMember(State.memberUid,ndStr);
 }
 
 function renderMemberContent(){
   const d=State.currentMember;if(!d)return;
   const wrap=document.getElementById('friendsMemberContent');
-  const canManage=d.can_manage&&!d.member.is_me;
+  const isToday=d.is_today!==false;
+  // Yaratish faqat BUGUN uchun (o'tgan kunga reja/odat qo'shib bo'lmaydi).
+  const canManage=d.can_manage&&!d.member.is_me&&isToday;
 
   // Yashirin a'zo: reja/odat/maqsad ma'lumotlari ko'rsatilmaydi.
   // Ammo profil (ism, streak, ball) ko'rinadi (leaderboard'da baribir ochiq).
@@ -1003,12 +1021,16 @@ function renderMemberContent(){
 
   const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">🛡 Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
 
+  const plansTitle=isToday?'📅 Bugungi rejalar':'📅 Rejalar';
+  const goalsTitle=isToday?'🎯 Maqsadlar (joriy davr)':'🎯 Maqsadlar (o\'sha davr)';
+  const pastBanner=isToday?'':`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🕰 O'tgan kun ko'rinishi — faqat o'qish</div>`;
   wrap.innerHTML=`
-    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">📅 Bugungi rejalar (${plans.filter(p=>p.status==='done').length}/${plans.length})</h2></div>
+    ${pastBanner}
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">${plansTitle} (${plans.filter(p=>p.status==='done').length}/${plans.length})</h2></div>
     ${plansHtml}
     <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🔁 Odatlar</h2></div>
     ${habitsHtml}
-    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🎯 Maqsadlar (joriy davr)</h2></div>
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">${goalsTitle}</h2></div>
     ${goalsHtml}
     ${createBtns}
     ${noPermHint}
@@ -1069,7 +1091,44 @@ function openGroupEditModal(){
   document.getElementById('geSave').style.display=g.is_owner?'':'none';
   document.getElementById('geName').disabled=!g.is_owner;
   document.getElementById('geDesc').disabled=!g.is_owner;
+  renderGroupEditMembers();
   document.getElementById('groupEditBack').classList.add('show');
+}
+
+// Guruh sozlamalari ichidagi a'zolarni boshqarish — FAQAT ega ko'radi.
+// Har bir non-owner a'zo yonida "Chiqarish" tugmasi (kartada emas, shu yerda).
+function renderGroupEditMembers(){
+  const g=State.currentGroup;
+  const box=document.getElementById('geMembers');
+  const wrap=document.getElementById('geMembersWrap');
+  if(!box||!wrap)return;
+  if(!g||!g.is_owner){wrap.style.display='none';box.innerHTML='';return;}
+  wrap.style.display='';
+  const others=(g.members||[]).filter(m=>!m.is_me&&m.role!=='owner');
+  if(!others.length){
+    box.innerHTML='<div style="font-size:12px;color:var(--text-3);padding:6px">Boshqa a\'zo yo\'q</div>';
+    return;
+  }
+  box.innerHTML=others.map(m=>`
+    <div class="perm-row">
+      <div class="nm">${esc(m.name)}</div>
+      <button class="btn btn-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" style="width:auto;flex:0 0 auto;padding:8px 14px;font-size:12.5px">Chiqarish</button>
+    </div>`).join('');
+  box.querySelectorAll('[data-kick]').forEach(b=>b.onclick=async()=>{
+    const uid=+b.dataset.kick;
+    const name=b.dataset.name||'a\'zo';
+    if(!await confirmDialog({title:'Chiqarib yuborish', message:`«${name}» guruhdan chiqarilsinmi? Uning ushbu guruhga tegishli ruxsatlari ham tozalanadi.`}))return;
+    try{
+      await apiRemoveMember(g.id, uid);
+      toast('👋 A\'zo chiqarildi');
+      await openGroup(g.id);          // guruh detali yangilanadi
+      renderGroupEditMembers();       // modal ro'yxati ham yangilanadi
+    }catch(err){
+      const msg=String(err&&err.message||'');
+      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
+      else toast('Xato: '+msg,true);
+    }
+  });
 }
 async function saveGroupEdit(){
   const g=State.currentGroup;if(!g||!g.is_owner)return;
@@ -1243,6 +1302,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _fCreate=document.getElementById('friendsCreateBtn');if(_fCreate)_fCreate.onclick=openGroupCreateModal;
   const _fBack1=document.getElementById('friendsGroupBack');if(_fBack1)_fBack1.onclick=()=>_showFriendsView('list');
   const _fBack2=document.getElementById('friendsMemberBack');if(_fBack2)_fBack2.onclick=()=>_showFriendsView('group');
+  const _mDP=document.getElementById('memDatePrev');if(_mDP)_mDP.onclick=()=>_shiftMemberDate(-1);
+  const _mDN=document.getElementById('memDateNext');if(_mDN)_mDN.onclick=()=>_shiftMemberDate(1);
   const _fInv=document.getElementById('friendsInviteBtn');if(_fInv)_fInv.onclick=inviteFriend;
   const _fPerms=document.getElementById('friendsPermsBtn');if(_fPerms)_fPerms.onclick=openPermsModal;
   const _fSet=document.getElementById('friendsGroupSettings');if(_fSet)_fSet.onclick=openGroupEditModal;
