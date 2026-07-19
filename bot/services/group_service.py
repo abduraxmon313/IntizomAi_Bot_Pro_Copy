@@ -534,12 +534,13 @@ async def get_member_view(
             ))
         ))
 
-    # Ko'riladigan sana (kelajak bo'lsa — bugungacha cheklaymiz).
+    # Ko'riladigan sana. `on_date` berilmasa bugun. Kelajak va o'tgan kunlar
+    # ham qo'llaniladi — plan/habit/goal 'shu kun/davr' uchun qaytariladi.
     real_today = _today_tashkent()
     today = on_date or real_today
-    if today > real_today:
-        today = real_today
     is_today = today == real_today
+    is_future = today > real_today
+    is_past = today < real_today
 
     # Ko'rinmaydigan a'zo — bo'sh ro'yxatlar bilan qaytariladi.
     if not visible:
@@ -558,6 +559,8 @@ async def get_member_view(
             "visible": False,
             "date": today.isoformat(),
             "is_today": is_today,
+            "is_future": is_future,
+            "is_past": is_past,
         }
 
     plans = (await session.execute(
@@ -631,6 +634,8 @@ async def get_member_view(
         "visible": True,
         "date": today.isoformat(),
         "is_today": is_today,
+        "is_future": is_future,
+        "is_past": is_past,
     }
 
 

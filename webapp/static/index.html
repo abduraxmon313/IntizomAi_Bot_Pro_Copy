@@ -425,7 +425,21 @@
 <div class="nav-item" data-nav="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Do'stlar</span></div>
 </nav>
 
-<div class="modal-back" id="modalBack"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3><div class="fld"><label>Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh..."></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel">Bekor</button><button class="btn" id="mSave">Saqlash</button></div></div></div>
+<div class="modal-back" id="modalBack"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3>
+<!-- Davr tanlash — a'zo uchun maqsad yaratganda ochiladi (Yillik/Oylik + yil + oy). -->
+<div id="mPeriodPicker" class="fld" style="display:none">
+  <label>Davri</label>
+  <div class="seg" id="mPeriodTypeSeg" style="width:100%;margin-bottom:0">
+    <div class="seg-indicator" id="mPeriodTypeInd"></div>
+    <div class="seg-item active" data-mpt="yearly">📅 Yillik</div>
+    <div class="seg-item" data-mpt="monthly">🗓 Oylik</div>
+  </div>
+</div>
+<div class="row gap-12" id="mPeriodYMRow" style="display:none">
+  <div class="fld" style="flex:1"><label>Yil</label><select id="mYear"></select></div>
+  <div class="fld" style="flex:1" id="mMonthFld"><label>Oy</label><select id="mMonth"></select></div>
+</div>
+<div class="fld"><label>Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh..."></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel">Bekor</button><button class="btn" id="mSave">Saqlash</button></div></div></div>
 
 <div class="modal-back" id="planModalBack"><div class="modal"><div class="grab"></div><h3 id="planModalTitle">Yangi reja</h3>
 <div class="fld"><label>Sarlavha</label><input id="pTitle" placeholder="Masalan: Ertalabki yugurish"></div>
