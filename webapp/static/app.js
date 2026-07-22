@@ -118,8 +118,16 @@ const apiPermsSet = (gid,granteeId,body)=>api('/api/webapp/friends/groups/'+gid+
 // Ega tomonidan guruhdan a'zoni chiqarib yuborish
 const apiRemoveMember = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid,{method:'DELETE'});
 const apiForMemberPlan = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/plans',{method:'POST',body:JSON.stringify(body)});
-const apiForMemberGoal = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/goals',{method:'POST',body:JSON.stringify(body)});
+// Eslatma: apiForMemberGoal olib tashlandi — a'zolar bir-biriga maqsad qo'sha
+// olmaydi (foydalanuvchi talabiga muvofiq). Faqat reja va odat qoldi.
 const apiForMemberHabit = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/habits',{method:'POST',body:JSON.stringify(body)});
+// Telegram digest sozlamalari (faqat guruh egasi)
+const apiDigestSettings = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/settings');
+const apiDigestCandidates = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/candidates');
+const apiDigestUpdate = (gid,body)=>api('/api/webapp/friends/groups/'+gid+'/telegram/settings',{method:'PUT',body:JSON.stringify(body||{})});
+const apiDigestLink = (gid,chatId,chatTitle)=>api('/api/webapp/friends/groups/'+gid+'/telegram/link',{method:'POST',body:JSON.stringify({telegram_chat_id:chatId,telegram_chat_title:chatTitle||null})});
+const apiDigestUnlink = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/unlink',{method:'POST'});
+const apiDigestTest = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/test',{method:'POST'});
 const apiPlanCreate=p=>api('/api/webapp/plans',{method:'POST',body:JSON.stringify(p)});
 const apiPlanUpdate=(id,p)=>api('/api/webapp/plans/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiPlanDelete=id=>api('/api/webapp/plans/'+id,{method:'DELETE'});
@@ -824,10 +832,10 @@ function openModal(period,periodKey,goal){
   document.getElementById('modalTitle').textContent=(goal?'Tahrirlash: ':'Yangi ')+lb[period]+' maqsad';
   document.getElementById('mTitle').value=goal?goal.title:'';
   document.getElementById('mDesc').value=goal?goal.description||'':'';
-  // Davr tanlash — faqat a'zo uchun YANGI maqsad yaratganda. Aks holda tur
-  // va davr chaqirilgan joydan (yoki tahrirlanayotgan maqsaddan) olinadi.
-  const isMemberCreate=!goal && !!State.forMemberContext;
-  _setupModalPeriodPicker(isMemberCreate, period, periodKey);
+  // Davr tanlash — faqat foydalanuvchining o'z maqsadi uchun. A'zolar bir-
+  // biriga maqsad qo'sha olmaydi (talab bo'yicha), shu sabab bu yerda oldingi
+  // "isMemberCreate" oqimi olib tashlandi.
+  _setupModalPeriodPicker(false, period, periodKey);
   document.getElementById('modalBack').classList.add('show');
   setTimeout(()=>document.getElementById('mTitle').focus(),300);
 }
@@ -915,29 +923,11 @@ async function saveModal(){
   if(!t){toast('Sarlavha bo\'sh',true);return;}
   const d=document.getElementById('mDesc').value.trim();
   const isEdit=!!State.modal.id;
-  // ── Boshqa a'zo uchun maqsad yaratish ──
+  // Eslatma: a'zolar bir-biriga maqsad qo'sha olmaydi (talab bo'yicha).
+  // Shu sabab bu yerda forMemberContext bo'lsa ham oqim faqat o'z maqsadiga
+  // yozadi. Boshqa a'zoga faqat reja va odat qo'shsa bo'ladi.
   if(!isEdit && State.forMemberContext){
-    const ctx=State.forMemberContext;
-    // Davr modal ichidan tanlanadi (Yillik/Oylik + yil + oy). Foydalanuvchi
-    // istagan yil va oyi uchun (o'tgan/joriy/kelajak) maqsad qo'sha oladi.
-    const per=_readModalPeriod();
-    try{
-      await apiForMemberGoal(ctx.groupId, ctx.userId, {
-        title:t, description:d||null,
-        goal_type:per.goal_type, period:per.period,
-      });
-    }catch(e){
-      const msg=String(e&&e.message||'');
-      if(msg.includes('402')){toast('⚠️ A\'zoning bepul maqsad limiti tugagan',true);return;}
-      if(msg.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
-      toast('Xato: '+msg,true);return;
-    }
-    const savedDate=State.memberDate; // saqlashdan oldingi sana
-    State.forMemberContext=null;
-    closeModal();
-    toast('✨ '+ctx.name+' uchun maqsad qo\'shildi');
-    try{await openMember(ctx.userId, savedDate);}catch(_){}
-    return;
+    State.forMemberContext=null; // xavfsizlik uchun tozalaymiz
   }
   try{
     if(isEdit){
@@ -1112,10 +1102,10 @@ async function openGroup(gid){
 }
 
 function _sumChips(s){
+  // Guruh kontekstida faqat reja + odat ko'rinadi (maqsad olib tashlandi).
   const chips=[];
   if(s.plans_total)chips.push(`<span class="chip ${s.plans_done>=s.plans_total?'ok':''}">📅 ${s.plans_done}/${s.plans_total}</span>`);
   if(s.habits_total)chips.push(`<span class="chip ${s.habits_done_today>=s.habits_total?'ok':''}">🔁 ${s.habits_done_today}/${s.habits_total}</span>`);
-  if(s.goals_total)chips.push(`<span class="chip ${s.goals_done>=s.goals_total?'ok':''}">🎯 ${s.goals_done}/${s.goals_total}</span>`);
   if(!chips.length)chips.push('<span class="chip">bugun bo\'sh</span>');
   return chips.join('');
 }
@@ -1244,7 +1234,8 @@ function renderMemberContent(){
     return;
   }
 
-  const plans=d.plans||[],habits=d.habits||[],goals=d.goals||[];
+  // Guruh kontekstida maqsad (goals) ko'rinmaydi.
+  const plans=d.plans||[],habits=d.habits||[];
 
   // Rejalar — vaqti bo'yicha saralanadi (erta vaqt tepada; vaqtsiz oxirda).
   const _sortedPlans=plans.slice().sort((a,b)=>{
@@ -1271,27 +1262,18 @@ function renderMemberContent(){
     return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}</div><span class="meta">${meta}</span></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Odat yo\'q</div>';
 
-  // Maqsad davri o'qish uchun qulay ko'rinish (masalan "🗓 Iyul 2026" yoki "📅 2026-yil")
-  const goalsHtml=goals.length?goals.map(g=>{
-    const done=!!g.completed;
-    const label=_formatGoalPeriod(g.goal_type, g.period);
-    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(g.title)}</div><span class="meta">${esc(label)}</span></div>`;
-  }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Maqsad yo\'q</div>';
-
-  // Yaratish tugmalari — endi maqsad turi (Yillik/Oylik) va davri
-  // (yil/oy) modal ichida tanlanadi, shuning uchun bitta "+ Maqsad" tugmasi.
+  // Yaratish tugmalari — endi faqat reja va odat (maqsad guruh kontekstida
+  // olib tashlandi). A'zolar bir-biriga maqsad qo'sha olmaydi.
   const createBtns=canManage?`
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <button class="btn btn-ghost" data-fmnew="plan" style="font-size:12.5px">+ Reja</button>
       <button class="btn btn-ghost" data-fmnew="habit" style="font-size:12.5px">+ Odat</button>
-      <button class="btn btn-ghost" data-fmnew="goal" style="font-size:12.5px">+ Maqsad</button>
     </div>
-    <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja/maqsad/odat yaratishga ruxsat bergan.</p>`:'';
+    <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja va odat yaratishga ruxsat bergan.</p>`:'';
 
   const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">🛡 Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
 
   const plansTitle=isToday?'📅 Bugungi rejalar':(isFuture?'📅 Kelajakdagi rejalar':'📅 Rejalar');
-  const goalsTitle=isToday?'🎯 Maqsadlar (joriy davr)':(isFuture?'🎯 Maqsadlar (kelajakdagi davr)':'🎯 Maqsadlar (o\'sha davr)');
   let banner='';
   if(isPast){
     banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🕰 O'tgan kun ko'rinishi</div>`;
@@ -1305,8 +1287,6 @@ function renderMemberContent(){
     ${plansHtml}
     <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🔁 Odatlar</h2></div>
     ${habitsHtml}
-    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">${goalsTitle}</h2></div>
-    ${goalsHtml}
     ${createBtns}
     ${noPermHint}
   `;
@@ -1327,15 +1307,8 @@ function openCreateForMember(kind){
   }else if(kind==='habit'){
     openHabitModal(null);
     setText('habitModalTitle', m.member.name+' uchun yangi odat');
-  }else if(kind==='goal_yearly' || kind==='goal_monthly' || kind==='goal'){
-    // Default: joriy ko'rilayotgan sana asosida (past/future ham bo'lishi mumkin)
-    const base=(State.memberDate && /^\d{4}-\d{2}-\d{2}$/.test(State.memberDate))
-      ? new Date(State.memberDate+'T00:00:00') : new Date();
-    const gt=(kind==='goal_monthly')?'monthly':'yearly';
-    const period=(gt==='yearly')?String(base.getFullYear()):(base.getFullYear()+'-'+pad(base.getMonth()+1));
-    openModal(gt, period, null);
-    document.getElementById('modalTitle').textContent=m.member.name+' uchun yangi maqsad';
   }
+  // Guruh kontekstida "boshqa a'zo uchun maqsad qo'shish" oqimi olib tashlandi.
 }
 
 // ── Guruh yaratish modali ────────────────────────────────
@@ -1357,7 +1330,7 @@ async function saveGroupCreate(){
   }catch(e){toast('Xato: '+e.message,true);}
 }
 
-// ── Guruh sozlamalari (rename/delete/leave) ──────────────
+// ── Guruh sozlamalari (rename/digest/delete/leave) ────────
 function openGroupEditModal(){
   const g=State.currentGroup;if(!g)return;
   document.getElementById('geName').value=g.name||'';
@@ -1368,8 +1341,228 @@ function openGroupEditModal(){
   document.getElementById('geName').disabled=!g.is_owner;
   document.getElementById('geDesc').disabled=!g.is_owner;
   renderGroupEditMembers();
+  // Telegram digest bo'limi faqat ega uchun ko'rinadi.
+  const dw=document.getElementById('geDigestWrap');
+  if(dw)dw.style.display=g.is_owner?'':'none';
+  if(g.is_owner)loadDigestSettings();
   document.getElementById('groupEditBack').classList.add('show');
 }
+
+// ── Telegram digest — sozlamalar holati va UI ──────────────
+State.digest={settings:null, candidates:null, loading:false, savingKey:null};
+
+async function loadDigestSettings(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  try{
+    const s=await apiDigestSettings(g.id);
+    State.digest.settings=s;
+    renderDigestSettings();
+  }catch(e){
+    State.digest.settings=null;
+    console.warn('digest settings',e);
+  }
+}
+
+function _fillDigestTimeOptions(sel, current){
+  if(!sel)return;
+  // Backend `allowed_times` ni ham beradi, ammo default katalog 06:00..23:00.
+  const times=(State.digest.settings&&State.digest.settings.allowed_times)||
+    Array.from({length:18},(_,i)=>String(i+6).padStart(2,'0')+':00');
+  let opts='';
+  const cur=current||'21:00';
+  const hasCur=times.includes(cur);
+  if(!hasCur)opts+='<option value="'+esc(cur)+'" selected>'+esc(cur)+'</option>';
+  for(const t of times){
+    opts+='<option value="'+esc(t)+'"'+(t===cur?' selected':'')+'>'+esc(t)+'</option>';
+  }
+  sel.innerHTML=opts;
+}
+
+function renderDigestSettings(){
+  const s=State.digest.settings;
+  const wrap=document.getElementById('geDigestWrap');
+  if(!wrap||!s)return;
+  // Enable toggle
+  const enBtn=document.getElementById('geDigestEnable');
+  if(enBtn){
+    enBtn.classList.toggle('on', !!s.digest_enabled);
+    // Bog'lanmasa Yoqishni bloklaymiz — foydalanuvchi avval chat tanlashi kerak.
+    if(!s.telegram_chat_id){
+      enBtn.classList.add('disabled');
+    }else{
+      enBtn.classList.remove('disabled');
+    }
+  }
+  // Chat title
+  const chatEl=document.getElementById('geDigestChat');
+  if(chatEl){
+    if(s.telegram_chat_id){
+      chatEl.textContent=s.telegram_chat_title||('Chat #'+s.telegram_chat_id);
+    }else{
+      chatEl.textContent='— tanlanmagan —';
+    }
+  }
+  // Unlink tugmasi
+  const unlinkBtn=document.getElementById('geDigestUnlink');
+  if(unlinkBtn)unlinkBtn.style.display=s.telegram_chat_id?'':'none';
+  // Vaqt selektori
+  _fillDigestTimeOptions(document.getElementById('geDigestTime'), s.digest_time);
+  // Ikkinchi toggle'lar
+  const zeroBtn=document.getElementById('geDigestShowZero');
+  if(zeroBtn)zeroBtn.classList.toggle('on', s.digest_show_zero!==false);
+  const menBtn=document.getElementById('geDigestMention');
+  if(menBtn)menBtn.classList.toggle('on', !!s.digest_mention);
+  // Meta (last sent / error)
+  const meta=document.getElementById('geDigestMeta');
+  if(meta){
+    const parts=[];
+    if(s.digest_last_sent_at){
+      try{const d=new Date(s.digest_last_sent_at);parts.push('✅ Oxirgi yuborilgan: '+d.toLocaleString('uz-UZ'));}catch(_){}
+    }
+    if(s.digest_last_error){
+      parts.push('⚠️ Oxirgi xato: '+s.digest_last_error);
+    }
+    meta.innerHTML=parts.map(esc).join(' · ');
+  }
+}
+
+async function _digestSet(patch, key){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  if(State.digest.savingKey)return; // ikki marta bosilishdan himoya
+  State.digest.savingKey=key||'save';
+  try{
+    const s=await apiDigestUpdate(g.id, patch);
+    State.digest.settings=s;
+    renderDigestSettings();
+  }catch(e){
+    const m=String(e&&e.message||'');
+    // Backend detail'ini o'qishga urinamiz
+    toast('Xato: '+m,true);
+    // Kelib chiqqan xato holatini qayta yuklaymiz (UI hozirgi haqiqiy holatga qaytadi)
+    loadDigestSettings();
+  }finally{
+    State.digest.savingKey=null;
+  }
+}
+
+async function toggleDigestEnable(){
+  const s=State.digest.settings;if(!s)return;
+  if(!s.telegram_chat_id){
+    toast('Avval Telegram guruhni tanlang',true);
+    return;
+  }
+  await _digestSet({digest_enabled: !s.digest_enabled}, 'enable');
+  const nowOn=State.digest.settings && State.digest.settings.digest_enabled;
+  toast(nowOn?'✅ Kunlik hisobot yoqildi':'⏸ Kunlik hisobot to\'xtatildi');
+}
+async function toggleDigestShowZero(){
+  const s=State.digest.settings;if(!s)return;
+  await _digestSet({digest_show_zero: !s.digest_show_zero}, 'showzero');
+}
+async function toggleDigestMention(){
+  const s=State.digest.settings;if(!s)return;
+  await _digestSet({digest_mention: !s.digest_mention}, 'mention');
+}
+async function changeDigestTime(){
+  const s=State.digest.settings;if(!s)return;
+  const sel=document.getElementById('geDigestTime');
+  if(!sel)return;
+  const nv=sel.value;
+  if(nv===s.digest_time)return;
+  await _digestSet({digest_time: nv}, 'time');
+  toast('⏰ Vaqt yangilandi: '+nv);
+}
+
+async function unlinkDigestChat(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  if(!await confirmDialog({title:'Bog\'lanishni uzish',message:'Telegram guruhga hisobot yuborish to\'xtatiladi. Bog\'lash saqlanmaydi. Davom etamizmi?'}))return;
+  try{
+    await apiDigestUnlink(g.id);
+    toast('🔌 Bog\'lanish uzildi');
+    await loadDigestSettings();
+  }catch(e){toast('Xato: '+e.message,true);}
+}
+
+async function sendDigestTest(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  const s=State.digest.settings;
+  if(!s||!s.telegram_chat_id){toast('Avval Telegram guruhni tanlang',true);return;}
+  const btn=document.getElementById('geDigestTest');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Yuborilmoqda…';}
+  try{
+    const r=await apiDigestTest(g.id);
+    if(r&&r.ok){
+      toast('📨 Test hisobot yuborildi');
+    }else{
+      toast('⚠️ '+(r&&r.reason||'Yuborib bo\'lmadi'),true);
+    }
+  }catch(e){
+    toast('Xato: '+e.message,true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🧪 Hoziroq test yuborish';}
+    // Xato bo'lgan bo'lsa auto-unlink bo'lishi mumkin — qayta yuklab olamiz.
+    loadDigestSettings();
+  }
+}
+
+// ── Chat picker: bot bilan birga bo'lgan Telegram guruhlar ro'yxati ─────
+async function openDigestPicker(){
+  const g=State.currentGroup;if(!g||!g.is_owner)return;
+  const back=document.getElementById('tgPickerBack');
+  const list=document.getElementById('tgPickerList');
+  if(!back||!list)return;
+  list.innerHTML='<div class="tgp-empty">⏳ Yuklanmoqda…</div>';
+  back.classList.add('show');
+  try{
+    const r=await apiDigestCandidates(g.id);
+    State.digest.candidates=r&&r.candidates||[];
+    renderDigestCandidates();
+  }catch(e){
+    list.innerHTML='<div class="tgp-empty">Xato: '+esc(e.message||'')+'</div>';
+  }
+}
+
+function renderDigestCandidates(){
+  const list=document.getElementById('tgPickerList');
+  const arr=State.digest.candidates||[];
+  if(!list)return;
+  if(!arr.length){
+    list.innerHTML=`<div class="tgp-empty">
+      Ro'yxat bo'sh.<br><br>
+      Botni Telegram guruhingizga qo'shing va o'sha guruhda kamida bir marta xabar yozing.
+      Undan keyin ro'yxatda paydo bo'ladi.
+    </div>`;
+    return;
+  }
+  list.innerHTML=arr.map(c=>{
+    const initial=(c.chat_title||'?').trim().charAt(0).toUpperCase();
+    const warn=c.can_send?'':'<div class="tgp-warn">⚠️ Bot xabar yubora olmaydi. Guruhda "faqat adminlar yozadi" yoqilgan bo\'lsa, botni admin qiling.</div>';
+    return `<div class="tgp-item ${c.is_selected?'selected':''}" data-cid="${c.chat_id}" data-title="${esc(c.chat_title||'')}">
+      <div class="tgp-icon">${esc(initial)}</div>
+      <div class="tgp-body">
+        <div class="tgp-title">${esc(c.chat_title||('Chat #'+c.chat_id))}</div>
+        <div class="tgp-meta">${esc(c.chat_type||'group')} · id ${c.chat_id}${c.is_selected?' · tanlangan':''}</div>
+        ${warn}
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.tgp-item').forEach(el=>{
+    el.onclick=async()=>{
+      const g=State.currentGroup;if(!g)return;
+      const cid=parseInt(el.dataset.cid,10);
+      const title=el.dataset.title||null;
+      try{
+        await apiDigestLink(g.id, cid, title);
+        document.getElementById('tgPickerBack').classList.remove('show');
+        toast('🔗 Guruh bog\'landi. Yoqing va vaqtni tanlang.');
+        await loadDigestSettings();
+      }catch(e){
+        toast('Xato: '+e.message,true);
+      }
+    };
+  });
+}
+
 
 // Guruh sozlamalari ichidagi a'zolarni boshqarish — FAQAT ega ko'radi.
 // Har bir non-owner a'zo yonida "Chiqarish" tugmasi (kartada emas, shu yerda).
@@ -1595,6 +1788,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _geB=document.getElementById('groupEditBack');if(_geB)_geB.onclick=e=>{if(e.target.id==='groupEditBack')_geB.classList.remove('show');};
   const _pC=document.getElementById('permsClose');if(_pC)_pC.onclick=()=>document.getElementById('permsBack').classList.remove('show');
   const _pB=document.getElementById('permsBack');if(_pB)_pB.onclick=e=>{if(e.target.id==='permsBack')_pB.classList.remove('show');};
+  // ── Telegram digest wiring ─────────────────────────────────
+  const _dgEn=document.getElementById('geDigestEnable');if(_dgEn)_dgEn.onclick=toggleDigestEnable;
+  const _dgZ=document.getElementById('geDigestShowZero');if(_dgZ)_dgZ.onclick=toggleDigestShowZero;
+  const _dgM=document.getElementById('geDigestMention');if(_dgM)_dgM.onclick=toggleDigestMention;
+  const _dgT=document.getElementById('geDigestTime');if(_dgT)_dgT.onchange=changeDigestTime;
+  const _dgP=document.getElementById('geDigestPick');if(_dgP)_dgP.onclick=openDigestPicker;
+  const _dgU=document.getElementById('geDigestUnlink');if(_dgU)_dgU.onclick=unlinkDigestChat;
+  const _dgTest=document.getElementById('geDigestTest');if(_dgTest)_dgTest.onclick=sendDigestTest;
+  const _tpC=document.getElementById('tgPickerCancel');if(_tpC)_tpC.onclick=()=>document.getElementById('tgPickerBack').classList.remove('show');
+  const _tpR=document.getElementById('tgPickerReload');if(_tpR)_tpR.onclick=openDigestPicker;
+  const _tpB=document.getElementById('tgPickerBack');if(_tpB)_tpB.onclick=e=>{if(e.target.id==='tgPickerBack')_tpB.classList.remove('show');};
   // Eski forMemberBack handlerlari olib tashlandi.
   // Odat (habit) wiring
   const _ah=document.getElementById('addHabitBtn');if(_ah)_ah.onclick=e=>{ripple(e);openHabitModal(null);};

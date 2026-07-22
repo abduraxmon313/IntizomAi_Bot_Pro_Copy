@@ -660,4 +660,13 @@ def start_scheduler(bot):
         trigger=CronTrigger(hour=10, minute=30, timezone=tz),
         args=[bot], id="premium_expiry_reminder",
     )
+    # Har daqiqada — WebApp guruhlarining Telegram digestlarini yuborish.
+    # Digest_time (HH:MM, Toshkent) joriy vaqtga mos bo'lsa jo'natiladi.
+    # Duplikat yuborishdan digest_service ichida saqlanadi.
+    from bot.services.digest_service import send_due_digests
+    scheduler.add_job(
+        send_due_digests,
+        trigger=CronTrigger(minute="*", timezone=tz),
+        args=[bot], id="group_telegram_digests",
+    )
     scheduler.start()

@@ -282,6 +282,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .perm-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:6px}
 .perm-row .nm{flex:1;font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .perm-row .toggle.locked{opacity:.55;pointer-events:none}
+.toggle.disabled{opacity:.45;pointer-events:none;filter:grayscale(.4)}
 .perm-row .locked-hint{font-size:10.5px;color:var(--text-3);margin-left:8px}
 .mem-kick{width:32px;height:32px;border-radius:10px;background:transparent;border:1px solid var(--border);color:var(--danger,#ef4444);display:grid;place-items:center;cursor:pointer;flex-shrink:0;padding:0}
 .mem-kick:active{transform:scale(.9);background:rgba(239,68,68,.08)}
@@ -545,6 +546,29 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .paywall .pw-plan .pn{font-size:12px;font-weight:700;color:var(--text);text-align:center;line-height:1.25}
 .paywall .pw-plan .pp{font-size:12px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
 .paywall .pw-plan-tag{display:inline-block;font-size:10px;font-weight:700;color:var(--primary);margin-top:2px;letter-spacing:.2px}
+
+/* ── Guruh sozlamalari: Telegram digest bo'limi ─────────────────────────
+   Har qator: chap tarafda yorliq, o'ng tarafda qiymat/tugma. Kichik ekran
+   uchun ham qulay bo'lishi uchun grid emas, flex. */
+.digest-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border);font-size:12.5px}
+.digest-row:first-of-type{border-top:0}
+.digest-row .digest-label{color:var(--text-2);font-weight:600;flex:0 0 auto;min-width:120px}
+.digest-row .digest-value{color:var(--text);font-weight:700;flex:1 1 auto;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.digest-row .digest-actions{display:flex;gap:6px;flex:0 0 auto}
+.digest-row .digest-actions .btn{padding:6px 12px;font-size:12px;width:auto}
+.digest-select{padding:6px 8px;border-radius:8px;background:var(--surface);color:var(--text);border:1px solid var(--border);font-size:12.5px;font-weight:700}
+
+/* Chat picker — bosiladigan qatorlar */
+#tgPickerList .tgp-item{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:12px;background:var(--surface);border:1.5px solid var(--border);margin-bottom:8px;cursor:pointer;transition:border-color .18s,transform .18s}
+#tgPickerList .tgp-item:hover{border-color:var(--primary)}
+#tgPickerList .tgp-item:active{transform:scale(.98)}
+#tgPickerList .tgp-item.selected{border-color:var(--primary);background:var(--primary-soft)}
+#tgPickerList .tgp-icon{width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:0 0 auto}
+#tgPickerList .tgp-body{flex:1 1 auto;min-width:0}
+#tgPickerList .tgp-title{font-weight:700;font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tgPickerList .tgp-meta{font-size:11px;color:var(--text-3);margin-top:2px}
+#tgPickerList .tgp-empty{padding:16px 12px;text-align:center;font-size:12.5px;color:var(--text-3);background:var(--surface);border:1px dashed var(--border);border-radius:12px}
+#tgPickerList .tgp-warn{margin-top:4px;font-size:11px;color:#c33;font-weight:600}
 .paywall .pw-note{font-size:clamp(11px,3vw,12px);text-align:center;color:var(--text-2);width:100%;margin:0 auto clamp(8px,1.6vh,12px);line-height:1.5}
 .paywall .pw-note code{background:var(--primary-soft);color:var(--primary);padding:2px 8px;border-radius:6px;font-weight:800}
 .paywall .pw-cta{position:relative;overflow:hidden;display:block;width:100%;margin:0 auto;background:var(--grad);color:#fff;text-align:center;padding:clamp(12px,2.4vh,15px);border-radius:16px;font-weight:800;font-size:clamp(14px,4vw,15px);border:none;cursor:pointer;box-shadow:var(--glow);animation:pwGlow 3s ease-in-out infinite}
