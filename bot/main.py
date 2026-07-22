@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
 from bot.config import BOT_TOKEN
-from bot.handlers import start, plan, callback, report, admin, status, subscribe
+from bot.handlers import start, plan, callback, report, admin, status, subscribe, chat_events
 from bot.services.scheduler import start_scheduler
 from database.db import create_tables
 
@@ -52,6 +52,9 @@ async def main():
 
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
+    # my_chat_member — bot Telegram guruhlariga qo'shilgan/chiqarilganida
+    # `bot_chats` jadvaliga yozish uchun sessiya kerak (chat_events handler).
+    dp.my_chat_member.middleware(DbSessionMiddleware())
     
     dp.include_router(start.router)
     dp.include_router(status.router)
@@ -60,6 +63,9 @@ async def main():
     dp.include_router(plan.router)
     dp.include_router(callback.router)
     dp.include_router(report.router)
+    # chat_events — bot Telegram guruhlariga qo'shildi/chiqarildi kuzatuvi.
+    # WebApp digest funksiyasi bu jadval ustida ishlaydi.
+    dp.include_router(chat_events.router)
 
     # Buyruqlarni sozlash
     await set_commands(bot)

@@ -107,6 +107,20 @@ REFERRAL_NEW_COLUMNS = [
     ("activated_at", "TIMESTAMP"),
 ]
 
+# groups jadvaliga Telegram digest bog'lanishi va sozlamalari.
+# Guruh egasi Mini App orqali biror Telegram guruhga ulasa, kunlik reja+odat
+# hisobot shu chat_id ga yuboriladi. `digest_time` — Toshkent vaqti (HH:MM).
+GROUPS_NEW_COLUMNS = [
+    ("telegram_chat_id", "BIGINT"),
+    ("telegram_chat_title", "VARCHAR(200)"),
+    ("digest_enabled", "BOOLEAN DEFAULT FALSE NOT NULL"),
+    ("digest_time", "VARCHAR(5) DEFAULT '21:00' NOT NULL"),
+    ("digest_show_zero", "BOOLEAN DEFAULT TRUE NOT NULL"),
+    ("digest_mention", "BOOLEAN DEFAULT FALSE NOT NULL"),
+    ("digest_last_sent_at", "TIMESTAMP"),
+    ("digest_last_error", "VARCHAR(300)"),
+]
+
 # plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).
 CREATED_BY_TABLES = ("plans", "goals", "habits")
 
@@ -137,6 +151,12 @@ NEW_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_group_members_user ON group_members (user_id)",
     "CREATE INDEX IF NOT EXISTS ix_group_members_group ON group_members (group_id)",
     "CREATE INDEX IF NOT EXISTS ix_group_permissions_group ON group_permissions (group_id)",
+    # Digest cron har daqiqada `WHERE digest_enabled=TRUE AND digest_time='HH:MM'`
+    # so'rovi qiladi — bu ustunlar bo'yicha kompozit indeks.
+    "CREATE INDEX IF NOT EXISTS ix_groups_digest_due ON groups (digest_enabled, digest_time)",
+    "CREATE INDEX IF NOT EXISTS ix_groups_telegram_chat ON groups (telegram_chat_id)",
+    # bot_chats — status bo'yicha faol chatlarni ajratish.
+    "CREATE INDEX IF NOT EXISTS ix_bot_chats_status ON bot_chats (bot_status)",
 ]
 
 
@@ -184,6 +204,15 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip referrals.{col}: {e}")
+
+    # groups jadvaliga Telegram digest maydonlari.
+    for col, ddl in GROUPS_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE groups ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip groups.{col}: {e}")
 
     # plans/goals/habits: created_by_user_id — Do'stlar guruhida boshqa a'zo
     # yaratgan bo'lsa uning users.id si. NULL = foydalanuvchining o'zi yaratgan.
@@ -240,7 +269,7 @@ async def create_tables():
             from bot.models import (  # noqa
                 user, plan, score_log, admin, goal, achievement, checkin,
                 subscription, payment_order, referral, habit, group,
-                plan_override,
+                plan_override, bot_chat,
             )
             await conn.run_sync(Base.metadata.create_all)
             await _run_migrations(conn)

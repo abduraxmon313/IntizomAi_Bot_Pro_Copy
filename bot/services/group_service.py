@@ -28,10 +28,11 @@ from bot.config import TIMEZONE
 from bot.models.group import Group, GroupMember, GroupPermission
 from bot.models.habit import Habit, HabitLog
 from bot.models.plan import Plan, PlanStatus
-from bot.models.goal import Goal
 from bot.models.user import User
-from bot.services.goal_service import ALLOWED_GOAL_TYPES
 from bot.services.habit_service import is_due_on as _habit_is_due_on, is_finished as _habit_is_finished
+# Eslatma: Do'stlar guruhida MAQSAD (goal) bo'limi olib tashlandi.
+# A'zolar bir-birining maqsadini ko'rmaydi va bir-biriga maqsad qo'sha olmaydi
+# (foydalanuvchi talabi). Faqat reja + odat guruh kontekstida ko'rinadi.
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,10 @@ def _today_tashkent() -> date:
 
 
 async def _member_today_summary(session: AsyncSession, user_id: int) -> dict:
-    """Bir a'zoning bugungi holati: reja, odat, oylik/yillik maqsad progresslari."""
+    """Bir a'zoning bugungi holati: reja va odat sanoqlari.
+
+    Maqsad (goal) bo'limi olib tashlandi — guruh kontekstida ko'rinmaydi.
+    """
     today = _today_tashkent()
     # Bugungi rejalar
     plans_res = await session.execute(
@@ -314,29 +318,11 @@ async def _member_today_summary(session: AsyncSession, user_id: int) -> dict:
         ) or 0
     habits_total = len(habits)
 
-    # Yillik va oylik maqsadlar (jori davr)
-    year_key = str(today.year)
-    month_key = f"{today.year:04d}-{today.month:02d}"
-    goals_res = await session.execute(
-        select(Goal).where(
-            and_(
-                Goal.user_id == user_id,
-                Goal.goal_type.in_(ALLOWED_GOAL_TYPES),
-                Goal.period.in_([year_key, month_key]),
-            )
-        )
-    )
-    goals = goals_res.scalars().all()
-    goals_total = len(goals)
-    goals_done = sum(1 for g in goals if g.completed)
-
     return {
         "plans_total": int(plans_total),
         "plans_done": int(plans_done),
         "habits_total": int(habits_total),
         "habits_done_today": int(habits_done_today),
-        "goals_total": int(goals_total),
-        "goals_done": int(goals_done),
     }
 
 
@@ -367,23 +353,20 @@ def _empty_summary() -> dict:
     return {
         "plans_total": 0, "plans_done": 0,
         "habits_total": 0, "habits_done_today": 0,
-        "goals_total": 0, "goals_done": 0,
     }
 
 
 async def _bulk_today_summary(session: AsyncSession, user_ids: list[int]) -> dict:
     """
-    BARCHA (ko'rinadigan) a'zolarning bugungi xulosasini FAQAT 4 ta guruhli
-    (GROUP BY) so'rov bilan hisoblaydi — avvalgi N+1 (har a'zoga 3 ta so'rov)
-    o'rniga. 50 a'zoli guruh: 150+ so'rov → 4 so'rov. {user_id: summary}.
+    BARCHA (ko'rinadigan) a'zolarning bugungi xulosasini 3 ta guruhli (GROUP BY)
+    so'rov bilan hisoblaydi — reja jami, odat jami, odat bugun. Maqsad bo'limi
+    olib tashlandi (guruh kontekstida ko'rinmaydi). {user_id: summary}.
     """
     out = {uid: _empty_summary() for uid in user_ids}
     if not user_ids:
         return out
 
     today = _today_tashkent()
-    year_key = str(today.year)
-    month_key = f"{today.year:04d}-{today.month:02d}"
 
     done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
     for uid, total, done in (await session.execute(
@@ -407,19 +390,6 @@ async def _bulk_today_summary(session: AsyncSession, user_ids: list[int]) -> dic
         .group_by(HabitLog.user_id)
     )).all():
         out[uid]["habits_done_today"] = int(done or 0)
-
-    goal_done_case = func.sum(case((Goal.completed == True, 1), else_=0))  # noqa: E712
-    for uid, total, done in (await session.execute(
-        select(Goal.user_id, func.count(Goal.id), goal_done_case)
-        .where(and_(
-            Goal.user_id.in_(user_ids),
-            Goal.goal_type.in_(ALLOWED_GOAL_TYPES),
-            Goal.period.in_([year_key, month_key]),
-        ))
-        .group_by(Goal.user_id)
-    )).all():
-        out[uid]["goals_total"] = int(total or 0)
-        out[uid]["goals_done"] = int(done or 0)
 
     return out
 
@@ -555,7 +525,9 @@ async def get_member_view(
                 "total_score": int(target.total_score or 0),
                 "is_me": False,
             },
-            "plans": [], "habits": [], "goals": [],
+            # Maqsad guruh kontekstida ko'rinmaydi. Frontend uchun to'liq
+            # backward-compat saqlash uchun bo'sh ro'yxatni qaytarmaymiz.
+            "plans": [], "habits": [],
             "can_manage": False,  # ko'rinmasa yaratish ham yo'q (aslida bunday yozuv ham bo'lmasligi kerak)
             "visible": False,
             "date": today.isoformat(),
@@ -601,15 +573,8 @@ async def get_member_view(
         )).all()
         logged_today = {r[0] for r in rows}
 
-    year_key = str(today.year)
-    month_key = f"{today.year:04d}-{today.month:02d}"
-    goals = (await session.execute(
-        select(Goal).where(and_(
-            Goal.user_id == target_user_id,
-            Goal.goal_type.in_(ALLOWED_GOAL_TYPES),
-            Goal.period.in_([year_key, month_key]),
-        )).order_by(Goal.goal_type.desc(), Goal.created_at)
-    )).scalars().all()
+    # Maqsad (goal) bo'limi guruh kontekstida umuman ko'rinmaydi — foydalanuvchi
+    # talabiga muvofiq. Bu yerda goals so'rovi bajarilmaydi.
 
     def _plan_dict(p):
         return {
@@ -636,14 +601,6 @@ async def get_member_view(
             "created_by_user_id": h.created_by_user_id,
         }
 
-    def _goal_dict(g):
-        return {
-            "id": g.id, "title": g.title, "description": g.description,
-            "goal_type": g.goal_type, "period": g.period,
-            "completed": bool(g.completed),
-            "created_by_user_id": g.created_by_user_id,
-        }
-
     return {
         "group_id": group_id,
         "member": {
@@ -656,7 +613,7 @@ async def get_member_view(
         },
         "plans": [_plan_dict(p) for p in plans],
         "habits": [_habit_dict(h) for h in habits],
-        "goals": [_goal_dict(g) for g in goals],
+        # Maqsad guruh kontekstida ko'rinmaydi.
         "can_manage": can_manage,
         "visible": True,
         "date": today.isoformat(),
@@ -838,3 +795,129 @@ async def ensure_can_manage(
     )))
     if not granted:
         raise GroupForbidden("Bu a'zo sizga ruxsat bermagan.")
+
+
+
+# ─────────────────────────────────────────────────────────────
+#  TELEGRAM DIGEST — sozlamalar (faqat guruh egasi uchun)
+# ─────────────────────────────────────────────────────────────
+_ALLOWED_DIGEST_HOURS = tuple(f"{h:02d}:00" for h in range(6, 24))
+"""Tayyor vaqt tanlovlari (06:00..23:00). Har soatda, 24 ta variant."""
+
+
+def is_valid_digest_time(hhmm: str) -> bool:
+    """
+    Digest_time HH:MM formatida bo'lishi va oqilona diapazonda (06:00..23:59)
+    tushishi kerak. Yarim tunda yuborilishi mumkin, ammo default katalog
+    soatlar bilan cheklangan (foydalanuvchi UI'da tanlaydi).
+    """
+    if not isinstance(hhmm, str) or len(hhmm) != 5 or hhmm[2] != ":":
+        return False
+    try:
+        h = int(hhmm[:2])
+        m = int(hhmm[3:])
+    except ValueError:
+        return False
+    if not (0 <= h <= 23) or not (0 <= m <= 59):
+        return False
+    return True
+
+
+async def get_telegram_settings(
+    session: AsyncSession, user: User, group_id: int,
+) -> dict:
+    """
+    Guruh egasi uchun joriy digest sozlamalari.
+    A'zo ega bo'lmasa GroupForbidden.
+    """
+    g = await get_group(session, group_id)
+    if g.owner_user_id != user.id:
+        raise GroupForbidden("Faqat guruh egasi sozlamalarni ko'ra oladi.")
+    return {
+        "group_id": g.id,
+        "telegram_chat_id": g.telegram_chat_id,
+        "telegram_chat_title": g.telegram_chat_title,
+        "digest_enabled": bool(g.digest_enabled),
+        "digest_time": g.digest_time or "21:00",
+        "digest_show_zero": bool(g.digest_show_zero),
+        "digest_mention": bool(g.digest_mention),
+        "digest_last_sent_at": g.digest_last_sent_at.isoformat() if g.digest_last_sent_at else None,
+        "digest_last_error": g.digest_last_error,
+        "allowed_times": list(_ALLOWED_DIGEST_HOURS),
+    }
+
+
+async def update_telegram_settings(
+    session: AsyncSession, user: User, group_id: int,
+    *,
+    telegram_chat_id: Optional[int] = None,
+    telegram_chat_title: Optional[str] = None,
+    digest_enabled: Optional[bool] = None,
+    digest_time: Optional[str] = None,
+    digest_show_zero: Optional[bool] = None,
+    digest_mention: Optional[bool] = None,
+) -> dict:
+    """
+    Guruh egasi digest sozlamalarini yangilaydi.
+    None qiymatli maydonlar tegilmaydi (partial update).
+    """
+    g = await get_group(session, group_id)
+    if g.owner_user_id != user.id:
+        raise GroupForbidden("Faqat guruh egasi sozlamalarni o'zgartira oladi.")
+
+    if telegram_chat_id is not None:
+        try:
+            g.telegram_chat_id = int(telegram_chat_id)
+        except (TypeError, ValueError):
+            raise GroupError("Noto'g'ri Telegram chat id.")
+        # Sarlavha ham berilgan bo'lsa yangilaymiz; aks holda bot_chats'dan
+        # qaytadan qidirilishi mumkin, hozir esa bo'sh qoldiramiz.
+    if telegram_chat_title is not None:
+        g.telegram_chat_title = (telegram_chat_title or "")[:200] or None
+
+    if digest_enabled is not None:
+        # digest_enabled=True bo'lsa telegram_chat_id ham majburiy.
+        if bool(digest_enabled) and not g.telegram_chat_id:
+            raise GroupError("Avval Telegram guruhni tanlang.")
+        g.digest_enabled = bool(digest_enabled)
+        # Yoqilganda oxirgi xatoni tozalaymiz.
+        if g.digest_enabled:
+            g.digest_last_error = None
+
+    if digest_time is not None:
+        if not is_valid_digest_time(digest_time):
+            raise GroupError("Vaqt formati noto'g'ri (HH:MM).")
+        g.digest_time = digest_time
+
+    if digest_show_zero is not None:
+        g.digest_show_zero = bool(digest_show_zero)
+    if digest_mention is not None:
+        g.digest_mention = bool(digest_mention)
+
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise GroupError(f"Saqlashda xato: {e}")
+    await session.refresh(g)
+    return await get_telegram_settings(session, user, group_id)
+
+
+async def unlink_telegram(
+    session: AsyncSession, user: User, group_id: int,
+) -> None:
+    """
+    Telegram chat bog'lanishini uzadi va digestni o'chiradi.
+    """
+    g = await get_group(session, group_id)
+    if g.owner_user_id != user.id:
+        raise GroupForbidden("Faqat guruh egasi bog'lanishni uza oladi.")
+    g.telegram_chat_id = None
+    g.telegram_chat_title = None
+    g.digest_enabled = False
+    g.digest_last_error = None
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise GroupError(f"Saqlashda xato: {e}")

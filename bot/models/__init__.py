@@ -11,6 +11,7 @@ from .referral import Referral
 from .habit import Habit, HabitLog
 from .group import Group, GroupMember, GroupPermission
 from .plan_override import SubscriptionPlanOverride
+from .bot_chat import BotChat
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
@@ -18,4 +19,5 @@ __all__ = [
     "Referral", "Habit", "HabitLog",
     "Group", "GroupMember", "GroupPermission",
     "SubscriptionPlanOverride",
+    "BotChat",
 ]
