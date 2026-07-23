@@ -20,6 +20,7 @@ from datetime import datetime
 
 from aiogram import Router, F
 from aiogram.enums import ChatType
+from aiogram.filters import Command
 from aiogram.types import (
     Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton,
 )
@@ -237,9 +238,11 @@ async def open_premium_flow(
 # ─────────────────────────────────────────────────────────────
 #  KIRISH NUQTALARI
 # ─────────────────────────────────────────────────────────────
-# "💎 Premium" faqat DM chatlarda ishlaydi. Guruhda bu tugma matnini yozgan
-# foydalanuvchiga bot javob bermaydi (guruhda "Umumiy hisobot" va "Bog'lanish"
-# tugmalari alohida ishlaydi).
+# "💎 Premium" reply tugmasi va /premium buyrug'i faqat DM chatlarda ishlaydi.
+# Guruhda bu tugma matni yoki buyruq bo'lsa ham bot javob bermaydi (guruhda
+# faqat "Umumiy hisobot" va "Bog'lanish" tugmalari mavjud).
+# Decorator stacking: bir funksiya ikkala trigger ostida ham ishlaydi.
+@router.message(Command("premium"), F.chat.type == ChatType.PRIVATE)
 @router.message(F.text == "💎 Premium", F.chat.type == ChatType.PRIVATE)
 async def subscription_button(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()

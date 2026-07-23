@@ -9,7 +9,7 @@ from aiogram.types import (
     Message,
     WebAppInfo,
 )
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import Command, CommandStart, CommandObject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.keyboards.main_menu import main_menu_keyboard
@@ -286,6 +286,10 @@ async def ob_commit_handler(callback: CallbackQuery, session: AsyncSession):
     await callback.answer("🚀 Boshlandi!")
 
 
+# "📞 Bog'lanish" — reply tugma matni yoki /contact buyrug'i.
+# Filtrsiz: DM va guruhda ham ishlaydi (guruhda ham foydalanuvchi bo'lganidan
+# aloqa ma'lumotini so'rasa xursand qilamiz).
+@router.message(Command("contact"))
 @router.message(F.text == "📞 Bog'lanish")
 async def contact_admin(message: Message):
     await message.answer(

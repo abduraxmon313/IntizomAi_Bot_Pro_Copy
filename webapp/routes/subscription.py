@@ -42,6 +42,9 @@ class SubscriptionOut(BaseModel):
     plan_title: Optional[str] = None
     free_daily_plan_limit: int
     plans: list[PlanOut]
+    # Bot username — frontend'da "botga o'tkazish" deep-link yasash uchun.
+    # `t.me/<bot_username>?start=premium` ko'rinishida ishlatiladi.
+    bot_username: str
 
 
 def _plans_catalog() -> list[PlanOut]:
@@ -69,6 +72,8 @@ async def get_subscription(
     telegram_id: int = Depends(resolve_telegram_id),
     session: AsyncSession = Depends(get_session),
 ):
+    bot_username = (BOT_USERNAME or "intizomAi_bot").lstrip("@")
+
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         # Foydalanuvchi hali botda /start bosmagan — premium emas
@@ -77,6 +82,7 @@ async def get_subscription(
             days_left=0,
             free_daily_plan_limit=FREE_DAILY_PLAN_LIMIT,
             plans=_plans_catalog(),
+            bot_username=bot_username,
         )
 
     status = await get_status(session, user)
@@ -88,6 +94,7 @@ async def get_subscription(
         plan_title=status.plan_title,
         free_daily_plan_limit=FREE_DAILY_PLAN_LIMIT,
         plans=_plans_catalog(),
+        bot_username=bot_username,
     )
 
 

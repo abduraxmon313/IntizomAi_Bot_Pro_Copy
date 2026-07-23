@@ -3,7 +3,12 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand
+from aiogram.types import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllPrivateChats,
+    BotCommandScopeDefault,
+)
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, plan, callback, report, admin, status, subscribe, chat_events
@@ -18,11 +23,64 @@ logger = logging.getLogger(__name__)
 
 
 async def set_commands(bot: Bot):
-    commands = [
+    """
+    Telegram "menu" tugmasi buyruqlarini ro'yxatga oladi.
+
+    Alohida SCOPE'lar:
+      • PRIVATE chats — shaxsiy ishlash tugmalari (obuna, hisobot, bog'lanish).
+        Foydalanuvchi bot bilan shaxsiy chatda menu tugmasini bosganda shu
+        buyruqlar chiqadi.
+      • GROUP/SUPERGROUP chats — FAQAT 2 ta amal (Umumiy hisobot, Bog'lanish).
+        Guruh a'zolari menu tugmasini bosganda "mening statusim/rejalarim/reja
+        qo'shish/premium" kabi shaxsiy tugmalarni KO'RMAYDI. Bu Telegram
+        darajasidagi cheklov — reply keyboard va shaxsiy handlerlar allaqachon
+        ChatType.PRIVATE bilan filtrlangan.
+      • DEFAULT scope — minimal fallback (asosan hech qachon ishlatilmaydi,
+        chunki har ikki asosiy scope aniq ko'rsatilgan).
+    """
+    # Har safar set qilishdan oldin BARCHA scope'lardan eski buyruqlarni
+    # tozalaymiz — aks holda avvalgi deploy'larda ro'yxatga olingan (masalan
+    # /admin) buyruqlar qolib ketishi mumkin.
+    for scope in (
+        BotCommandScopeDefault(),
+        BotCommandScopeAllPrivateChats(),
+        BotCommandScopeAllGroupChats(),
+    ):
+        try:
+            await bot.delete_my_commands(scope=scope)
+        except Exception:
+            # Delete ba'zan ishlamasa ham set_my_commands almashtiradi — jim o'tamiz.
+            pass
+
+    # ── Shaxsiy chat (DM) uchun buyruqlar ──────────────────────
+    # `/admin` ATAYIN kiritilmagan — admin panelga oddiy foydalanuvchilar duch
+    # kelmasin. Adminlar buyruqni qo'lda yozib chaqira oladi (handler mavjud).
+    private_commands = [
         BotCommand(command="start", description="Botni boshlash"),
-        BotCommand(command="admin", description="Admin panel"),
+        BotCommand(command="premium", description="💎 Premium olish"),
+        BotCommand(command="hisobot", description="📈 Bugungi hisobot"),
+        BotCommand(command="contact", description="📞 Bog'lanish"),
     ]
-    await bot.set_my_commands(commands)
+    await bot.set_my_commands(
+        private_commands, scope=BotCommandScopeAllPrivateChats(),
+    )
+
+    # ── Guruh chatlari uchun buyruqlar (faqat 2 ta) ────────────
+    group_commands = [
+        BotCommand(command="hisobot", description="📊 Umumiy hisobot"),
+        BotCommand(command="contact", description="📞 Bog'lanish"),
+    ]
+    await bot.set_my_commands(
+        group_commands, scope=BotCommandScopeAllGroupChats(),
+    )
+
+    # ── Default scope — minimal (fallback) ─────────────────────
+    default_commands = [
+        BotCommand(command="start", description="Botni boshlash"),
+    ]
+    await bot.set_my_commands(
+        default_commands, scope=BotCommandScopeDefault(),
+    )
 
 
 async def main():

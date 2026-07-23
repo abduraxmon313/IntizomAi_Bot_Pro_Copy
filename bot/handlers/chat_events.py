@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from aiogram import F, Router
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     CallbackQuery, ChatMemberUpdated, InlineKeyboardButton,
     InlineKeyboardMarkup, Message,
@@ -301,13 +301,19 @@ async def group_start(message: Message):
         logger.info(f"group /start reply skip chat_id={message.chat.id}: {e}")
 
 
+# Guruhda "📊 Umumiy hisobot" matn tugmasi VA /hisobot buyrug'i.
+# Ikkalasi ham bir xil funksiyaga yo'l ochadi (decorator stacking).
+@router.message(
+    Command("hisobot"),
+    F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
+)
 @router.message(
     F.text == "📊 Umumiy hisobot",
     F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}),
 )
 async def group_report_message(message: Message, session: AsyncSession):
     """
-    Guruh a'zosi tugma matnini yozsa (yoki reply keyboarddan bosilsa) — digest'ni
+    Guruh a'zosi tugma matnini yozsa yoki /hisobot buyrug'ini bosgach — digest'ni
     yuboramiz. Callback varianti bilan mantiq aynan bir xil.
     """
     await _run_group_report(
