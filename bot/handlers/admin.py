@@ -20,6 +20,7 @@ from bot.keyboards.admin_keys import (
     admin_promo_list_keyboard,
     admin_plans_prices_keyboard, admin_plan_edit_keyboard,
     admin_keys_keyboard, admin_keys_confirm_keyboard,
+    admin_webapp_keyboard,
 )
 
 router = Router()
@@ -93,6 +94,87 @@ async def admin_panel_callback(callback: CallbackQuery, state: FSMContext, sessi
         reply_markup=admin_main_keyboard()
     )
     await callback.answer()
+
+
+# ===================== 🌐 WEBAPP IMKONIYATLARI =====================
+# Admin panelidagi "🌐 WebApp imkoniyatlari" bo'limi — WebApp'ning global
+# xatti-harakatiga ta'sir qiluvchi bayroqlar (bo'lim admin yoqadi/o'chiradi).
+#
+# Hozircha bitta boshqaruv bor: "Guruh ruxsatlar menyusi". Yoqilgan (default) —
+# foydalanuvchilar Do'stlar sahifasida "🛡 Ruxsatlar" tugmasini ko'radi va o'z
+# ma'lumotlarini kim ko'rishini boshqaradi. O'chirilgan — tugma yashiriladi va
+# guruh a'zolari bir-birining reja/odatlarini avtomatik ko'radi (default hamma
+# ochiq). Bu bayroq DB'da (`app_settings.group_perms_menu_enabled`) saqlanadi
+# va `bot.services.group_service._effective_visible` orqali qo'llaniladi.
+
+def _webapp_menu_text(perms_menu_enabled: bool) -> str:
+    if perms_menu_enabled:
+        status_line = "✅ <b>Ruxsatlar menyusi:</b> yoqilgan"
+        semantics = (
+            "Foydalanuvchilar Do'stlar sahifasida <b>🛡 Ruxsatlar</b> tugmasini "
+            "ko'radi va o'zining reja/odatini kim ko'rishini o'zi tanlaydi "
+            "(default yashirin)."
+        )
+    else:
+        status_line = "⛔️ <b>Ruxsatlar menyusi:</b> o'chirilgan"
+        semantics = (
+            "Foydalanuvchilar Do'stlar sahifasida <b>🛡 Ruxsatlar</b> tugmasini "
+            "ko'rmaydi. Guruhning barcha a'zolari bir-birining reja va "
+            "odatlarini avtomatik ko'radi."
+        )
+    return (
+        "🌐 <b>WebApp imkoniyatlari</b>\n\n"
+        f"{status_line}\n"
+        f"{semantics}\n\n"
+        "<i>Tugmani bosib holatni o'zgartiring.</i>"
+    )
+
+
+@router.callback_query(F.data == "admin_webapp")
+async def admin_webapp_menu(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    await state.clear()
+
+    from bot.services.app_settings import is_group_perms_menu_enabled
+    enabled = await is_group_perms_menu_enabled(session)
+
+    await callback.message.edit_text(
+        _webapp_menu_text(enabled),
+        parse_mode="HTML",
+        reply_markup=admin_webapp_keyboard(perms_menu_enabled=enabled),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_toggle_group_perms")
+async def admin_toggle_group_perms(callback: CallbackQuery, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    from bot.services.app_settings import (
+        is_group_perms_menu_enabled,
+        set_group_perms_menu_enabled,
+    )
+    current = await is_group_perms_menu_enabled(session)
+    new_state = not current
+    await set_group_perms_menu_enabled(session, new_state)
+
+    try:
+        await callback.message.edit_text(
+            _webapp_menu_text(new_state),
+            parse_mode="HTML",
+            reply_markup=admin_webapp_keyboard(perms_menu_enabled=new_state),
+        )
+    except Exception:
+        # Xabar matni bir xil bo'lsa Telegram xato qaytarishi mumkin — jim o'tamiz.
+        pass
+    await callback.answer(
+        "✅ Ruxsatlar menyusi yoqildi" if new_state else "⛔️ Ruxsatlar menyusi o'chirildi",
+        show_alert=False,
+    )
 
 
 # ===================== TO'LOVNI QO'LDA FAOLLASHTIRISH =====================

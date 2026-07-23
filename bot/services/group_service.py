@@ -29,6 +29,7 @@ from bot.models.group import Group, GroupMember, GroupPermission
 from bot.models.habit import Habit, HabitLog
 from bot.models.plan import Plan, PlanStatus
 from bot.models.user import User
+from bot.services.app_settings import is_group_perms_menu_enabled
 from bot.services.habit_service import is_due_on as _habit_is_due_on, is_finished as _habit_is_finished
 # Eslatma: Do'stlar guruhida MAQSAD (goal) bo'limi olib tashlandi.
 # A'zolar bir-birining maqsadini ko'rmaydi va bir-biriga maqsad qo'sha olmaydi
@@ -332,10 +333,17 @@ async def _effective_visible(
     """
     Viewer, guruhda owner'ning ma'lumotlarini ko'ra oladimi?
       • O'ziga har doim ko'rinadi.
-      • Owner viewer'ga `can_view` yoki `can_manage` bergan bo'lsa → True.
-      • Aks holda → False (default yashirin).
+      • Global "guruh ruxsatlar menyusi" o'chirilgan bo'lsa → hamma birdek
+        ko'radi (admin foydalanuvchilarga ruxsatlar tanlash imkonini o'chirib
+        qo'ygan, natijada default hamma ochiq).
+      • Aks holda owner viewer'ga `can_view` yoki `can_manage` bergan bo'lsa → True.
+      • Bo'lmasa → False (default yashirin).
     """
     if owner_id == viewer_id:
+        return True
+    # Admin panelidan ruxsatlar menyusi o'chirilgan bo'lsa qulflarni chetlab
+    # o'tamiz — bu holatda hamma bir-birini avtomatik ko'radi.
+    if not await is_group_perms_menu_enabled(session):
         return True
     row = await session.scalar(
         select(GroupPermission).where(and_(
@@ -410,10 +418,15 @@ async def get_group_detail(
     rows = members_res.all()
     member_ids = [u.id for _gm, u in rows]
 
+    # Admin panelidan "Guruh ruxsatlar menyusi" o'chirilgan bo'lsa — barcha
+    # a'zolar bir-birini ko'radi (default hamma ochiq). Bu holatda perms
+    # so'rovi umuman kerak emas.
+    perms_menu_on = await is_group_perms_menu_enabled(session)
+
     # ── N+1 yo'q: barcha ruxsatlar BITTA so'rovda (visible + can_i_manage) ──
     # Bu a'zolar MENGA (grantee=user.id) qanday ruxsat bergan: {grantor_id: (view, manage)}
     perms: dict[int, tuple[bool, bool]] = {}
-    if member_ids:
+    if member_ids and perms_menu_on:
         for gid, cv, cm in (await session.execute(
             select(
                 GroupPermission.grantor_user_id,
@@ -429,6 +442,9 @@ async def get_group_detail(
 
     def _is_visible(uid: int) -> bool:
         if uid == user.id:
+            return True
+        # Ruxsatlar menyusi global o'chirilgan bo'lsa hamma ko'rinadi.
+        if not perms_menu_on:
             return True
         cv, cm = perms.get(uid, (False, False))
         return cv or cm
