@@ -17,6 +17,7 @@ from bot.keyboards.admin_keys import (
     admin_users_list_keyboard, admin_admins_keyboard,
     back_to_admin_keyboard, back_to_users_keyboard,
     admin_premium_keyboard, back_to_premium_keyboard,
+    admin_premium_users_list_keyboard, back_to_premium_users_keyboard,
     admin_promo_list_keyboard,
     admin_plans_prices_keyboard, admin_plan_edit_keyboard,
     admin_keys_keyboard, admin_keys_confirm_keyboard,
@@ -1072,6 +1073,339 @@ async def admin_premium_stats(callback: CallbackQuery, session: AsyncSession):
     await callback.message.edit_text(
         text, parse_mode="HTML", reply_markup=back_to_premium_keyboard()
     )
+    await callback.answer()
+
+
+# ===================== 👥 PREMIUM USERLAR RO'YXATI =====================
+# Admin panel > 💎 Premium > 👥 Premium userlar
+#
+# Hozirda faol premium'ga ega BARCHA foydalanuvchilar (id, ism, tarif, manba,
+# tugash sanasi) ko'rsatiladi. Har bir userni bosib batafsil ko'rish mumkin —
+# o'sha yerda uning butun obuna tarixi (Subscription rows) chiqadi.
+
+# Subscription.source qiymati → (emoji, uzbek yorlig'i). Barcha mumkin bo'lgan
+# qiymatlar: paylov, admin, promocode, promo_free, trial, referral,
+# referral_invitee, gift, card.
+_SOURCE_META: dict[str, tuple[str, str]] = {
+    "paylov":           ("💳", "Sotib olgan (Paylov)"),
+    "admin":            ("🛡", "Admin qo'lda bergan"),
+    "promocode":        ("🎟", "Promokod bilan sotib olgan"),
+    "promo_free":       ("🎁", "Bepul promokod (-)"),
+    "trial":            ("🌱", "3 kunlik sinov (trial)"),
+    "referral":         ("👥", "Do'st taklif qilib yutgan"),
+    "referral_invitee": ("👥", "Taklif qilingan (invitee bonusi)"),
+    "gift":             ("🎁", "Sovg'a (qo'lda)"),
+    "card":             ("💳", "Karta orqali (eski)"),
+}
+
+
+def _source_meta(source: str | None) -> tuple[str, str]:
+    """Manba qiymatidan (emoji, yorliq) qaytaradi. Noma'lum bo'lsa fallback."""
+    if not source:
+        return ("💎", "Noma'lum")
+    return _SOURCE_META.get(source, ("💎", source))
+
+
+def _plan_title_for(plan_key: str | None) -> str:
+    """
+    Plan key'idan foydalanuvchiga tushunarli nom yasaydi.
+      • '1m'/'3m'/'12m' → SUBSCRIPTION_PLANS'dagi title (masalan: '3 oy')
+      • 'trial'/'referral'/'promo_free' → tarif emas, lekin plan ustunida shu
+        saqlanadi — chiroyli yorliqqa aylantiramiz.
+    """
+    if not plan_key:
+        return "—"
+    from bot.config import SUBSCRIPTION_PLANS
+    p = SUBSCRIPTION_PLANS.get(plan_key)
+    if p:
+        return p.get("title", plan_key)
+    friendly = {
+        "trial":            "Sinov (trial)",
+        "referral":         "Referral mukofoti",
+        "referral_invitee": "Referral (invitee)",
+        "promo_free":       "Bepul promokod",
+    }
+    return friendly.get(plan_key, plan_key)
+
+
+async def _fetch_premium_records(session: AsyncSession) -> list[dict]:
+    """
+    Hozirda premium bo'lgan barcha foydalanuvchilarni bir marotaba yuklab,
+    har birining faol Subscription yozuvi bilan birga qaytaradi.
+
+    Qaytadigan har bir yozuv:
+      {
+        "user":         User obj,
+        "sub":          Subscription | None (faol yozuv),
+        "days_left":    int (bugun kiritilib hisoblangan qoldiq kun),
+        "source":       str | None (Subscription.source qiymati),
+        "source_emoji": str,
+        "source_label": str,
+      }
+
+    Tartib: premium_until desc — eng ko'p vaqt qolgan tepada.
+    """
+    from datetime import datetime
+    from sqlalchemy import and_, select
+    from bot.models.subscription import Subscription
+    from bot.models.user import User
+
+    now = datetime.utcnow()
+
+    users_res = await session.execute(
+        select(User)
+        .where(User.premium_until.isnot(None))
+        .where(User.premium_until > now)
+        .order_by(User.premium_until.desc())
+    )
+    users = users_res.scalars().all()
+    if not users:
+        return []
+
+    user_ids = [u.id for u in users]
+    subs_res = await session.execute(
+        select(Subscription).where(
+            and_(
+                Subscription.user_id.in_(user_ids),
+                Subscription.is_active == True,  # noqa: E712
+            )
+        ).order_by(Subscription.expires_at.desc())
+    )
+    active_by_user: dict[int, Subscription] = {}
+    for s in subs_res.scalars().all():
+        # Har bir user'da nazariy jihatdan bittadan faol obuna bo'ladi;
+        # ammo bir vaqt eski migratsiyadan bir nechta qolgan bo'lsa —
+        # eng yangi (expires_at desc) tanlanadi.
+        active_by_user.setdefault(s.user_id, s)
+
+    records: list[dict] = []
+    for u in users:
+        sub = active_by_user.get(u.id)
+        delta = (u.premium_until - now)
+        days_left = max(0, delta.days + (1 if delta.seconds > 0 else 0))
+        source = (sub.source if sub else None)
+        emoji, label = _source_meta(source)
+        records.append({
+            "user": u,
+            "sub": sub,
+            "days_left": days_left,
+            "source": source,
+            "source_emoji": emoji,
+            "source_label": label,
+        })
+    return records
+
+
+def _breakdown_text(records: list[dict]) -> str:
+    """Manba bo'yicha yig'ma xulosa matni (ko'p bo'lganlari tepada)."""
+    counts: dict[str, int] = {}
+    for r in records:
+        key = r["source"] or "unknown"
+        counts[key] = counts.get(key, 0) + 1
+    if not counts:
+        return ""
+    lines = []
+    for key, cnt in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        emoji, label = _source_meta(key if key != "unknown" else None)
+        lines.append(f"{emoji} {label}: <b>{cnt} ta</b>")
+    return "\n".join(lines)
+
+
+def _list_page_text(records: list[dict], page: int, per_page: int = 8) -> str:
+    """Ro'yxat sarlavhasi + sahifa raqami + manba yig'masi."""
+    total = len(records)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(0, min(page, total_pages - 1))
+    breakdown = _breakdown_text(records) if records else ""
+    header = (
+        "👥 <b>Premium userlar</b>\n"
+        f"Jami: <b>{total} ta</b>"
+    )
+    if total > 0:
+        header += f"  ·  Sahifa <b>{page + 1}/{total_pages}</b>"
+    if breakdown:
+        header += f"\n\n📊 <b>Manba bo'yicha:</b>\n{breakdown}"
+    if total == 0:
+        header += "\n\n<i>Hozircha premium'li foydalanuvchi yo'q.</i>"
+    else:
+        header += "\n\n<i>Batafsil ko'rish uchun tugmani bosing 👇</i>"
+    return header
+
+
+@router.callback_query(F.data == "admin_premium_users")
+async def admin_premium_users(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    """👥 Premium userlar — ro'yxatning birinchi sahifasi."""
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    await state.clear()
+
+    records = await _fetch_premium_records(session)
+    text = _list_page_text(records, page=0)
+    try:
+        await callback.message.edit_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=admin_premium_users_list_keyboard(records, page=0),
+        )
+    except Exception:
+        # Xabar matni bir xil bo'lsa Telegram xato beradi — jim o'tamiz.
+        pass
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_premium_users_page_"))
+async def admin_premium_users_page(callback: CallbackQuery, session: AsyncSession):
+    """Paginatsiya — keyingi/oldingi sahifa."""
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    try:
+        page = int(callback.data.rsplit("_", 1)[-1])
+    except ValueError:
+        page = 0
+
+    records = await _fetch_premium_records(session)
+    text = _list_page_text(records, page=page)
+    try:
+        await callback.message.edit_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=admin_premium_users_list_keyboard(records, page=page),
+        )
+    except Exception:
+        pass
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_premium_user_"))
+async def admin_premium_user_detail(callback: CallbackQuery, session: AsyncSession):
+    """
+    Bitta premium user'ning to'liq detali:
+      • Shaxsiy ma'lumot (ism, username, TG ID, ulangan sana)
+      • Joriy Premium (tarif, tugash sanasi, manba, promokod, to'langan summa)
+      • Obuna tarixi (oxirgi 10 ta Subscription yozuvi)
+    """
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+
+    # NOTE: callback data prefiksi `admin_premium_user_` — bu `admin_users_page_`
+    # yoki `admin_user_` prefiklari bilan chalkashmaydi (barchasi noyob).
+    try:
+        user_id = int(callback.data.rsplit("_", 1)[-1])
+    except ValueError:
+        await callback.answer("Xato ID!", show_alert=True)
+        return
+
+    from sqlalchemy import and_, select
+    from bot.models.subscription import Subscription
+    from bot.models.user import User
+
+    user = await session.get(User, user_id)
+    if not user:
+        await callback.answer("User topilmadi!", show_alert=True)
+        return
+
+    from bot.services.premium_service import user_is_premium, days_left, format_price
+
+    # Faol obuna (joriy premium manba'si) — bitta yozuv
+    active_sub_res = await session.execute(
+        select(Subscription).where(
+            and_(
+                Subscription.user_id == user.id,
+                Subscription.is_active == True,  # noqa: E712
+            )
+        ).order_by(Subscription.expires_at.desc())
+    )
+    active_sub = active_sub_res.scalars().first()
+
+    # Butun tarix (eng yangisi tepada)
+    hist_res = await session.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user.id)
+        .order_by(Subscription.started_at.desc())
+        .limit(10)
+    )
+    history = hist_res.scalars().all()
+
+    # ── Shaxsiy blok ─────────────────────────────────────────
+    username_str = f"@{user.username}" if user.username else "—"
+    full_name = (user.display_name or user.full_name or "Noma'lum").strip() or "Noma'lum"
+    reg_date = user.created_at.strftime("%d.%m.%Y") if user.created_at else "—"
+
+    lines: list[str] = [
+        f"👤 <b>{full_name}</b>",
+        "",
+        f"🔗 Username: <b>{username_str}</b>",
+        f"🆔 Telegram ID: <code>{user.telegram_id}</code>",
+        f"📅 Ulangan: <b>{reg_date}</b>",
+        "",
+        "━━━━━━━━━━━━━━━",
+        "💎 <b>Joriy Premium</b>",
+        "",
+    ]
+
+    if not user_is_premium(user):
+        lines.append("<i>Bu foydalanuvchida hozir faol premium yo'q "
+                     "(muddati tugagan bo'lishi mumkin).</i>")
+    else:
+        dl = days_left(user)
+        until = user.premium_until.strftime("%d.%m.%Y") if user.premium_until else "—"
+        lines.append(f"📅 Amal qiladi: <b>{until} gacha</b>")
+        lines.append(f"⏳ Qolgan: <b>{dl} kun</b>")
+
+        if active_sub is not None:
+            emoji, label = _source_meta(active_sub.source)
+            plan_title = _plan_title_for(active_sub.plan)
+            lines.append(f"📦 Tarif: <b>{plan_title}</b>  ·  {active_sub.days} kun")
+            lines.append(f"🎯 Manba: <b>{emoji} {label}</b>")
+            if active_sub.promocode:
+                lines.append(f"🎟 Promokod: <code>{active_sub.promocode}</code>")
+            if active_sub.price and active_sub.price > 0:
+                lines.append(f"💰 To'langan: <b>{format_price(active_sub.price)} so'm</b>")
+            else:
+                lines.append("💰 To'lov: <b>—</b> (bepul manba)")
+            if active_sub.started_at:
+                lines.append(f"🕒 Boshlandi: <b>{active_sub.started_at.strftime('%d.%m.%Y %H:%M')}</b>")
+        else:
+            lines.append("<i>Faol Subscription yozuvi topilmadi (qo'lda ochilgan bo'lishi mumkin).</i>")
+
+    # ── Tarix bloki ──────────────────────────────────────────
+    if history:
+        lines.append("")
+        lines.append("━━━━━━━━━━━━━━━")
+        lines.append(f"📚 <b>Obuna tarixi</b> (oxirgi {len(history)} ta):")
+        lines.append("")
+        for i, s in enumerate(history, 1):
+            emoji, _ = _source_meta(s.source)
+            plan_title = _plan_title_for(s.plan)
+            started = s.started_at.strftime("%d.%m.%Y") if s.started_at else "—"
+            expires = s.expires_at.strftime("%d.%m.%Y") if s.expires_at else "—"
+            active_mark = " ✅" if s.is_active else ""
+            price_str = f" · {format_price(s.price)} so'm" if s.price and s.price > 0 else ""
+            promo_str = f" · 🎟 <code>{s.promocode}</code>" if s.promocode else ""
+            lines.append(
+                f"{i}. {emoji} <b>{plan_title}</b> · {s.days} kun{price_str}\n"
+                f"    {started} → {expires}{active_mark}{promo_str}"
+            )
+
+    text = "\n".join(lines)
+    # Xabar juda uzun bo'lib qolmasligi uchun (Telegram limit ~4096) —
+    # tarix ro'yxati 10 taga cheklangan, mavjud matn baribir sig'adi.
+    try:
+        await callback.message.edit_text(
+            text, parse_mode="HTML",
+            reply_markup=back_to_premium_users_keyboard(),
+            disable_web_page_preview=True,
+        )
+    except Exception:
+        # Fallback — matn juda uzun bo'lsa yoki formatlash xato bersa
+        await callback.message.answer(
+            text, parse_mode="HTML",
+            reply_markup=back_to_premium_users_keyboard(),
+            disable_web_page_preview=True,
+        )
     await callback.answer()
 
 

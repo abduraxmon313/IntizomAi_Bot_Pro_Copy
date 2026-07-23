@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.config import FREE_DAILY_PLAN_LIMIT, PAYLOV_ENABLED
+from bot.config import BOT_USERNAME, FREE_DAILY_PLAN_LIMIT
 from webapp.security import resolve_telegram_id
 from bot.services.premium_service import get_status, format_price, get_plans
 from bot.services.user_service import get_user_by_telegram_id
@@ -97,9 +97,20 @@ class CheckoutIn(BaseModel):
 
 
 class CheckoutOut(BaseModel):
-    checkout_url: str
-    order_id: Optional[str] = None
-    external_id: str
+    # DIQQAT: bu endpoint endi Paylov to'lov URL'ini QAYTARMAYDI.
+    # To'lov jarayoni faqat bot ichida amalga oshiriladi. Bu yerda esa
+    # foydalanuvchini bot ichidagi Premium menyusiga olib boradigan
+    # Telegram deep-link qaytariladi. Frontend uni ochsa — Mini App yopiladi
+    # va bot chati ochilib, tanlangan tarif uchun to'lov usulini tanlash
+    # bosqichi ko'rsatiladi.
+    #
+    # `checkout_url` maydoni backward-compat uchun saqlanadi (eski frontend
+    # ham shuni o'qiydi). Yangi frontend `bot_url` ni ustuvor ishlatishi
+    # mumkin.
+    bot_url: str
+    checkout_url: str  # bot_url ning aliasi (backward-compat)
+    # Redirect turi — frontend `openTelegramLink`ni ishlatishi kerakligini bilishi uchun.
+    redirect: str = "telegram"
 
 
 @router.post("/checkout", response_model=CheckoutOut)
@@ -109,14 +120,19 @@ async def create_checkout(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Tanlangan tarif uchun Paylov checkout yaratadi va to'lov sahifasi URL'ini
-    qaytaradi. To'lov muvaffaqiyatli bo'lsa premium webhook orqali ochiladi.
-    """
-    if not PAYLOV_ENABLED:
-        raise HTTPException(503, "To'lov tizimi hozircha sozlanmagan.")
+    Tanlangan tarif uchun BOT DEEP-LINK ini qaytaradi.
 
-    # Effective plans (admin override + config default) — checkout paytida
-    # o'shanda ko'ringan aynan narx qulflanadi.
+    Eski xatti-harakat (Paylov to'lov URL'ini yaratib qaytarish) OLIB TASHLANDI.
+    To'lov faqat bot ichida amalga oshiriladi — Mini App'dan bu endpoint chaqirilsa,
+    foydalanuvchi bot chatiga o'tkaziladi va u yerda odatiy Premium oqimi
+    (tarif tasdiqlash → to'lov usulini tanlash → Paylov checkout) davom etadi.
+
+    Sabab: Xavfsizlik va yagona to'lov oqimi. To'lov URL'ini Mini App'da yasash
+    va boshqarish murakkab (checkout retry, xato holatlari, hisob-kitob) — bot
+    ichida esa allaqachon to'liq oqim mavjud. Bir joyda ushlab turish debug va
+    audit qilishni osonlashtiradi.
+    """
+    # Effective plans (admin override + config default) — plan mavjudligini tekshirish.
     plan = get_plans().get(body.plan)
     if not plan:
         raise HTTPException(400, "Noma'lum tarif.")
@@ -124,22 +140,16 @@ async def create_checkout(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Avval botda /start bosing.")
-    # Eslatma: premium foydalanuvchi ham obunani UZAYTIRISHi mumkin — yangi
-    # kunlar mavjud tugash sanasi ustiga additiv qo'shiladi
-    # (activate_subscription ichida). Shuning uchun bloklamaymiz.
 
-    from bot.services.payment_service import create_checkout_order
-    from bot.services.paylov import PaylovError
-    try:
-        order, checkout_url = await create_checkout_order(session, user, body.plan)
-    except PaylovError as e:
-        raise HTTPException(502, f"To'lov tizimi xatosi: {e}")
-
-    if not checkout_url:
-        raise HTTPException(502, "Checkout URL olinmadi.")
+    # Deep-link payload: `premium_<plan_key>` — bot /start handleri buni tanib,
+    # foydalanuvchini to'g'ridan-to'g'ri o'sha tarifning to'lov usulini tanlash
+    # oynasiga olib boradi (uzaytirish oqimi).
+    username = (BOT_USERNAME or "intizomAi_bot").lstrip("@")
+    payload = f"premium_{body.plan}"
+    bot_url = f"https://t.me/{username}?start={payload}"
 
     return CheckoutOut(
-        checkout_url=checkout_url,
-        order_id=order.provider_order_id,
-        external_id=order.external_id,
+        bot_url=bot_url,
+        checkout_url=bot_url,  # eski frontend uchun alias
+        redirect="telegram",
     )
