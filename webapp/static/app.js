@@ -487,12 +487,12 @@ function openPaywall(){
   if(isPremium){
     if(h)h.innerHTML='Obunani uzaytirish';
     if(sb)sb.innerHTML='Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo\'shiladi</b> — Premium uzaytiriladi, boshqatdan boshlanmaydi.';
-    if(nt)nt.innerHTML='Tarifni tanlang — to\'lov sahifasi darhol ochiladi.';
+    if(nt)nt.innerHTML='Tarifni tanlang — sizni botga o\'tkazamiz va to\'lovni botda yakunlaysiz.';
     if(cta)cta.textContent='💳 Uzaytirish uchun tarifni tanlang';
   }else{
     if(h)h.innerHTML='Intizom AI <span class="pw-pro">PREMIUM</span>';
     if(sb)sb.innerHTML='Cheksiz reja, maqsad va odat. Cheksiz AI Coach.';
-    if(nt)nt.innerHTML='Tarifni tanlang — to\'lov sahifasi darhol ochiladi. Muvaffaqiyatli to\'lovdan so\'ng Premium avtomatik faollashadi.';
+    if(nt)nt.innerHTML='Tarifni tanlang — sizni botga o\'tkazamiz va to\'lovni botda yakunlaysiz. To\'lovdan so\'ng Premium avtomatik faollashadi.';
     if(cta)cta.textContent='💎 Tarifni tanlang';
   }
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
@@ -536,36 +536,44 @@ function renderPaywallPlans(plans){
   });
 }
 
-// Mini App ichidan direct checkout — foydalanuvchini botga qaytarmaydi.
+// Mini App ichidan tarif tanlansa — foydalanuvchini BOTGA qaytaradi.
+// To'lov jarayoni endi faqat bot ichida amalga oshiriladi (yagona oqim,
+// xavfsizlik va debug qulayligi uchun). Backend `bot_url` (t.me deep-link)
+// qaytaradi va shuni Telegram ichida ochamiz — Mini App yopiladi, bot chati
+// ochilib, tanlangan tarifning to'lov usulini tanlash oynasi ko'rsatiladi.
 async function startCheckout(planKey,btn){
   if(!planKey)return;
   try{tg?.HapticFeedback?.impactOccurred?.('medium');}catch(_){}
   const orig=btn?btn.innerHTML:null;
-  if(btn){btn.disabled=true;btn.classList.add('loading');btn.innerHTML='<span class="pn">⏳ To\'lov sahifasi ochilmoqda…</span>';}
+  if(btn){btn.disabled=true;btn.classList.add('loading');btn.innerHTML='<span class="pn">⏳ Botga o\'tkazilmoqda…</span>';}
   try{
     const res=await api('/api/webapp/checkout',{method:'POST',body:JSON.stringify({plan:planKey})});
-    const url=res&&res.checkout_url;
-    if(!url){throw new Error('Checkout URL olinmadi');}
-    // Telegram Mini App'da tashqi URLni ochish. openLink ustuvor — Telegram
-    // browser'ida ochib, to'lovdan keyin foydalanuvchi bir tap bilan botga
-    // qayta olishi mumkin.
+    // Yangi backend: `bot_url` — Telegram deep-link. Eski nomi `checkout_url`
+    // ham qaytariladi (backward-compat).
+    const url=(res&&(res.bot_url||res.checkout_url))||'';
+    if(!url){throw new Error('Bot havolasi olinmadi');}
+    // t.me deep-link uchun `openTelegramLink` ishlatiladi — bu Mini App'ni
+    // yopib, botga o'tishni RASMIY yo'l. `openLink` esa Telegram browser'ini
+    // ochib, mini appda qoladigan qilib qo'yardi (bu esa toʻgʻri kelmaydi).
+    const isTme=/^https?:\/\/t\.me\//i.test(url);
     try{
-      if(tg&&tg.openLink){tg.openLink(url,{try_instant_view:false});}
+      if(isTme&&tg&&typeof tg.openTelegramLink==='function'){tg.openTelegramLink(url);}
+      else if(tg&&tg.openLink){tg.openLink(url,{try_instant_view:false});}
       else{window.open(url,'_blank');}
     }catch(_){
       try{window.open(url,'_blank');}catch(__){}
     }
-    // Foydalanuvchi to'lovni to'lagach webhook keladi. Bu yerda foydalanuvchiga
-    // yumshoq eslatma qoldiramiz — u qaytganda subscription yangilanadi.
-    toast('To\'lovdan so\'ng Premium avtomatik faollashadi 🔔');
+    toast('Botga o\'tkazildik. To\'lovni bot ichida yakunlang 💳',false);
+    // Mini App'ni yopamiz — foydalanuvchi endi bot chatida.
+    try{setTimeout(()=>{try{tg?.close?.();}catch(_){}},400);}catch(_){}
   }catch(e){
     const m=String(e&&e.message||e);
-    if(m.includes('503')){
-      toast('To\'lov tizimi hozircha sozlanmagan. Adminga murojaat qiling.',true);
-    }else if(m.includes('404')){
+    if(m.includes('404')){
       toast('Avval botda /start bosing.',true);
+    }else if(m.includes('400')){
+      toast('Noma\'lum tarif.',true);
     }else{
-      toast('To\'lov sahifasini ochib bo\'lmadi. Birozdan so\'ng urinib ko\'ring.',true);
+      toast('Botga o\'tishda muammo bo\'ldi. Botni qo\'lda oching va «💎 Premium» tugmasini bosing.',true);
     }
   }finally{
     if(btn){btn.disabled=false;btn.classList.remove('loading');if(orig)btn.innerHTML=orig;}

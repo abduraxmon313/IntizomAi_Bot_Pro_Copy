@@ -157,6 +157,82 @@ async def _state_promo(state: FSMContext) -> tuple[int, str | None]:
     return int(data.get("promo_bonus_days") or 0), data.get("promo_code")
 
 
+async def open_premium_flow(
+    message: Message,
+    session: AsyncSession,
+    telegram_id: int,
+    plan_key: str | None = None,
+) -> None:
+    """
+    Deep-link (`/start premium` yoki `/start premium_<plan>`) orqali chaqiriladi.
+
+    Mini App'da tarif tanlagan foydalanuvchi shu funksiya orqali bot ichida
+    to'g'ridan-to'g'ri kerakli bosqichga tushadi:
+
+      • plan_key BERILGAN va yaroqli → to'lov usulini tanlash oynasi (payment
+        method chooser). Foydalanuvchi bir bosishda to'lov provayderini tanlab,
+        Paylov checkoutga o'tadi.
+
+      • plan_key YO'Q yoki yaroqsiz → oddiy Premium menyusi:
+          - obunali user → uzaytirish uchun tariflar ro'yxati
+          - obunasi yo'q user → sotib olish uchun tariflar ro'yxati
+
+    Bu funksiya `Message` orqali javob yuboradi (edit_text emas) — chunki u
+    `/start` xabaridan chaqiriladi va xabar YANGI bo'ladi.
+    """
+    user = await get_user_by_telegram_id(session, telegram_id)
+    if not user:
+        # /start ichida user allaqachon yaratilgan bo'lishi kerak; ehtiyot uchun.
+        user = await get_or_create_user(
+            session, telegram_id,
+            message.from_user.full_name if message.from_user else "",
+            (message.from_user.username or "") if message.from_user else "",
+        )
+
+    is_premium = user_is_premium(user)
+    plan = get_plan(plan_key) if plan_key else None
+
+    # Plan yo'q yoki yaroqsiz — tariflar ro'yxatini ochamiz.
+    if not plan:
+        # Premium bo'lsa force_plans=True bilan uzaytirish ro'yxati chiqadi.
+        await render_subscription(
+            message, session, telegram_id,
+            force_plans=is_premium,
+        )
+        return
+
+    # Aniq plan berilgan — to'lov usulini tanlash oynasini ko'rsatamiz.
+    total_days = plan["days"]
+    if PAYLOV_ENABLED:
+        note_new = (
+            "💳 <b>To'lov usulini tanlang</b> 👇\n"
+            "To'lov muvaffaqiyatli bo'lgach, premium <b>avtomatik</b> ochiladi 🔔"
+        )
+        note_extend = (
+            "💳 <b>To'lov usulini tanlang</b> 👇\n"
+            "To'lov muvaffaqiyatli bo'lgach, ushbu kunlar <b>joriy obuna tugash "
+            "sanasi ustiga qo'shiladi</b> 🔁"
+        )
+        note = note_extend if is_premium else note_new
+    else:
+        note = (
+            "<i>💳 To'lov tizimi tez orada ulanadi. Hozircha obunani admin yoki "
+            "promokod orqali ochishingiz mumkin.</i>"
+        )
+    title_line = "💳 <b>Obunani uzaytirish</b>" if is_premium else "💳 <b>To'lov</b>"
+    text = (
+        f"{title_line}\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"📦 Tarif: <b>{plan['title']}</b>\n"
+        f"📅 Qo'shiladigan kun: <b>{total_days} kun</b>\n"
+        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
+        f"{note}"
+    )
+    await message.answer(
+        text, parse_mode="HTML", reply_markup=payment_keyboard(plan_key),
+    )
+
+
 # ─────────────────────────────────────────────────────────────
 #  KIRISH NUQTALARI
 # ─────────────────────────────────────────────────────────────

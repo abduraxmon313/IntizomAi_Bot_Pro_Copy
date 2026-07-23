@@ -94,6 +94,9 @@ def admin_premium_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="➖ Premium olib tashlash", callback_data="admin_premium_revoke"),
         ],
         [
+            InlineKeyboardButton(text="👥 Premium userlar", callback_data="admin_premium_users"),
+        ],
+        [
             InlineKeyboardButton(text="📊 Obuna statistikasi", callback_data="admin_premium_stats"),
         ],
         [
@@ -106,6 +109,61 @@ def admin_premium_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_panel"),
         ]
+    ])
+
+
+def admin_premium_users_list_keyboard(
+    records: list, page: int = 0, per_page: int = 8
+) -> InlineKeyboardMarkup:
+    """
+    Premium userlar ro'yxati uchun paginatsiyalangan klaviatura.
+
+    `records` — [(User, Subscription|None, days_left:int, source_emoji:str), ...]
+    dan iborat ro'yxat. Har bir tugmada foydalanuvchi ismi, qolgan kun va manba
+    emojisi ko'rsatiladi. Bosilganda user.id bilan detail sahifa ochiladi.
+    """
+    buttons = []
+    start = page * per_page
+    end = start + per_page
+    page_records = records[start:end]
+
+    for rec in page_records:
+        user = rec["user"]
+        days_left = rec["days_left"]
+        emoji = rec["source_emoji"]
+        name = (user.display_name or user.full_name or "Noma'lum").strip()
+        # ~28 ta belgi Telegram tugmasida yaxshi ko'rinadi
+        label = f"{emoji} {name[:22]} · {days_left}k"
+        buttons.append([
+            InlineKeyboardButton(
+                text=label,
+                callback_data=f"admin_premium_user_{user.id}",
+            )
+        ])
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(
+            text="⬅️", callback_data=f"admin_premium_users_page_{page - 1}",
+        ))
+    if end < len(records):
+        nav.append(InlineKeyboardButton(
+            text="➡️", callback_data=f"admin_premium_users_page_{page + 1}",
+        ))
+    if nav:
+        buttons.append(nav)
+
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_premium"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def back_to_premium_users_keyboard() -> InlineKeyboardMarkup:
+    """Bitta user detali'dan ro'yxatga qaytish."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Ro'yxatga", callback_data="admin_premium_users")],
+        [InlineKeyboardButton(text="🏠 Premium menyu", callback_data="admin_premium")],
     ])
 
 

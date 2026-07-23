@@ -25,6 +25,31 @@ from bot.services.group_service import (
 router = Router()
 
 
+def parse_premium_payload(args: str | None) -> tuple[bool, str | None]:
+    """
+    `/start` payload'ini tekshiradi (Mini App tariflar tugmasidan kelgan
+    deep-link uchun).
+
+    Qabul qilinadigan formatlar:
+      • `premium`        → oddiy Premium menyusi (tariflar ro'yxati)
+      • `premium_<plan>` → to'g'ridan-to'g'ri o'sha tarifning to'lov usulini
+                           tanlash oynasi (masalan: `premium_1m`, `premium_3m`, `premium_12m`)
+
+    Qaytaradi: (is_premium_start, plan_key or None).
+    Boshqa payload'lar (ref_..., grp_...) uchun (False, None) qaytadi — bu
+    parser ular bilan ziddiyatsiz.
+    """
+    if not args:
+        return False, None
+    s = args.strip().lower()
+    if s == "premium":
+        return True, None
+    if s.startswith("premium_"):
+        plan = s.split("_", 1)[1].strip()
+        return True, (plan or None)
+    return False, None
+
+
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 
@@ -106,6 +131,46 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             joined_group_name = None
         except Exception:
             joined_group_name = None
+
+    # ── Mini App'dan kelgan Premium tugmasi (deep-link `premium` / `premium_<plan>`) ──
+    # Foydalanuvchi Mini App Settings > Obunani uzaytirish'da tarifni bosdi va
+    # bot chatiga o'tkazildi. Oddiy /start salomlashuvini o'tkazib yuborib,
+    # to'g'ridan-to'g'ri Premium/to'lov oqimini ochamiz.
+    is_premium_start, premium_plan_key = parse_premium_payload(command.args)
+    if is_premium_start:
+        # `name` bu blok ichida kerak (pastdagi standart oqimda aniqlanadi,
+        # lekin biz erta `return` qilamiz — shu sabab bu yerda o'zimiz olamiz).
+        premium_name = (user.display_name or user.full_name or "do'st")
+        # main reply keyboard'ni faqat yangi user uchun ko'rsatamiz (u hali
+        # klaviaturani ko'rmagan bo'lishi mumkin). Keyin darhol Premium oynasi.
+        if is_new or not user.onboarded:
+            try:
+                await message.answer(
+                    f"👋 <b>Salom, {premium_name}!</b>\n\n"
+                    "Mini App'dan Premium tanlashingizni ko'rdim. To'lovni shu yerda yakunlaymiz 👇",
+                    parse_mode="HTML",
+                    reply_markup=main_reply_keyboard(),
+                )
+            except Exception:
+                pass
+        from bot.handlers.subscribe import open_premium_flow
+        try:
+            await open_premium_flow(
+                message, session, message.from_user.id, premium_plan_key,
+            )
+        except Exception:
+            # Xato bo'lsa oqimni tush davom ettirmaymiz — foydalanuvchini
+            # oddiy welcome bilan chalkashtirmaymiz. Xato loglanadi.
+            import logging
+            logging.getLogger(__name__).exception(
+                "premium deep-link ochishda xato (user=%s, plan=%s)",
+                message.from_user.id, premium_plan_key,
+            )
+            await message.answer(
+                "⚠️ Premium oynasini ochib bo'lmadi. Iltimos, «💎 Premium» "
+                "tugmasini bosib qayta urinib ko'ring.",
+            )
+        return
 
     # Eslatma: trial `/start`da avtomatik BERILMAYDI. Foydalanuvchi birinchi
     # reja/odat bajarganda `bot/services/activation.py` ichida beriladi — shunda
