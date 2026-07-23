@@ -547,51 +547,48 @@ function maybePeakUpsell(snap){
     setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
   }catch(_){}
 }
-// Narxni "39 900" ko'rinishida formatlash (mingga bo'lish uchun bo'sh joy).
-function _fmtSum(n){try{return String(Math.round(n||0)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');}catch(_){return String(n||0);}}
-
+// Paywall'dagi tarif kartochkalari — sodda vertikal layout.
+//
+// Foydalanuvchi so'ragan aynan format:
+//   ✅ 1 oy
+//   39 900 so'm
+//
+//   ⭐ 3 oy
+//   79 900 so'm (33% tejaysiz)
+//
+//   💎 12 oy
+//   179 900 so'm (≈ 14 990 so'm/oy)
+//
+// Har bir karta 2 qatordan iborat:
+//   1) [emoji] [title]              — ikon + nom
+//   2) [price] so'm [(tag)]         — narx, agar tag mavjud bo'lsa qavs ichida
+//
+// `tag` qiymatlari SUBSCRIPTION_PLANS (bot/config.py) dan keladi va allaqachon
+// ma'noli matn saqlaydi ("33% tejaysiz", "≈ 14 990 so'm/oy"). Frontend hech
+// qanday qo'shimcha hisob-kitob yoki savings badge chizmayapti — admin
+// panelidan tarif tagi o'zgartirilsa, foydalanuvchiga darhol ko'rinadi.
+// Bu yondashuv oldingi "auto-calculate savings + per-month" murakkabligini
+// yo'q qildi (foydalanuvchi feedback: "juda oddiy, ayniqsa narxlar haqida
+// malumot berish" — endi format aniq va bosqichma-bosqich o'qib bo'ladi).
 function renderPaywallPlans(plans){
-  const el=document.getElementById('pwPlans');if(!el)return;
+  const el=document.getElementById('pwPlans');
+  if(!el)return;
   if(!plans||!plans.length){el.innerHTML='';return;}
-  // Baseline (oyiga narx) — bir oylik tarifni topamiz. Aks holda birinchisini
-  // baseline sifatida ishlatamiz (savings hisoblash uchun).
-  const oneMonth = plans.find(p=>p.days>=28 && p.days<=32) || plans.find(p=>String(p.key).toLowerCase()==='1m');
-  const baseMonthly = oneMonth ? (oneMonth.price / (oneMonth.days/30)) : null;
 
-  // Har bir tarif — bosiladigan katta karta.
-  // Ko'rsatamiz: emoji + nom, badge (tag), katta narx, oyiga taxminiy narx,
-  // agar 1 oyga nisbatan arzon bo'lsa "-% tejash" savings badge'i.
   el.innerHTML=plans.map(p=>{
     const tag=(p.tag||'').trim();
     const emoji=(p.emoji||'💎');
-    const months = Math.max(1, Math.round((p.days||30)/30));
-    const perMonth = (p.price||0) / months;
-    // "≈ 26 633 so'm/oy" — faqat ko'p oylik tariflarda ma'noli.
-    const perMonthLine = months > 1
-      ? `<span class="pw-plan-permonth">≈ ${_fmtSum(perMonth)} so'm/oy</span>`
-      : `<span class="pw-plan-permonth">oyiga to'lov</span>`;
-    // Tejash badge'i — baseline (1 oylik oyiga narxi) bilan solishtiramiz.
-    let savingsBadge = '';
-    if (baseMonthly && months > 1 && perMonth < baseMonthly) {
-      const pct = Math.round((1 - perMonth/baseMonthly) * 100);
-      if (pct >= 5) {
-        savingsBadge = `<span class="pw-plan-save">−${pct}%</span>`;
-      }
-    }
-    // Featured (best-value) — kartada `.featured` klass; hozircha DB'dagi tag
-    // bor bo'lsa yoki eng katta savings bo'lsa featured sanaladi.
+    // Featured — konfiguratsiyada tag bo'lsa (odatda 3 oy "33% tejaysiz")
+    // gradient chetlik va ustuvor vizual og'irlik oladi.
     const isFeatured = tag !== '';
     return `<button class="pw-plan pw-plan-btn${isFeatured?' featured':''}" data-plan="${esc(p.key)}" type="button" aria-label="${esc(p.title)} tarifi">
-      ${tag?`<span class="pw-plan-tag">${esc(tag)}</span>`:''}
       <span class="pw-plan-title">${emoji} ${esc(p.title)}</span>
-      <span class="pw-plan-price">
-        <span class="pw-plan-amount">${esc(p.price_label)}</span>
-        <span class="pw-plan-curr">so'm</span>
-        ${savingsBadge}
+      <span class="pw-plan-price-line">
+        <span class="pw-plan-amount">${esc(p.price_label)} so'm</span>${tag?` <span class="pw-plan-tag">(${esc(tag)})</span>`:''}
       </span>
-      ${perMonthLine}
     </button>`;
   }).join('');
+
   el.querySelectorAll('.pw-plan-btn').forEach(btn=>{
     btn.onclick=()=>startCheckout(btn.dataset.plan,btn);
   });
@@ -731,6 +728,12 @@ async function loadSubscription(){
     try{localStorage.setItem('iz_premium',s.is_premium?'1':'0');}catch(_){}
     renderPaywallPlans(s.plans);
     applyPremiumUI(s);
+    // Tema tanlash Premium bilan bog'liq (qulf badge/opacity). renderThemes()
+    // DOMContentLoaded'da chaqirilgan bo'lardi (State.sub yo'q edi u paytda),
+    // shuning uchun premium user'lar dastlab qulflangan tema ko'rar edi.
+    // Endi subscription javobi kelgach QAYTA chaqiramiz — qulflar to'g'ri
+    // qo'llanadi (premium user: ochiq, bepul: qulf).
+    try{renderThemes();}catch(_){}
     // Bepul foydalanuvchi ham Mini App'ni to'liq KO'RA oladi (read/limited).
     // Paywall faqat limit oshganda yoki premium funksiya bosilganda ochiladi.
     closePaywall();
@@ -740,6 +743,7 @@ async function loadSubscription(){
     console.warn('subscription',e);
     // Xato bo'lsa ham foydalanuvchini bloklamaymiz — bepul ko'rishda davom etadi.
     State.sub={is_premium:false};
+    try{renderThemes();}catch(_){}
     closePaywall();
     return false;
   }

@@ -45,19 +45,21 @@ async def get_stats(
     telegram_id: int = Depends(resolve_telegram_id),
     session: AsyncSession = Depends(get_session),
 ):
+    """
+    Foydalanuvchining shaxsiy statistika snapshot'i (streak, XP, ball, yutuqlar).
+
+    PREMIUM GATE OLIB TASHLANDI: bu endpoint HAR BIR foydalanuvchining o'z
+    shaxsiy ma'lumotini qaytaradi (Premium'ga xos maxsus tahlil emas).
+    Home sahifasi startup'da avtomatik chaqiradi va bepul user'larga ham
+    o'z streak/XP raqamlari ko'rinishi kerak.
+
+    Dedicated "Statistika" (charts + tarix) sahifasi frontend'da gated —
+    Statistika tugmasini bosgan bepul user inline dialog ko'radi
+    (webapp/static/app.js ichida premiumGate).
+    """
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
-    # PREMIUM GATE: Statistika faqat Premium foydalanuvchilar uchun
-    from bot.services.premium_service import user_is_premium
-    if not user_is_premium(user):
-        raise HTTPException(
-            status_code=402,
-            detail=(
-                "📊 Statistika bo'limi faqat Premium foydalanuvchilar uchun. "
-                "💎 Premium oling va o'sishingizni kuzating!"
-            ),
-        )
     return await build_user_snapshot(session, user)
 
 
@@ -84,16 +86,17 @@ async def get_quest(
     telegram_id: int = Depends(resolve_telegram_id),
     session: AsyncSession = Depends(get_session),
 ):
+    """
+    Bugungi kunlik topshiriq (kartaga tayyor kunlik motivatsion cel).
+
+    PREMIUM GATE OLIB TASHLANDI: kunlik topshiriq home sahifasidagi motivatsion
+    element bo'lib, bepul user'larga ham foydali. Startup'da avtomatik yuklanadi
+    va agar bu 402 qaytarsa foydalanuvchi Mini App'ni ochishi bilan darhol
+    dialog ochilar edi (foydalanuvchi hech nima bosmaganda ham).
+    """
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
-    # PREMIUM GATE: Kunlik topshiriq faqat Premium uchun
-    from bot.services.premium_service import user_is_premium
-    if not user_is_premium(user):
-        raise HTTPException(
-            status_code=402,
-            detail="🎯 Kunlik topshiriq faqat Premium foydalanuvchilar uchun.",
-        )
     return await daily_quest(session, user)
 
 
