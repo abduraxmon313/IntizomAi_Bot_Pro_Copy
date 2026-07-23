@@ -36,7 +36,8 @@ async def habit_done_handler(callback: CallbackQuery, session: AsyncSession):
     if snap is None:
         await callback.answer("Odat topilmadi!", show_alert=True)
         return
-    # Aktivatsiya: birinchi muvaffaqiyat trial va referral mukofotlarini ochadi.
+    # Aktivatsiya: birinchi muvaffaqiyat referral mukofotlarini ochadi
+    # (trial olib tashlangan — referral yagona bepul Premium yo'li).
     try:
         await on_first_completion(session, user, bot=callback.bot)
     except Exception:
@@ -94,7 +95,8 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
 
     reward = await process_plan_result_full(session, user, plan, is_done=True)
 
-    # Aktivatsiya: birinchi muvaffaqiyat trial va referral mukofotlarini ochadi.
+    # Aktivatsiya: birinchi muvaffaqiyat referral mukofotlarini ochadi
+    # (trial olib tashlangan — referral yagona bepul Premium yo'li).
     try:
         await on_first_completion(session, user, bot=callback.bot)
     except Exception:

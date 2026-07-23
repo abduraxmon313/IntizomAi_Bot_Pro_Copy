@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -69,7 +70,7 @@ def broadcast_confirm_keyboard():
 
 # ===================== KIRISH =====================
 
-@router.message(Command("admin"))
+@router.message(Command("admin"), F.chat.type == ChatType.PRIVATE)
 async def admin_panel(message: Message, session: AsyncSession):
     if not await is_admin(session, message.from_user.id):
         await message.answer("❌ Sizda admin huquqi yo'q.")
@@ -1091,7 +1092,7 @@ _SOURCE_META: dict[str, tuple[str, str]] = {
     "admin":            ("🛡", "Admin qo'lda bergan"),
     "promocode":        ("🎟", "Promokod bilan sotib olgan"),
     "promo_free":       ("🎁", "Bepul promokod (-)"),
-    "trial":            ("🌱", "3 kunlik sinov (trial)"),
+    "trial":            ("🌱", "Sinov (trial) — DEPRECATED"),
     "referral":         ("👥", "Do'st taklif qilib yutgan"),
     "referral_invitee": ("👥", "Taklif qilingan (invitee bonusi)"),
     "gift":             ("🎁", "Sovg'a (qo'lda)"),

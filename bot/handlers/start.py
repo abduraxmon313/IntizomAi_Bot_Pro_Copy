@@ -1,6 +1,7 @@
 import os
 
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -93,7 +94,9 @@ def _webapp_kb(is_premium: bool) -> InlineKeyboardMarkup | None:
     return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
 
-@router.message(CommandStart())
+# /start guruhda alohida ishlaydi (task 10 uchun chat_events.py'da handler bor).
+# Bu esa faqat DM'da normal /start oqimi.
+@router.message(CommandStart(), F.chat.type == ChatType.PRIVATE)
 async def start_handler(message: Message, command: CommandObject, session: AsyncSession):
     # Foydalanuvchi avval mavjudmidi? (referral faqat YANGI userlar uchun)
     existing = await get_user_by_telegram_id(session, message.from_user.id)
@@ -172,9 +175,8 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             )
         return
 
-    # Eslatma: trial `/start`da avtomatik BERILMAYDI. Foydalanuvchi birinchi
-    # reja/odat bajarganda `bot/services/activation.py` ichida beriladi — shunda
-    # 3 kunlik Premium haqiqiy tajriba davriga aylanadi (sovuq /start emas).
+    # Eslatma: 3 kunlik trial funksiyasi butunlay olib tashlangan. Bepul
+    # Premium olishning yagona yo'li — do'st taklif qilish (referral bonusi).
 
     name = (user.display_name or user.full_name or "do'st")
 

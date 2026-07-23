@@ -30,6 +30,22 @@ async def main():
     await create_tables()
     logger.info("✅ Database tayyor")
 
+    # ── ONE-TIME CLEANUP: eski trial obunalarni bekor qilish ────────────
+    # Trial funksiyasi loyihadan olib tashlangan. Bu chaqiruv idempotent —
+    # birinchi startup'da mavjud trial obunalarni bekor qiladi, keyingi
+    # startup'larda topilmaganini ko'rib 0 qaytaradi. (Xuddi shu cleanup
+    # `webapp/app.py` lifespan'ida ham chaqiriladi — bot alohida jarayonda
+    # ishlasa yoki webapp bilan bir jarayonda — barchasida ishlaydi.)
+    try:
+        from bot.services.premium_service import revoke_all_trial_subscriptions
+        revoked = await revoke_all_trial_subscriptions()
+        if revoked > 0:
+            logger.info(
+                f"🧹 Trial cleanup: {revoked} ta eski trial obuna bekor qilindi."
+            )
+    except Exception as e:
+        logger.warning(f"trial cleanup skip: {type(e).__name__}: {e}")
+
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
 

@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -13,7 +14,9 @@ from bot.models.achievement import Achievement
 router = Router()
 
 
-@router.message(F.text == "📊 Mening statusim")
+# Shaxsiy status faqat DM (private chat) — bot guruhda javob bermaydi.
+# Guruhda foydalanuvchi bu tugma matnini yozsa ham handler ishlamaydi.
+@router.message(F.text == "📊 Mening statusim", F.chat.type == ChatType.PRIVATE)
 async def my_status_handler(message: Message, session: AsyncSession):
     user = await get_user_by_telegram_id(session, message.from_user.id)
 

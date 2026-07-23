@@ -130,6 +130,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"plan_pricing preload skip: {type(e).__name__}: {e}")
 
+    # ── ONE-TIME CLEANUP: eski trial obunalarni bekor qilish ────────────
+    # Trial funksiyasi loyihadan olib tashlangan (bot/services/activation.py'da
+    # endi trial berilmaydi). Baza'da hali ham `source="trial"` bilan faol
+    # (is_active=True) obunalar bo'lishi mumkin — ularni bekor qilamiz va
+    # user'lardan Premium'ni olib tashlaymiz. IDEMPOTENT: birinchi run'dan keyin
+    # keyingi startup'larda hech qanday trial qolmagan bo'ladi va 0 qaytariladi.
+    try:
+        from bot.services.premium_service import revoke_all_trial_subscriptions
+        revoked = await revoke_all_trial_subscriptions()
+        if revoked > 0:
+            logger.info(
+                f"🧹 Trial cleanup: {revoked} ta eski trial obuna bekor qilindi "
+                "(trial funksiyasi olib tashlangan)."
+            )
+    except Exception as e:
+        logger.warning(f"trial cleanup skip: {type(e).__name__}: {e}")
+
     logger.info("🌐 FastAPI server tayyor")
     yield
 

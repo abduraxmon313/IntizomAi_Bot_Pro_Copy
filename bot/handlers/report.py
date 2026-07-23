@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
@@ -62,8 +63,9 @@ async def build_report_text(session, user) -> str:
     return text
 
 
-# Reply keyboard tugmasi
-@router.message(F.text == "📈 Hisobot")
+# Reply keyboard tugmasi — faqat DM (guruhda javob bermaydi; guruh uchun
+# alohida "📊 Umumiy hisobot" mavjud, u digest yuboradi).
+@router.message(F.text == "📈 Hisobot", F.chat.type == ChatType.PRIVATE)
 async def report_message(message: Message, session: AsyncSession):
     user = await get_user_by_telegram_id(session, message.from_user.id)
 
