@@ -307,6 +307,10 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .confirm-btn:active{transform:scale(.96)}
 .confirm-btn.cancel{background:var(--surface);color:var(--text);border:1px solid var(--border)}
 .confirm-btn.ok{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 8px 20px rgba(239,68,68,.32)}
+/* okKind='premium' — Premium sotib olish uchun (gradient primary). */
+.confirm-btn.ok.kind-premium{background:var(--grad);box-shadow:0 8px 20px var(--primary-soft)}
+/* okKind='premium' bo'lsa icon ham premium ohangda. */
+.confirm-ic.kind-premium{background:var(--grad-soft);color:var(--primary)}
 .ripple{position:relative;overflow:hidden}
 .ripple-ink{position:absolute;border-radius:50%;background:rgba(255,255,255,.45);transform:scale(0);pointer-events:none;animation:rip .55s ease-out}
 @keyframes rip{to{transform:scale(2.5);opacity:0}}
@@ -538,16 +542,23 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 @keyframes ficPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 /* Paywall tariflar — endi 3 ta bosiladigan tugma sifatida ko'rinadi.
    Har biri direct checkoutga o'tadi (bot orqali emas). */
-.paywall .pw-plans{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;margin:0 auto clamp(10px,1.8vh,14px)}
-.paywall .pw-plan{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:11px 6px;transition:transform .2s,border-color .2s,box-shadow .2s;animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both;cursor:pointer;position:relative;overflow:hidden}
+/* ─── Paywall plan cards (yangilangan, boyroq narx ko'rinishi) ─── */
+.paywall .pw-plans{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;width:100%;margin:0 auto clamp(10px,1.8vh,14px)}
+.paywall .pw-plan{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;background:var(--surface);border:1.5px solid var(--border);border-radius:15px;padding:14px 8px 12px;transition:transform .2s,border-color .2s,box-shadow .2s;animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both;cursor:pointer;position:relative;overflow:hidden;min-height:120px}
 .paywall .pw-plan-btn{font:inherit;color:inherit;text-align:center}
 .paywall .pw-plan:nth-child(1){animation-delay:.06s}.paywall .pw-plan:nth-child(2){animation-delay:.12s}.paywall .pw-plan:nth-child(3){animation-delay:.18s}
-.paywall .pw-plan:hover{border-color:var(--primary);box-shadow:0 6px 18px var(--primary-soft)}
-.paywall .pw-plan:active{transform:scale(.96)}
+.paywall .pw-plan:hover{border-color:var(--primary);box-shadow:0 8px 20px var(--primary-soft);transform:translateY(-1px)}
+.paywall .pw-plan:active{transform:scale(.97)}
 .paywall .pw-plan.loading{opacity:.7;pointer-events:none}
-.paywall .pw-plan .pn{font-size:12px;font-weight:700;color:var(--text);text-align:center;line-height:1.25}
-.paywall .pw-plan .pp{font-size:12px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
-.paywall .pw-plan-tag{display:inline-block;font-size:10px;font-weight:700;color:var(--primary);margin-top:2px;letter-spacing:.2px}
+.paywall .pw-plan.featured{border-color:var(--primary);background:linear-gradient(180deg,var(--primary-soft),var(--surface) 55%);box-shadow:0 6px 18px var(--primary-soft)}
+.paywall .pw-plan.featured::before{content:'';position:absolute;inset:0;border-radius:15px;padding:1.5px;background:var(--grad);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.55}
+.paywall .pw-plan-title{font-size:13px;font-weight:800;color:var(--text);line-height:1.15;letter-spacing:.1px}
+.paywall .pw-plan-price{display:flex;align-items:baseline;gap:2px;flex-wrap:wrap;justify-content:center;line-height:1}
+.paywall .pw-plan-amount{font-size:17px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.3px}
+.paywall .pw-plan-curr{font-size:10.5px;font-weight:700;color:var(--text-2);letter-spacing:.2px}
+.paywall .pw-plan-permonth{font-size:10.5px;font-weight:600;color:var(--text-3);margin-top:1px}
+.paywall .pw-plan-tag{display:inline-block;font-size:9.5px;font-weight:800;color:#fff;background:var(--grad);padding:2.5px 8px;border-radius:99px;letter-spacing:.35px;text-transform:uppercase;box-shadow:0 3px 10px var(--primary-soft);margin-bottom:2px}
+.paywall .pw-plan-save{display:inline-block;font-size:9.5px;font-weight:900;color:#fff;background:linear-gradient(135deg,#22c55e,#16a34a);padding:2px 6.5px;border-radius:8px;margin-left:5px;letter-spacing:.3px;transform:translateY(-2px)}
 
 /* ── Guruh sozlamalari: Telegram digest bo'limi ─────────────────────────
    Har qator: chap tarafda yorliq, o'ng tarafda qiymat/tugma. Kichik ekran

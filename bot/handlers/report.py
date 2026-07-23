@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.enums import ChatType
+from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
@@ -63,8 +64,10 @@ async def build_report_text(session, user) -> str:
     return text
 
 
-# Reply keyboard tugmasi — faqat DM (guruhda javob bermaydi; guruh uchun
-# alohida "📊 Umumiy hisobot" mavjud, u digest yuboradi).
+# Reply keyboard tugmasi va /hisobot buyrug'i — faqat DM'da (guruh uchun
+# alohida `📊 Umumiy hisobot` handleri chat_events.py'da, u digest yuboradi).
+# Decorator stacking: bir funksiya ikkala trigger ostida ham ishlaydi.
+@router.message(Command("hisobot"), F.chat.type == ChatType.PRIVATE)
 @router.message(F.text == "📈 Hisobot", F.chat.type == ChatType.PRIVATE)
 async def report_message(message: Message, session: AsyncSession):
     user = await get_user_by_telegram_id(session, message.from_user.id)

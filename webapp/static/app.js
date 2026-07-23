@@ -50,7 +50,35 @@ const nm=State.user.first_name||'Foydalanuvchi';
 applyUserName(nm);
 document.getElementById('profUn').textContent=State.user.username?'@'+State.user.username:'';document.getElementById('todayDate').textContent=formatDateLong(new Date());}
 
-async function api(path,opts={}){const url=API+path+(path.includes('?')?'&':'?')+'telegram_id='+State.telegramId;const headers={'Content-Type':'application/json',...(opts.headers||{})};try{if(tg&&tg.initData)headers['X-Telegram-Init-Data']=tg.initData;}catch(_){}const res=await fetch(url,{headers,...opts});if(!res.ok)throw new Error('API '+res.status);return res.json();}
+// Global API wrapper.
+// 402 (Payment Required) — Backend endi barcha "Premium kerak" holatlarda
+// 402 qaytaradi. Bu yerda global tanib olamiz va foydalanuvchiga inline
+// Premium dialog'ni ochamiz — chaqiruvchi kod alohida 402 tekshiruvi
+// yozmasa ham UI xatti-harakati bir xil bo'ladi. `opts.skipPremiumDialog`
+// (true) berilgan bo'lsa chaqiruvchi o'zi tanish qiladi.
+async function api(path,opts={}){
+  const url=API+path+(path.includes('?')?'&':'?')+'telegram_id='+State.telegramId;
+  const headers={'Content-Type':'application/json',...(opts.headers||{})};
+  try{if(tg&&tg.initData)headers['X-Telegram-Init-Data']=tg.initData;}catch(_){}
+  const res=await fetch(url,{headers,...opts});
+  if(!res.ok){
+    if(res.status===402 && !opts.skipPremiumDialog){
+      // Server javobidan xato matnini olishga urinamiz — dialog message uchun.
+      let detail='';
+      try{const j=await res.clone().json();detail=(j&&j.detail)?String(j.detail):'';}catch(_){}
+      // Standart Premium dialog. Chaqiruvchi kod baribir throw ushlaydi.
+      try{
+        premiumRequiredDialog({
+          icon:'💎',
+          title:'Faqat Premium foydalanuvchilar uchun',
+          message:detail||'Bu amal Premium foydalanuvchilar uchun.',
+        });
+      }catch(_){}
+    }
+    throw new Error('API '+res.status);
+  }
+  return res.json();
+}
 
 async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();loadHomeHabits();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
@@ -175,7 +203,7 @@ function _applyAppConfig(){
   }
 }
 
-async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
+async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
 
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
 // Bot va Mini App bir xil xabarni ulashadi (foydalanuvchi bir xil natija ko'radi):
@@ -376,7 +404,7 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
     try{await openMember(ctx.userId);}catch(_){}
     return;
   }
-  try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();openPaywall();return;}toast('Xato: '+m,true);}}
+  try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();return;/* Premium dialog global api() da avtomatik ochiladi */}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
@@ -458,8 +486,9 @@ async function chatSend(text){
     chatTyping(false);
     const msg=String(e&&e.message||'');
     if(msg.includes('402')){
-      chatAppend('err','💎 Bugungi bepul AI suhbat limiti tugadi. Cheksiz AI Coach uchun Premium oling.');
-      setTimeout(()=>openPaywall(),700);
+      // Premium dialog global api() da avtomatik ochilgan — bu yerda faqat
+      // chat log'ga qisqa xabar qoldiramiz.
+      chatAppend('err','💎 AI Coach faqatgina Premium foydalanuvchilar uchun.');
     }else if(msg.includes('404')){
       chatAppend('err','Avval botda /start bosing — keyin AI bilan suhbatlashasiz.');
     }else{
@@ -518,17 +547,49 @@ function maybePeakUpsell(snap){
     setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
   }catch(_){}
 }
+// Narxni "39 900" ko'rinishida formatlash (mingga bo'lish uchun bo'sh joy).
+function _fmtSum(n){try{return String(Math.round(n||0)).replace(/\B(?=(\d{3})+(?!\d))/g,' ');}catch(_){return String(n||0);}}
+
 function renderPaywallPlans(plans){
   const el=document.getElementById('pwPlans');if(!el)return;
   if(!plans||!plans.length){el.innerHTML='';return;}
-  // Har bir tarif — bosiladigan tugma. Bosilganda `/api/webapp/checkout`
-  // chaqiriladi va Telegram to'lov sahifasi ochiladi.
+  // Baseline (oyiga narx) — bir oylik tarifni topamiz. Aks holda birinchisini
+  // baseline sifatida ishlatamiz (savings hisoblash uchun).
+  const oneMonth = plans.find(p=>p.days>=28 && p.days<=32) || plans.find(p=>String(p.key).toLowerCase()==='1m');
+  const baseMonthly = oneMonth ? (oneMonth.price / (oneMonth.days/30)) : null;
+
+  // Har bir tarif — bosiladigan katta karta.
+  // Ko'rsatamiz: emoji + nom, badge (tag), katta narx, oyiga taxminiy narx,
+  // agar 1 oyga nisbatan arzon bo'lsa "-% tejash" savings badge'i.
   el.innerHTML=plans.map(p=>{
     const tag=(p.tag||'').trim();
     const emoji=(p.emoji||'💎');
-    return `<button class="pw-plan pw-plan-btn" data-plan="${esc(p.key)}" type="button">
-      <span class="pn">${emoji} ${esc(p.title)}${tag?` <span class="pw-plan-tag">${esc(tag)}</span>`:''}</span>
-      <span class="pp">${esc(p.price_label)} so'm</span>
+    const months = Math.max(1, Math.round((p.days||30)/30));
+    const perMonth = (p.price||0) / months;
+    // "≈ 26 633 so'm/oy" — faqat ko'p oylik tariflarda ma'noli.
+    const perMonthLine = months > 1
+      ? `<span class="pw-plan-permonth">≈ ${_fmtSum(perMonth)} so'm/oy</span>`
+      : `<span class="pw-plan-permonth">oyiga to'lov</span>`;
+    // Tejash badge'i — baseline (1 oylik oyiga narxi) bilan solishtiramiz.
+    let savingsBadge = '';
+    if (baseMonthly && months > 1 && perMonth < baseMonthly) {
+      const pct = Math.round((1 - perMonth/baseMonthly) * 100);
+      if (pct >= 5) {
+        savingsBadge = `<span class="pw-plan-save">−${pct}%</span>`;
+      }
+    }
+    // Featured (best-value) — kartada `.featured` klass; hozircha DB'dagi tag
+    // bor bo'lsa yoki eng katta savings bo'lsa featured sanaladi.
+    const isFeatured = tag !== '';
+    return `<button class="pw-plan pw-plan-btn${isFeatured?' featured':''}" data-plan="${esc(p.key)}" type="button" aria-label="${esc(p.title)} tarifi">
+      ${tag?`<span class="pw-plan-tag">${esc(tag)}</span>`:''}
+      <span class="pw-plan-title">${emoji} ${esc(p.title)}</span>
+      <span class="pw-plan-price">
+        <span class="pw-plan-amount">${esc(p.price_label)}</span>
+        <span class="pw-plan-curr">so'm</span>
+        ${savingsBadge}
+      </span>
+      ${perMonthLine}
     </button>`;
   }).join('');
   el.querySelectorAll('.pw-plan-btn').forEach(btn=>{
@@ -579,6 +640,37 @@ async function startCheckout(planKey,btn){
     if(btn){btn.disabled=false;btn.classList.remove('loading');if(orig)btn.innerHTML=orig;}
   }
 }
+
+// Mini App'dan botga umumiy Premium menyusiga o'tish (aniq tarif tanlanmagan
+// holda). Bot deep-link `/start premium` ni ochadi — bot Premium sahifasini
+// (tariflar ro'yxatini) ko'rsatadi. Foydalanuvchi tarifni BOT ichida tanlaydi.
+// Bu paywall'ning katta CTA tugmasi uchun (pwCta) ishlatiladi.
+function startCheckoutGeneric(){
+  // Bot username config'dan olinishi mumkin, ammo bizda hozircha frontend'da
+  // sozlamaydi. `/api/webapp/checkout` uchun plan majburiy. Shu sabab
+  // biz to'g'ridan-to'g'ri t.me deep-link'ni yasab ochamiz —
+  // premium_service.py BOT_USERNAME'i muhitdan keladi. Frontend uchun
+  // `State.sub.bot_username` maydonini backend'dan olamiz (agar yo'q bo'lsa,
+  // fallback: env yoki "intizomAi_bot").
+  const uname=(State.sub&&State.sub.bot_username)||'intizomAi_bot';
+  const url='https://t.me/'+String(uname).replace(/^@/,'')+'?start=premium';
+  try{
+    const isTme=/^https?:\/\/t\.me\//i.test(url);
+    if(isTme&&tg&&typeof tg.openTelegramLink==='function'){
+      tg.openTelegramLink(url);
+    }else if(tg&&tg.openLink){
+      tg.openLink(url,{try_instant_view:false});
+    }else{
+      window.open(url,'_blank');
+    }
+    toast('Botga o\'tkazildik. Tarifni bot ichida tanlang 💎',false);
+    // Mini App'ni yopamiz — foydalanuvchi endi bot chatida.
+    setTimeout(()=>{try{tg?.close?.();}catch(_){}},400);
+  }catch(_){
+    try{window.open(url,'_blank');}catch(__){}
+  }
+}
+
 function applyPremiumUI(s){
   const box=document.getElementById('subStatus');
   const icon=document.getElementById('ssIcon');
@@ -616,8 +708,8 @@ function applyPremiumUI(s){
     box.classList.remove('premium');
     if(icon)icon.textContent='🆓';
     if(title)title.textContent='Bepul rejim';
-    if(sub)sub.textContent='Mini App imkoniyatlari cheklangan. Premium bilan to\'liq foydalaning.';
-    if(cta){cta.style.display='';cta.textContent='💎 Obuna olish';}
+    if(sub)sub.textContent='Premium bilan barcha imkoniyatlar ochiladi.';
+    if(cta){cta.style.display='';cta.textContent='💎 Premium olish';}
     if(bar)bar.style.width='0%';
   }
 }
@@ -847,10 +939,10 @@ function renderThemes(){
   g.innerHTML=THEMES.map(t=>`<div class="theme-tile ${State.theme===t.k?'active':''}${isPremium?'':' locked'}" data-th="${t.k}"><div class="sw" style="background:${t.g}"></div><div class="nm">${t.n}${isPremium?'':' 🔒'}</div></div>`).join('');
   g.querySelectorAll('.theme-tile').forEach(t=>t.onclick=()=>{
     if(!(State.sub&&State.sub.is_premium)){
-      // Premium yo'q — tema o'zgartirmaymiz, paywall'ni ochamiz.
+      // Premium yo'q — tema o'zgartirmaymiz. Faqat qisqa xabar ko'rsatamiz;
+      // paywall'ga o'tkazMAYMIZ (foydalanuvchi tanlovi buzilmasin).
       try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
       toast('🎨 Temani o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
-      setTimeout(()=>openPaywall(),300);
       return;
     }
     State.theme=t.dataset.th;
@@ -869,18 +961,33 @@ const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textConte
 const emptyState=(ic,t,p)=>`<div class="empty-state"><div class="ico">${ic}</div><h4>${esc(t)}</h4><p>${esc(p)}</p></div>`;
 function toast(msg,danger){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.style.background=danger?'var(--danger)':'';el.style.color=danger?'#fff':'';el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2000);}
 
-// Maxsus tasdiqlash oynasi (domen nomli native confirm o'rniga)
+// Maxsus tasdiqlash oynasi (domen nomli native confirm o'rniga).
+// Qo'llab-quvvatlanadigan `opts`:
+//   icon, title, message, okText, cancelText
+//   okKind: 'danger' (default) | 'premium'
+//     - 'danger' — qizil "O'chirish" tugmasi (default xatti-harakat)
+//     - 'premium' — gradient rangdagi Premium CTA (icon ham primary rangda)
 function confirmDialog(opts){
   opts=opts||{};
   return new Promise(resolve=>{
     const back=document.getElementById('confirmBack');
     if(!back){resolve(true);return;}
+    const kind=opts.okKind||'danger';
     setText('confirmIc',opts.icon||'🗑');
     setText('confirmTtl',opts.title||'O\'chirilsinmi?');
     setText('confirmMsg',opts.message||'Bu amalni qaytarib bo\'lmaydi.');
     const okBtn=document.getElementById('confirmOk');
     const cancelBtn=document.getElementById('confirmCancel');
-    if(okBtn)okBtn.textContent=opts.okText||'O\'chirish';
+    const icEl=document.getElementById('confirmIc');
+    if(okBtn){
+      okBtn.textContent=opts.okText||'O\'chirish';
+      okBtn.classList.remove('kind-danger','kind-premium');
+      okBtn.classList.add('kind-'+kind);
+    }
+    if(icEl){
+      icEl.classList.remove('kind-danger','kind-premium');
+      icEl.classList.add('kind-'+kind);
+    }
     if(cancelBtn)cancelBtn.textContent=opts.cancelText||'Bekor';
     back.classList.add('show');
     const done=val=>{back.classList.remove('show');if(okBtn)okBtn.onclick=null;if(cancelBtn)cancelBtn.onclick=null;back.onclick=null;resolve(val);};
@@ -888,6 +995,40 @@ function confirmDialog(opts){
     if(cancelBtn)cancelBtn.onclick=()=>done(false);
     back.onclick=e=>{if(e.target===back)done(false);};
   });
+}
+
+// Premium kerakligi haqidagi inline dialog. Foydalanuvchi biror gated
+// bo'limga (Do'stlar/Statistika/Reja qo'shish/... /AI) kirishga uringanida
+// chaqiriladi. Sahifa navigatsiyasi qilinmaydi — dialog joyida ochiladi:
+//   • "💎 Premium olish" bosilsa → paywall ochiladi
+//   • "Orqaga" bosilsa → oddiy yopiladi
+//
+// Chaqiruvchi kod bu funksiyani MUAMMOLI amaldan OLDIN chaqirib,
+// State.sub.is_premium=false bo'lsa navigatsiya/actionni bekor qilishi kerak.
+// True qaytsa: foydalanuvchi paywall'ni ochishga bosdi. False: yopdi.
+async function premiumRequiredDialog(opts){
+  opts=opts||{};
+  const ok=await confirmDialog({
+    icon:opts.icon||'💎',
+    title:opts.title||'Faqat Premium foydalanuvchilar uchun',
+    message:opts.message||'Bu bo\'limdan foydalanish uchun Premium olishingiz kerak.',
+    okText:'💎 Premium olish',
+    cancelText:'Orqaga',
+    okKind:'premium',
+  });
+  if(ok){
+    openPaywall();
+    return true;
+  }
+  return false;
+}
+
+// Yordamchi: agar bepul foydalanuvchi bo'lsa, dialogni ochib true qaytaradi
+// (chaqiruvchi kod amaldan chiqishi kerak); premium bo'lsa false — davom eting.
+function premiumGate(sectionMeta){
+  if(State.sub&&State.sub.is_premium)return false;
+  premiumRequiredDialog(sectionMeta||{});
+  return true;
 }
 
 function openModal(period,periodKey,goal){
@@ -1094,7 +1235,7 @@ async function savePlanModal(){
     else{await apiPlanCreate(body);}
   }catch(e){
     const msg=String(e&&e.message||'');
-    if(msg.includes('402')){closePlanModal();toast('💎 Bepul kunlik limit tugadi');openPaywall();return;}
+    if(msg.includes('402')){closePlanModal();return;/* Premium dialog global api() da avtomatik ochiladi */}
     if(msg.includes('409')){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
     toast('Xato: '+msg,true);return;
   }
@@ -1823,12 +1964,45 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Admin panelidan boshqariladigan global bayroqlarni fon rejimida yuklab
   // olamiz (Do'stlar sahifasidagi Ruxsatlar tugmasini shu asosda yashiramiz).
   loadAppConfig();
-  document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>switchPage(n.dataset.nav));
+  // ── Bottom nav: Do'stlar va AI navlari Premium talab qiladi ──
+  // Bepul foydalanuvchi tugma bosgach — sahifaga o'tkazMAYMIZ, inline dialog
+  // ochamiz ("Premium olish" yoki "Orqaga"). Boshqa navlarga (Asosiy/Maqsad/Odat)
+  // hech qanday cheklov yo'q (bepul user ular ichidagi ma'lumotni ko'ra oladi;
+  // faqat mutation'lar cheklangan).
+  document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>{
+    const target=n.dataset.nav;
+    if(target==='friends'&&premiumGate({
+      icon:'👥',
+      title:'Do\'stlar bo\'limi 👥',
+      message:'Do\'stlar bo\'limi faqatgina Premium foydalanuvchilar uchun.',
+    }))return;
+    if(target==='ai'&&premiumGate({
+      icon:'✨',
+      title:'AI Coach ✨',
+      message:'AI sizning barcha maqsad, reja va odatlaringizni ko\'rib turadi.\n\nUshbu bo\'lim faqatgina Premium foydalanuvchilar uchun.',
+    }))return;
+    switchPage(target);
+  });
+  // ── Reja qo'shish (Home) — bepul: bot orqali 5/kun, Mini App'da Premium kerak ──
   const _ap=document.getElementById('addPlanBtn');
-  if(_ap)_ap.onclick=e=>{ripple(e);openPlanModal(null);};
+  if(_ap)_ap.onclick=e=>{
+    ripple(e);
+    if(premiumGate({
+      icon:'➕',
+      title:'Reja qo\'shish',
+      message:'Mini App orqali reja qo\'shish faqatgina Premium foydalanuvchilar uchun.\n\nBot orqali kuniga 5 tagacha bepul reja qo\'shishingiz mumkin.',
+    }))return;
+    openPlanModal(null);
+  };
+  // ── Maqsad qo'shish (Goals) — Premium talab qiladi ──
   document.querySelectorAll('.add-goal-trigger').forEach(b=>{
     b.onclick=e=>{
       ripple(e);
+      if(premiumGate({
+        icon:'🎯',
+        title:'Maqsad qo\'shish 🎯',
+        message:'Maqsad qo\'shish faqatgina Premium foydalanuvchilar uchun.',
+      }))return;
       // Faqat yillik/oylik. Eski `weekly`/`daily` data-gp qiymatlari kelsa yillikga tushamiz.
       let gp=b.dataset.gp||State.goalPeriod;
       if(gp!=='yearly'&&gp!=='monthly')gp='yearly';
@@ -1841,7 +2015,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
   const _hdrAv=document.getElementById('hdrAv');if(_hdrAv)_hdrAv.onclick=()=>switchPage('profile');
   // Statistika endi header'dagi tugma orqali ochiladi (pastki nav'dan olib tashlandi).
-  const _stBtn=document.getElementById('statsBtn');if(_stBtn)_stBtn.onclick=()=>switchPage('stats');
+  // Statistika (header) — Premium talab qiladi. Bepul user bosgach dialog ochiladi.
+  const _stBtn=document.getElementById('statsBtn');
+  if(_stBtn)_stBtn.onclick=()=>{
+    if(premiumGate({
+      icon:'📊',
+      title:'Statistika 📊',
+      message:'Statistika bo\'limi faqatgina Premium foydalanuvchilar uchun.',
+    }))return;
+    switchPage('stats');
+  };
 
   // ── Do'stlar (Friends) wiring ──────────────────────────────
   const _fCreate=document.getElementById('friendsCreateBtn');if(_fCreate)_fCreate.onclick=openGroupCreateModal;
@@ -1877,7 +2060,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _tpB=document.getElementById('tgPickerBack');if(_tpB)_tpB.onclick=e=>{if(e.target.id==='tgPickerBack')_tpB.classList.remove('show');};
   // Eski forMemberBack handlerlari olib tashlandi.
   // Odat (habit) wiring
-  const _ah=document.getElementById('addHabitBtn');if(_ah)_ah.onclick=e=>{ripple(e);openHabitModal(null);};
+  // Odat qo'shish (Habits) — Premium talab qiladi.
+  const _ah=document.getElementById('addHabitBtn');
+  if(_ah)_ah.onclick=e=>{
+    ripple(e);
+    if(premiumGate({
+      icon:'✅',
+      title:'Odat qo\'shish ✅',
+      message:'Odat qo\'shish faqatgina Premium foydalanuvchilar uchun.',
+    }))return;
+    openHabitModal(null);
+  };
   const _hc=document.getElementById('hCancel');if(_hc)_hc.onclick=closeHabitModal;
   const _hs=document.getElementById('hSave');if(_hs)_hs.onclick=saveHabitModal;
   const _hmb=document.getElementById('habitModalBack');if(_hmb)_hmb.onclick=e=>{if(e.target.id==='habitModalBack')closeHabitModal();};
@@ -1902,8 +2095,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('pCancel').onclick=closePlanModal;document.getElementById('pSave').onclick=savePlanModal;
   document.getElementById('planModalBack').onclick=e=>{if(e.target.id==='planModalBack')closePlanModal();};
   document.getElementById('darkToggle').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
-  document.getElementById('notifToggle').onclick=async e=>{const el=e.currentTarget;el.classList.toggle('on');const on=el.classList.contains('on');try{await apiProfileUpdate(null,on);toast(on?'🔔 Bildirishnomalar yoqildi':'🔕 Bildirishnomalar o\'chirildi');}catch(_){el.classList.toggle('on');toast('Xato!',true);}};
-  document.getElementById('animToggle').onclick=e=>e.currentTarget.classList.toggle('on');
+  // notifToggle va animToggle olib tashlandi — bildirishnomalar va animatsiyalar
+  // doimo hamma foydalanuvchi uchun yoniq turadi (Settings sozlamasi yo'q).
   updateFabVisibility();
   // Optimistik: oldingi seansda premium bo'lsa, paywallni darhol yopamiz
   // (teskari "flash" bo'lmasligi uchun). loadSubscription keyin tasdiqlaydi.
@@ -1930,15 +2123,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#energyRow .energy-cell').forEach(c=>c.onclick=()=>{document.querySelectorAll('#energyRow .energy-cell').forEach(x=>x.classList.remove('active'));c.classList.add('active');State.checkinEnergy=+c.dataset.en;saveCheckin({energy:State.checkinEnergy});});
   const _ssCta=document.getElementById('ssCta');if(_ssCta)_ssCta.onclick=()=>{openPaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
   const _pwCta=document.getElementById('pwCta');if(_pwCta)_pwCta.onclick=()=>{
-    // Default CTA: birinchi (yoki "TOP tanlov"/tag bor bo'lgan) tarifni tanlab yuborish.
+    // "💎 Tarifni tanlang" tugmasi — foydalanuvchini BOTGA olib boradi va
+    // botda "💎 Premium → Obuna sotib olish" holati ochiladi. Ya'ni bot ichida
+    // tariflar ro'yxati (payment method chooser'gacha yetmagan holat) chiqadi
+    // va foydalanuvchi tarifini AYNAN BOT ICHIDA tanlaydi.
+    //
+    // NEGA specific plan tanlashdan voz kechildi: user tajribasi. Agar biz
+    // avtomatik "featured" plan tanlab yuborsak, foydalanuvchi tanlash imkonini
+    // yo'qotadi va bot darhol to'lov usulini so'raydi — bu chalkash. Endi CTA
+    // bosilgach, botda odatiy Premium menyusi ochiladi va foydalanuvchi tarifni
+    // BOT ichida ongli tanlaydi.
     try{tg?.HapticFeedback?.impactOccurred('medium');}catch(_){}
-    const plans=(State.sub&&State.sub.plans)||[];
-    if(!plans.length){toast('Tariflar yuklanmoqda…');return;}
-    const featured=plans.find(p=>(p.tag||'').trim())||plans[0];
-    // Foydalanuvchi tarif tugmasini ham ko'rishi kerak — plan buttonni topib
-    // vizual "tanlangan" holatini ko'rsatib, checkoutni ochamiz.
-    const btn=document.querySelector('.pw-plan-btn[data-plan="'+featured.key+'"]');
-    startCheckout(featured.key,btn||null);
+    // Bot deep-link: /start premium (plan_key bermayapmiz → bot Premium menyusi
+    // ochiladi, tariflar ro'yxati bilan).
+    try{
+      const btn=_pwCta;
+      const orig=btn.textContent;
+      btn.disabled=true;
+      btn.textContent='⏳ Botga o\'tkazilmoqda…';
+      setTimeout(()=>{btn.disabled=false;btn.textContent=orig;},2500);
+    }catch(_){}
+    startCheckoutGeneric();
   };
   const _pwBack=document.getElementById('pwBack');if(_pwBack)_pwBack.onclick=()=>{closePaywall();try{tg?.HapticFeedback?.impactOccurred('light');}catch(_){}};
   document.getElementById('unlockOk').onclick=()=>document.getElementById('unlockOverlay').classList.remove('show');
