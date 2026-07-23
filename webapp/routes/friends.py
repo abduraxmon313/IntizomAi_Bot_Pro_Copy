@@ -128,6 +128,17 @@ async def list_groups(
     session: AsyncSession = Depends(get_session),
 ):
     user = await _require_user(session, telegram_id)
+
+    # PREMIUM GATE: Do'stlar bo'limi faqat Premium foydalanuvchilar uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "👥 Do'stlar bo'limi faqat Premium foydalanuvchilar uchun. "
+                "💎 Premium oling va do'stlaringiz bilan birga intizomli bo'ling!"
+            ),
+        )
     groups = await list_my_groups(session, user)
     return {"groups": groups, "invite_prefix": GROUP_INVITE_PREFIX}
 
@@ -139,6 +150,13 @@ async def create_group_api(
     session: AsyncSession = Depends(get_session),
 ):
     user = await _require_user(session, telegram_id)
+    # PREMIUM GATE: guruh yaratish faqat Premium uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail="Do'stlar bo'limi faqat Premium foydalanuvchilar uchun.",
+        )
     try:
         g = await create_group(session, user, body.name, body.description)
     except GroupError as e:

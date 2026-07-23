@@ -55,7 +55,7 @@ PROMO_CODE = os.getenv("PROMO_CODE", "intizom").strip()
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
 
 # Free (bepul) foydalanuvchi uchun kunlik reja limiti.
-FREE_DAILY_PLAN_LIMIT = int(os.getenv("FREE_DAILY_PLAN_LIMIT", 5))
+FREE_DAILY_PLAN_LIMIT = int(os.getenv("FREE_DAILY_PLAN_LIMIT", 3))
 
 # Free foydalanuvchi uchun kunlik AI Coach suhbat limiti (taste → premiumga undash).
 FREE_AI_DAILY_LIMIT = int(os.getenv("FREE_AI_DAILY_LIMIT", 3))

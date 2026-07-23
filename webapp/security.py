@@ -37,6 +37,26 @@ logger = logging.getLogger(__name__)
 # Agar zarur bo'lsa Railway'da STRICT_AUTH=false qilib vaqtincha yumshatish mumkin.
 STRICT_AUTH = os.getenv("STRICT_AUTH", "true").strip().lower() in ("1", "true", "yes")
 
+# XAVFSIZLIK: Production muhitda STRICT_AUTH=false bo'lsa — IDOR zaifligini
+# qaytaradi. Shu sababli production'da (RAILWAY_ENVIRONMENT yoki NODE_ENV=production)
+# STRICT_AUTH=false bo'lsa OGOHLANTIRISH beramiz va majburan true qilamiz.
+_IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT", "").lower() in ("production", "prod") or \
+    os.getenv("NODE_ENV", "").lower() == "production" or \
+    bool(os.getenv("RAILWAY_PUBLIC_DOMAIN"))  # Railway'da deploy bo'lganda domain beriladi
+
+if not STRICT_AUTH and _IS_PRODUCTION:
+    logger.critical(
+        "🚨 XAVFSIZLIK OGOHLANTIRILISHI: STRICT_AUTH=false production muhitda! "
+        "Bu IDOR zaifligini ochadi. STRICT_AUTH majburan TRUE qilinmoqda. "
+        "Debug uchun faqat lokal muhitda STRICT_AUTH=false ishlating."
+    )
+    STRICT_AUTH = True
+elif not STRICT_AUTH:
+    logger.warning(
+        "⚠️ STRICT_AUTH=false — faqat lokal debug uchun. Production'da "
+        "bu IDOR xavfini qaytaradi. Deploy qilishdan oldin STRICT_AUTH=true qiling."
+    )
+
 # initData maksimal "yoshi" (sekund) — eski/qayta yuborilgan ma'lumotni rad etish
 INITDATA_MAX_AGE = int(os.getenv("INITDATA_MAX_AGE", 86400))  # 24 soat
 
