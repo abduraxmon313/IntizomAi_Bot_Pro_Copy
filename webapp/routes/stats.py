@@ -48,6 +48,16 @@ async def get_stats(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
+    # PREMIUM GATE: Statistika faqat Premium foydalanuvchilar uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "📊 Statistika bo'limi faqat Premium foydalanuvchilar uchun. "
+                "💎 Premium oling va o'sishingizni kuzating!"
+            ),
+        )
     return await build_user_snapshot(session, user)
 
 
@@ -59,6 +69,13 @@ async def get_coach(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
+    # PREMIUM GATE: Coach faqat Premium uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail="🧠 Coach faqat Premium foydalanuvchilar uchun.",
+        )
     return await smart_coach_message(session, user)
 
 
@@ -70,6 +87,13 @@ async def get_quest(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
+    # PREMIUM GATE: Kunlik topshiriq faqat Premium uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail="🎯 Kunlik topshiriq faqat Premium foydalanuvchilar uchun.",
+        )
     return await daily_quest(session, user)
 
 
@@ -97,6 +121,17 @@ async def leaderboard(
     attr = _LB_ATTR[period]
 
     user = await get_user_by_telegram_id(session, telegram_id)
+
+    # PREMIUM GATE: Reyting faqat Premium foydalanuvchilar uchun
+    from bot.services.premium_service import user_is_premium
+    if user and not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "🏆 Reyting faqat Premium foydalanuvchilar uchun. "
+                "💎 Premium oling va o'zingizni boshqalar bilan solishtiring!"
+            ),
+        )
 
     rows = (await session.execute(
         select(User).order_by(col.desc().nullslast(), User.id).limit(20)
@@ -231,6 +266,17 @@ async def get_history(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(404, "Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Tarix/kalendar faqat Premium foydalanuvchilar uchun
+    from bot.services.premium_service import user_is_premium
+    if not user_is_premium(user):
+        raise HTTPException(
+            status_code=402,
+            detail=(
+                "📅 Tarix va kalendar faqat Premium foydalanuvchilar uchun. "
+                "💎 Premium oling va kunlik tarixingizni ko'ring!"
+            ),
+        )
 
     done_expr = func.sum(
         case((Plan.status == PlanStatus.done, 1), else_=0)

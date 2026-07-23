@@ -462,6 +462,12 @@ async def plan_detail_handler(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Reja topilmadi!", show_alert=True)
         return
 
+    # XAVFSIZLIK: faqat o'z rejasini ko'rishi mumkin (IDOR himoyasi)
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+    if not user or plan.user_id != user.id:
+        await callback.answer("⛔ Bu reja sizga tegishli emas.", show_alert=True)
+        return
+
     status_text = {
         "pending": "⏳ Kutilmoqda",
         "done": "✅ Bajarildi",
@@ -491,7 +497,13 @@ async def delete_plan_handler(callback: CallbackQuery, session: AsyncSession):
     plan_id = int(callback.data.split("_")[1])
     plan = await get_plan_by_id(session, plan_id)
 
+    user = await get_user_by_telegram_id(session, callback.from_user.id)
+
     if plan:
+        # XAVFSIZLIK: faqat o'z rejasini o'chirishi mumkin (IDOR himoyasi)
+        if not user or plan.user_id != user.id:
+            await callback.answer("⛔ Bu reja sizga tegishli emas.", show_alert=True)
+            return
         if plan_block_reason(plan.plan_date, plan.scheduled_time) == "past":
             await callback.answer(
                 "⏰ O'tib ketgan kundagi rejani o'chirib bo'lmaydi.", show_alert=True
@@ -500,7 +512,6 @@ async def delete_plan_handler(callback: CallbackQuery, session: AsyncSession):
         await delete_plan(session, plan)
         await callback.answer("🗑 O'chirildi!", show_alert=True)
 
-    user = await get_user_by_telegram_id(session, callback.from_user.id)
     plans = await get_today_plans(session, user)
 
     if plans:

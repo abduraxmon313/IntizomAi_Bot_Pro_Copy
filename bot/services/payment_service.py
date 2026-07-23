@@ -56,13 +56,21 @@ def verify_webhook_signature(payload: dict) -> tuple[bool, str]:
         valid    = compare_digest(expected, payload["signature"])
 
     Qaytaradi: (valid, reason).
-      • PAYLOV_WEBHOOK_SECRET sozlanmagan bo'lsa → (True, "secret_not_set")
-        (secret kelguncha ishlash to'xtamasligi uchun; chaqiruvchi ogohlantiradi).
+      • PAYLOV_WEBHOOK_SECRET sozlanmagan bo'lsa → (False, "secret_not_set")
+        XAVFSIZLIK: secret bo'sh bo'lsa webhook RAD ETILADI. Hacker soxta
+        "to'lov muvaffaqiyatli" webhook yuborib Premium ololmasligi uchun.
       • signature yo'q bo'lsa → (False, "no_signature").
       • mos kelmasa → (False, "mismatch").
     """
     if not PAYLOV_WEBHOOK_SECRET:
-        return True, "secret_not_set"
+        # XAVFSIZLIK: secret sozlanmagan — webhookni QABUL QILMAYMIZ.
+        # Admin PAYLOV_WEBHOOK_SECRET env'ni sozlashi SHART.
+        logger.critical(
+            "🚨 PAYLOV_WEBHOOK_SECRET sozlanmagan! Webhook RAD ETILDI. "
+            "Soxta webhook bilan premium ochilishining oldini olish uchun "
+            "WLCM bergan secret'ni Railway env'ga qo'shing."
+        )
+        return False, "secret_not_set"
 
     received = str(payload.get("signature") or "")
     if not received:
@@ -331,6 +339,10 @@ async def activate_order(session, order, payment_id=None) -> bool:
     """
     Buyurtmani faollashtiradi (premium ochadi, user'ga xabar, soliq cheki).
     Idempotent: allaqachon 'paid' bo'lsa False qaytaradi. Muvaffaqiyatda True.
+
+    ATOMIK: order.status="paid" VA subscription bir tranzaksiyada ochiladi.
+    O'rtada crash bo'lsa — IKKALASI ham rollback bo'ladi, foydalanuvchi
+    to'ladi lekin Premium ochilmadi holati MUMKIN EMAS.
     """
     if order.status == "paid":
         return False
@@ -339,20 +351,43 @@ async def activate_order(session, order, payment_id=None) -> bool:
     )).scalar_one_or_none()
     if user is None:
         return False
-    order.status = "paid"
-    if payment_id is not None:
-        order.payment_id = str(payment_id)
-    order.paid_at = datetime.utcnow()
-    await session.commit()
-    sub = await activate_subscription(
-        session, user, plan_key=order.plan_key, source="paylov",
-        promocode=order.promocode, bonus_days=order.bonus_days or 0,
-    )
+
+    # ── ATOMIK BLOK: order + subscription BIR COMMITDA ──────────────
+    # Avval barcha o'zgarishlarni yig'amiz, keyin bitta commit.
+    # Agar birorta xato bo'lsa — rollback va exception ko'tariladi.
+    try:
+        order.status = "paid"
+        if payment_id is not None:
+            order.payment_id = str(payment_id)
+        order.paid_at = datetime.utcnow()
+
+        # activate_subscription ichida commit bo'ladi, shuning uchun
+        # biz order o'zgarishlarini flush qilamiz (commitga yozmaymiz hali).
+        await session.flush()
+
+        sub = await activate_subscription(
+            session, user, plan_key=order.plan_key, source="paylov",
+            promocode=order.promocode, bonus_days=order.bonus_days or 0,
+        )
+        # activate_subscription ichidagi commit ikkalasini ham saqlaydi.
+        # Agar u xato bersa — pastdagi except ushlab rollback qiladi.
+    except Exception as e:
+        # ROLLBACK: order "paid" ham, subscription ham bekor bo'ladi.
+        # Paylov qayta webhook yuboradi va keyingi safar qayta uriniladi.
+        await session.rollback()
+        logger.error(
+            f"❌ activate_order ATOMIK xato (rollback): order={order.id} "
+            f"user={user.telegram_id} xato={type(e).__name__}: {e}"
+        )
+        raise  # Qayta raise — webhook handler ushlab 500 qaytaradi
+
+    # ── Qo'shimcha (atomik bo'lmagan, xato bo'lsa ham zarar yo'q) ───
     if order.promocode:
         try:
             await increment_promocode_use(session, order.promocode)
         except Exception:
             pass
+
     plan = SUBSCRIPTION_PLANS.get(order.plan_key, {})
     plan_title = plan.get("title", order.plan_key)
     until = sub.expires_at.strftime("%d.%m.%Y") if sub and sub.expires_at else "—"

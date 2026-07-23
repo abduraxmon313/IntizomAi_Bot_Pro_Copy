@@ -59,21 +59,31 @@ async def paylov_webhook(request: Request):
     from bot.services.payment_service import process_webhook, verify_webhook_signature
     valid, reason = verify_webhook_signature(payload or {})
     if not valid:
-        # Imzo noto'g'ri — bu soxta/buzilgan so'rov. Premium OCHILMAYDI.
+        # Imzo noto'g'ri yoki secret sozlanmagan — bu soxta/buzilgan so'rov. Premium OCHILMAYDI.
         logger.warning(
             f"❌ Webhook imzo rad etildi ({reason}): "
             f"external_id={payload.get('external_id')} ip={client}"
         )
+        if reason == "secret_not_set":
+            # Admin uchun aniq xato — secret sozlanishi SHART
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "ok": False,
+                    "error": "webhook_secret_not_configured",
+                    "detail": "PAYLOV_WEBHOOK_SECRET env sozlanmagan. Admin sozlashi kerak.",
+                },
+            )
         return JSONResponse(status_code=401, content={"ok": False, "error": "invalid_signature"})
-    if reason == "secret_not_set":
-        logger.warning(
-            "⚠️ PAYLOV_WEBHOOK_SECRET sozlanmagan — webhook imzosi TEKSHIRILMADI. "
-            "WLCM bergan secret'ni Railway env'ga qo'shing."
-        )
 
     try:
-        return await process_webhook(payload or {})
+        result = await process_webhook(payload or {})
+        return result
     except Exception as e:
-        # Hech qachon 500 qaytarmaymiz — aks holda Paylov cheksiz qayta yuboradi.
+        # XAVFSIZLIK: Ichki xato bo'lsa 500 qaytaramiz — Paylov QAYTA YUBORADI.
+        # Aks holda to'lov yo'qoladi (foydalanuvchi to'ladi lekin premium ochilmadi).
         logger.error(f"❌ Paylov webhook xatosi: {type(e).__name__}: {e}", exc_info=True)
-        return {"ok": True}
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": "internal_error", "retry": True},
+        )
