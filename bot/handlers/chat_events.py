@@ -363,6 +363,166 @@ async def grp_contact_callback(callback: CallbackQuery):
     await callback.answer()
 
 
+# ─── "Batafsil" — foydalanuvchining bugungi barcha reja va odatlari ───
+# Digest xabari tagida `👤 <name>` inline tugmalari ko'rinadi. Har biri
+# bosilganda shu handler ushbu foydalanuvchining bugungi reja va odat
+# ro'yxatini alohida (reply message) qilib guruhga yuboradi — kim qaysi
+# rejani BAJARDI, qaysi rejani BAJARMADI aniq ko'rinadi.
+
+# Reja statusi → ikon (`bot.models.plan.PlanStatus` qiymatlariga mos).
+_PLAN_STATUS_ICON = {
+    "done":    "✅",
+    "failed":  "❌",
+    "pending": "⏳",
+}
+_UZ_WEEKDAYS_LOWER = [
+    "dushanba", "seshanba", "chorshanba", "payshanba",
+    "juma", "shanba", "yakshanba",
+]
+_UZ_MONTHS_LOWER = [
+    "yanvar", "fevral", "mart", "aprel", "may", "iyun",
+    "iyul", "avgust", "sentyabr", "oktyabr", "noyabr", "dekabr",
+]
+
+
+def _fmt_uz_date(d) -> str:
+    """`23-iyul (payshanba)` formatida sana."""
+    return f"{d.day}-{_UZ_MONTHS_LOWER[d.month - 1]} ({_UZ_WEEKDAYS_LOWER[d.weekday()]})"
+
+
+def _html_escape(text: str) -> str:
+    return (
+        (text or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+@router.callback_query(F.data.startswith("grp_det_"))
+async def grp_details_callback(callback: CallbackQuery, session: AsyncSession):
+    """
+    Guruh digest'idagi bitta a'zoning "Batafsil" tugmasi bosildi. Shu a'zoning
+    bugungi rejalari (holati bilan: ✅/❌/⏳) va odatlarini (bajarilgan/kutilyapti)
+    ko'rsatuvchi javob xabarni digestga reply qilib yuboradi.
+
+    XAVFSIZLIK: callback data'da user_id kelayapti — hacker uni almashtirib
+    guruh a'zosi bo'lmagan foydalanuvchining shaxsiy ma'lumotini ololmasligi
+    uchun target user AYNAN shu Telegram guruhga bog'langan WebApp Group
+    a'zosi ekanligini tekshiramiz.
+    """
+    # 1. Callback data'dan user_id ni ajratib olamiz.
+    try:
+        target_user_id = int(callback.data.rsplit("_", 1)[-1])
+    except (ValueError, IndexError):
+        await callback.answer("Xato so'rov.", show_alert=True)
+        return
+
+    # 2. Kontekst: bu callback aynan qaysi Telegram chatidan kelyapti?
+    if callback.message is None or callback.message.chat is None:
+        await callback.answer("Chat aniqlanmadi.", show_alert=True)
+        return
+    if callback.message.chat.type not in ("group", "supergroup"):
+        await callback.answer("Bu tugma faqat guruhda ishlaydi.", show_alert=True)
+        return
+    chat_id = callback.message.chat.id
+
+    # 3. Guruh (WebApp Group) ni topamiz.
+    group = await _fetch_linked_group(session, chat_id)
+    if group is None:
+        await callback.answer(
+            "Bu Telegram guruh WebApp'da bog'lanmagan.", show_alert=True,
+        )
+        return
+
+    # 4. Target user AYNAN shu guruh a'zosi ekanligini tekshiramiz (IDOR himoya).
+    from bot.models.group import GroupMember
+    from bot.models.user import User
+    is_member = (await session.execute(
+        select(GroupMember).where(
+            (GroupMember.group_id == group.id)
+            & (GroupMember.user_id == target_user_id)
+        )
+    )).scalars().first()
+    if is_member is None:
+        await callback.answer(
+            "Bu foydalanuvchi guruh a'zosi emas.", show_alert=True,
+        )
+        return
+
+    # 5. Target user obyektini yuklaymiz.
+    target = await session.get(User, target_user_id)
+    if target is None:
+        await callback.answer("Foydalanuvchi topilmadi.", show_alert=True)
+        return
+
+    # 6. Bugungi rejalar va odatlarni yig'amiz.
+    from datetime import datetime as _dt
+    from bot.config import TIMEZONE as _TZ
+    from bot.services.plan_service import get_today_plans
+    from bot.services.habit_service import get_user_habits, habit_snapshot
+
+    today = _dt.now(_TZ).date()
+    plans = await get_today_plans(session, target)
+    habits = await get_user_habits(session, target)
+    habit_snaps = [await habit_snapshot(session, h) for h in habits]
+    # Bugun rejalashtirilgan (due_today) odatlar — asosiy ko'rsatkich.
+    habits_today = [s for s in habit_snaps if s.get("due_today")]
+
+    # 7. HTML matn quramiz.
+    name = (target.display_name or target.full_name or "Foydalanuvchi").strip() or "Foydalanuvchi"
+    header = f"📋 <b>{_html_escape(name)}</b> — {_fmt_uz_date(today)}"
+    lines: list[str] = [header, ""]
+
+    # ── Rejalar bloki ────────────────────────────────────────
+    if plans:
+        # Sanoq: bajarilgan / jami
+        done_count = sum(1 for p in plans if str(getattr(p.status, "value", p.status)) == "done")
+        lines.append(f"📝 <b>Rejalar</b> ({done_count}/{len(plans)}):")
+        for p in plans:
+            status_val = str(getattr(p.status, "value", p.status) or "pending")
+            icon = _PLAN_STATUS_ICON.get(status_val, "⏳")
+            time_prefix = f"{p.scheduled_time} " if p.scheduled_time else ""
+            lines.append(f"  {icon} {time_prefix}{_html_escape(p.title)}")
+    else:
+        lines.append("📝 <b>Rejalar:</b> bugun reja qo'shmagan")
+
+    lines.append("")
+
+    # ── Odatlar bloki ────────────────────────────────────────
+    if habits_today:
+        done_habits = sum(1 for s in habits_today if s.get("done_today"))
+        lines.append(f"🎯 <b>Odatlar</b> ({done_habits}/{len(habits_today)}):")
+        for s in habits_today:
+            icon = "✅" if s.get("done_today") else "⭕"
+            emoji = s.get("icon") or "•"
+            lines.append(f"  {icon} {emoji} {_html_escape(s.get('title') or '')}")
+    else:
+        lines.append("🎯 <b>Odatlar:</b> bugun rejalashtirilmagan")
+
+    # ── Qo'shimcha ma'lumot ─────────────────────────────────
+    streak = int(target.streak or 0)
+    if streak > 0:
+        lines.append("")
+        lines.append(f"🔥 Streak: <b>{streak} kun</b>")
+
+    html = "\n".join(lines)
+
+    # 8. Javobni digestga reply qilib yuboramiz.
+    try:
+        await callback.message.reply(
+            html,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            disable_notification=True,  # Guruh a'zolarini spam qilmaslik uchun
+        )
+    except (TelegramForbiddenError, TelegramBadRequest) as e:
+        await callback.answer(f"Xatolik: {e}", show_alert=True)
+        return
+
+    await callback.answer()
+
+
 async def _run_group_report(
     session: AsyncSession,
     chat_id: int,

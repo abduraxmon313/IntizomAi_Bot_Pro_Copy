@@ -542,8 +542,12 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 @keyframes ficPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 /* Paywall tariflar — endi 3 ta bosiladigan tugma sifatida ko'rinadi.
    Har biri direct checkoutga o'tadi (bot orqali emas). */
-/* ─── Paywall plan cards — sodda vertikal layout ─── */
-/* Foydalanuvchi so'ragan format:
+/* ─── Paywall obuna highlights — kompakt pill chip row ─── */
+.paywall .pw-highlights{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:100%;margin:0 auto clamp(8px,1.4vh,12px)}
+.paywall .pw-hl{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-2);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 10px;letter-spacing:.1px}
+
+/* ─── Paywall plan cards — markazlashtirilgan, kompakt vertikal layout ─── */
+/* Foydalanuvchi so'ragan aynan format:
      ✅ 1 oy
      39 900 so'm
      
@@ -552,25 +556,24 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
      
      💎 12 oy
      179 900 so'm (≈ 14 990 so'm/oy)
-   Har bir tarif to'liq eni bo'yicha yagona chapdan-o'ngga karta:
-   chap tomonda emoji+nom, o'ng tomonda narx+tag. Mobil ekranda ham
-   yaxshi ko'rinadi va batafsil o'qish qulay. */
-.paywall .pw-plans{display:flex;flex-direction:column;gap:10px;width:100%;margin:0 auto clamp(10px,1.8vh,14px)}
-.paywall .pw-plan{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px 16px;transition:transform .2s,border-color .2s,box-shadow .2s;animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both;cursor:pointer;position:relative;overflow:hidden;width:100%}
-.paywall .pw-plan-btn{font:inherit;color:inherit;text-align:left}
+   Kartochkalar ekranda markazda joylashadi (align-items va text-align center),
+   font kichkinaroq — obuna highlights ham sig'sin. */
+.paywall .pw-plans{display:flex;flex-direction:column;gap:9px;width:100%;margin:0 auto clamp(10px,1.8vh,14px)}
+.paywall .pw-plan{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:11px 14px;transition:transform .2s,border-color .2s,box-shadow .2s;animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both;cursor:pointer;position:relative;overflow:hidden;width:100%}
+.paywall .pw-plan-btn{font:inherit;color:inherit;text-align:center}
 .paywall .pw-plan:nth-child(1){animation-delay:.06s}.paywall .pw-plan:nth-child(2){animation-delay:.12s}.paywall .pw-plan:nth-child(3){animation-delay:.18s}
 .paywall .pw-plan:hover{border-color:var(--primary);box-shadow:0 8px 20px var(--primary-soft);transform:translateY(-1px)}
 .paywall .pw-plan:active{transform:scale(.985)}
 .paywall .pw-plan.loading{opacity:.7;pointer-events:none}
 /* Featured tarif (odatda 3 oy) — gradient ramka bilan ustuvor vizual og'irlik. */
 .paywall .pw-plan.featured{border-color:var(--primary);background:linear-gradient(180deg,var(--primary-soft),var(--surface) 60%);box-shadow:0 6px 18px var(--primary-soft)}
-.paywall .pw-plan.featured::before{content:'';position:absolute;inset:0;border-radius:16px;padding:1.5px;background:var(--grad);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6}
-/* Sarlavha qatori: emoji + nom */
-.paywall .pw-plan-title{font-size:15px;font-weight:800;color:var(--text);line-height:1.2;letter-spacing:.1px;display:flex;align-items:center;gap:6px}
-/* Narx qatori: katta gradient narx + qavsdagi teg */
-.paywall .pw-plan-price-line{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;line-height:1.25}
-.paywall .pw-plan-amount{font-size:18px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.2px}
-.paywall .pw-plan-tag{font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:.05px}
+.paywall .pw-plan.featured::before{content:'';position:absolute;inset:0;border-radius:14px;padding:1.5px;background:var(--grad);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6}
+/* Sarlavha qatori: emoji + nom — markazlashtirilgan, 13px */
+.paywall .pw-plan-title{font-size:13px;font-weight:800;color:var(--text);line-height:1.2;letter-spacing:.1px;display:flex;align-items:center;justify-content:center;gap:5px}
+/* Narx qatori: markazda, kichkinaroq font — obuna highlights bilan birga sig'adi */
+.paywall .pw-plan-price-line{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;justify-content:center;line-height:1.25}
+.paywall .pw-plan-amount{font-size:15px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.15px}
+.paywall .pw-plan-tag{font-size:11px;font-weight:600;color:var(--text-2);letter-spacing:.05px}
 .paywall .pw-plan.featured .pw-plan-tag{color:var(--primary);font-weight:700}
 
 /* ── Guruh sozlamalari: Telegram digest bo'limi ─────────────────────────
