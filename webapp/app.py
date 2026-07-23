@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
-from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends
+from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends, config
 from webapp.security import (
     MAX_BODY_BYTES,
     RATE_LIMIT_MAX,
@@ -225,6 +225,7 @@ app.include_router(habits.router, prefix="/api/webapp")
 app.include_router(profile.router, prefix="/api/webapp")
 app.include_router(avatar.router, prefix="/api/webapp")
 app.include_router(friends.router, prefix="/api/webapp")
+app.include_router(config.router, prefix="/api/webapp")
 # Paylov webhook — /webhook/paylov (prefiksiz, /api/ ostida emas)
 app.include_router(payments.router)
 

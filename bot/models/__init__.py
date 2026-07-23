@@ -12,6 +12,7 @@ from .habit import Habit, HabitLog
 from .group import Group, GroupMember, GroupPermission
 from .plan_override import SubscriptionPlanOverride
 from .bot_chat import BotChat
+from .app_setting import AppSetting
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
@@ -20,4 +21,5 @@ __all__ = [
     "Group", "GroupMember", "GroupPermission",
     "SubscriptionPlanOverride",
     "BotChat",
+    "AppSetting",
 ]

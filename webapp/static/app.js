@@ -10,6 +10,11 @@ const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{i
   // qayta ishlatiladi (barcha maydonlar bilan). Bu maydon set bo'lsa, save
   // handlerlar item'ni friends API orqali TARGET a'zoning hisobiga yozadi.
   forMemberContext:null,    // {groupId, userId, name} yoki null
+  // Global app konfiguratsiyasi (admin panelidan boshqariladigan bayroqlar).
+  // `/api/webapp/config` dan yuklanadi. Yuklanmagunicha default TRUE
+  // (Ruxsatlar tugmasi ko'rinadi) — aks holda birinchi renderda "flash"
+  // ko'rinishi mumkin.
+  appConfig:{group_perms_menu_enabled:true},
 };
 
 const UZ_MONTHS=['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -139,6 +144,37 @@ const apiHabitDelete=id=>api('/api/webapp/habits/'+id,{method:'DELETE'});
 const apiHabitToggle=(id,done,date)=>api('/api/webapp/habits/'+id+'/toggle',{method:'POST',body:JSON.stringify({done:done,date:date||null})});
 const apiProfileUpdate=(name,notif,photo)=>{const b={};if(name!=null)b.full_name=name;if(notif!=null)b.notifications_enabled=notif;if(photo!=null)b.photo_url=photo;return api('/api/webapp/profile',{method:'PUT',body:JSON.stringify(b)});};
 function openTgLink(u){try{if(tg&&tg.openTelegramLink)tg.openTelegramLink(u);else window.open(u,'_blank');}catch(_){try{window.open(u,'_blank');}catch(__){}}}
+// ── Global konfiguratsiya (admin bayroqlari) ─────────────────────────────
+// `/api/webapp/config` admin panelidan boshqariladigan global bayroqlarni
+// qaytaradi (masalan Do'stlar sahifasidagi "🛡 Ruxsatlar" tugmasi
+// yoqilganmi). Bu funksiya ilovaning boshida bir marta chaqiriladi va
+// natija State.appConfig'ga yoziladi; DOM elementlarini `_applyAppConfig`
+// yashirib/ko'rsatadi. Xato bo'lsa jim o'tamiz — default (yoqilgan) qoladi.
+async function loadAppConfig(){
+  try{
+    const c=await api('/api/webapp/config');
+    if(c&&typeof c==='object'){
+      State.appConfig={
+        group_perms_menu_enabled:c.group_perms_menu_enabled!==false,
+      };
+    }
+  }catch(_){/* jim: default holat qoladi */}
+  _applyAppConfig();
+}
+
+// Bayroqlar asosida DOM elementlarini yangilaydi. Hozir yagona effekt:
+// Do'stlar sahifasidagi "🛡 Ruxsatlar" tugmasini ko'rsatish/yashirish.
+function _applyAppConfig(){
+  const on=State.appConfig&&State.appConfig.group_perms_menu_enabled!==false;
+  const btn=document.getElementById('friendsPermsBtn');
+  if(btn)btn.style.display=on?'':'none';
+  // Modal ochilib turgan bo'lsa — flag o'chirilganda uni yopamiz.
+  if(!on){
+    const m=document.getElementById('permsBack');
+    if(m)m.classList.remove('show');
+  }
+}
+
 async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const nt=document.getElementById('notifToggle');if(nt)nt.classList.toggle('on',p.notifications_enabled!==false);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
 
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
@@ -1098,6 +1134,8 @@ async function openGroup(gid){
   //   • Ega — tahrirlash / o'chirish (ega chiqolmaydi)
   //   • A'zo — guruhdan chiqish
   document.getElementById('friendsGroupSettings').style.display='';
+  // Admin bayroqlari asosida "🛡 Ruxsatlar" tugmasini yashirish/ko'rsatish.
+  _applyAppConfig();
   renderGroupMembers();
 }
 
@@ -1651,6 +1689,9 @@ async function inviteFriend(){
 // ── Ruxsatlar modali — Ko'rinish (can_view) + Boshqarish (can_manage) ────
 async function openPermsModal(){
   const g=State.currentGroup;if(!g)return;
+  // Admin panelidan Ruxsatlar menyusi o'chirilgan bo'lsa modalni ochmaymiz —
+  // tugma yashiringan, lekin himoya qatlami sifatida shu tekshiruv ham bor.
+  if(State.appConfig&&State.appConfig.group_perms_menu_enabled===false)return;
   let d;try{d=await apiPerms(g.id);}catch(e){toast('Ruxsatlar yuklanmadi',true);return;}
 
   const viewEl=document.getElementById('permsView');
@@ -1747,6 +1788,9 @@ function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();con
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.documentElement.setAttribute('data-theme',State.theme);applyMode();initUser();renderThemes();
+  // Admin panelidan boshqariladigan global bayroqlarni fon rejimida yuklab
+  // olamiz (Do'stlar sahifasidagi Ruxsatlar tugmasini shu asosda yashiramiz).
+  loadAppConfig();
   document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>switchPage(n.dataset.nav));
   const _ap=document.getElementById('addPlanBtn');
   if(_ap)_ap.onclick=e=>{ripple(e);openPlanModal(null);};

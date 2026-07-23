@@ -14,6 +14,9 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📢 Xabar yuborish", callback_data="admin_broadcast"),
         ],
         [
+            InlineKeyboardButton(text="🌐 WebApp imkoniyatlari", callback_data="admin_webapp"),
+        ],
+        [
             InlineKeyboardButton(text="🔑 To'lov kalitlari (WLCM)", callback_data="admin_keys"),
         ],
         [
@@ -22,6 +25,29 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="🚪 Chiqish", callback_data="home"),
         ]
+    ])
+
+
+def admin_webapp_keyboard(*, perms_menu_enabled: bool) -> InlineKeyboardMarkup:
+    """
+    "🌐 WebApp imkoniyatlari" menyusi tugmalari.
+
+    Hozircha bitta boshqaruv:
+      • "Guruh ruxsatlar menyusi" — Do'stlar sahifasidagi "🛡 Ruxsatlar"
+        tugmasini yoqish/o'chirish. Tugma matnida joriy holat ko'rsatiladi
+        (ON/OFF) — bosilganda holat teskarisiga o'zgaradi.
+    """
+    state_label = "✅ Yoqilgan" if perms_menu_enabled else "⛔️ O'chirilgan"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text=f"🛡 Guruh ruxsatlar menyusi — {state_label}",
+                callback_data="admin_toggle_group_perms",
+            ),
+        ],
+        [
+            InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_panel"),
+        ],
     ])
 
 
