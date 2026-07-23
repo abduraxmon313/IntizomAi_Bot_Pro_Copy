@@ -242,6 +242,85 @@ async def revoke_premium(session: AsyncSession, user: User) -> None:
     await session.commit()
 
 
+async def revoke_all_trial_subscriptions() -> int:
+    """
+    Bir martalik CLEANUP: hozirda faol bo'lgan barcha `source="trial"` obunalarni
+    bekor qiladi va shunga bog'liq user'larning Premium holatini olib tashlaydi.
+
+    NEGA KERAK: 3 kunlik trial funksiyasi loyihadan butunlay olib tashlangan.
+    Ammo baza'da hali ham `is_active=True` bo'lgan trial obunalar bo'lishi
+    mumkin (avval berilgan). Bu funksiya ularni tozalaydi.
+
+    INVARIANT: har bir foydalanuvchida ayni paytda AT MOST BITTA faol obuna
+    bo'ladi (`activate_subscription` va `grant_bonus_premium` yangi obuna
+    yaratganda eskilarini nofaol qiladi). Shu sabab agar user'ning faol obunasi
+    trial bo'lsa — u user'da BOSHQA faol obuna YO'Q. Trial bekor qilingach,
+    Premium holati (`is_premium=False`, `premium_until=None`) tozalanadi.
+
+    IDEMPOTENT: birinchi ishga tushishda tozalab qo'yadi; keyingi safarda hech
+    qanday faol trial qolmaydi va funksiya darhol 0 qaytaradi. Har startup'da
+    xavfsiz chaqirish mumkin.
+
+    Qaytaradi: bekor qilingan obunalar soni (int).
+    """
+    from database.db import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        trial_subs = (await session.execute(
+            select(Subscription).where(
+                and_(
+                    Subscription.source == "trial",
+                    Subscription.is_active == True,  # noqa: E712
+                )
+            )
+        )).scalars().all()
+
+        if not trial_subs:
+            return 0
+
+        affected_user_ids: set[int] = set()
+        for s in trial_subs:
+            s.is_active = False
+            affected_user_ids.add(s.user_id)
+
+        # Har bir affected user'ning Premium holatini tozalaymiz.
+        # Invariant tufayli ularda boshqa faol obuna yo'q — Premium OLIB TASHLANADI.
+        # (Zamonaviyroq himoya uchun: boshqa `is_active=True` obuna bor-yo'qligini
+        # tekshirmaymiz — bo'lsa ham premium_until endi trial ta'siridan tashqari
+        # boshqa obunaga tegishli emas, chunki `grant_bonus_premium` uni mavjud
+        # `premium_until` ustiga qo'shgan bo'lardi. Xavfsiz choraga: real boshqa
+        # faol obuna bor bo'lsa uni tekshirib, premium_until'ni saqlaymiz.)
+        for uid in affected_user_ids:
+            # Boshqa faol obunalar bor-yo'qligini tekshiramiz (yuqoridagi commit'siz
+            # — trial_subs.is_active hali eski qiymatda emas, session ichida
+            # o'zgartirildi va _identity map orqali bir xil obyekt).
+            other_active = (await session.execute(
+                select(Subscription).where(
+                    and_(
+                        Subscription.user_id == uid,
+                        Subscription.is_active == True,  # noqa: E712
+                        Subscription.source != "trial",
+                    )
+                )
+            )).scalars().first()
+            user = await session.get(User, uid)
+            if user is None:
+                continue
+            if other_active is not None:
+                # Boshqa faol obuna bor — premium_until'ni saqlaymiz.
+                # (Nazariy holat; invariant buni oldini oladi, ammo defence-in-depth.)
+                continue
+            user.is_premium = False
+            user.premium_until = None
+
+        await session.commit()
+        logger.info(
+            f"🧹 Trial cleanup: {len(trial_subs)} ta trial obuna bekor qilindi, "
+            f"{len(affected_user_ids)} ta userdan Premium olib tashlandi"
+        )
+        return len(trial_subs)
+
+
 # ─────────────────────────────────────────────────────────────
 #  PROMOKOD
 # ─────────────────────────────────────────────────────────────

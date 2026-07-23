@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from database.db import AsyncSessionLocal
 from webapp.security import resolve_telegram_id
+from bot.services.premium_service import user_is_premium
 from bot.services.user_service import get_user_by_telegram_id
 from bot.services.goal_service import (
     ALLOWED_GOAL_TYPES,
@@ -16,6 +17,15 @@ from bot.services.goal_service import (
 )
 
 router = APIRouter()
+
+
+# Mini App'da BARCHA maqsad mutation'lari (qo'shish/tahrirlash/o'chirish/belgilash)
+# Premium talab qiladi. Bepul foydalanuvchi maqsadlarni KO'RIShI mumkin,
+# ammo yaratish uchun Premium olishi kerak.
+_PREMIUM_GOAL_MSG = (
+    "Maqsad qo'shish va tahrirlash faqat Premium foydalanuvchilar uchun. "
+    "💎 Premium oling va cheksiz maqsadlaringizni qo'shing!"
+)
 
 
 class GoalOut(BaseModel):
@@ -138,6 +148,10 @@ async def add_goal(
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
+    # PREMIUM GATE: Maqsad yaratish faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_GOAL_MSG)
+
     # Faqat yillik va oylik maqsadlar ruxsat etilgan.
     # Eski kunlik/haftalik turlari olib tashlandi — takroriy niyatlar Habits'ga,
     # bir martalik ishlar Plans'ga ko'chirilgan.
@@ -147,18 +161,6 @@ async def add_goal(
             detail=(
                 "Faqat yillik yoki oylik maqsad yaratish mumkin. "
                 "Kunlik takroriy niyatni Odat (Habit), bir martalik ishni Reja (Plan) sifatida qo'shing."
-            ),
-        )
-
-    # Free-tier maqsad limiti (premium — cheksiz)
-    from bot.services.premium_service import check_goal_limit
-    lim = await check_goal_limit(session, user, adding=1)
-    if not lim.allowed:
-        raise HTTPException(
-            status_code=402,
-            detail=(
-                f"Bepul maqsad limiti tugadi ({lim.used}/{lim.limit}). "
-                "Cheksiz maqsadlar uchun Premium oling."
             ),
         )
     try:
@@ -188,6 +190,10 @@ async def edit_goal(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Maqsad tahrirlash/belgilash faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_GOAL_MSG)
 
     # Hali boshlanmagan (kelajakdagi) davr maqsadini belgilab bo'lmaydi.
     # O'tib ketgan davr maqsadlarini esa belgilash MUMKIN.
@@ -229,6 +235,11 @@ async def remove_goal(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Maqsadni o'chirish faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_GOAL_MSG)
+
     ok = await delete_goal(session, goal_id, user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Maqsad topilmadi")

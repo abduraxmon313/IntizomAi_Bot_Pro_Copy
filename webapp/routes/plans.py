@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from database.db import AsyncSessionLocal
 from webapp.security import resolve_telegram_id
+from bot.services.premium_service import user_is_premium
 from bot.services.user_service import get_user_by_telegram_id
 from bot.services.plan_service import (
     get_today_plans,
@@ -15,6 +16,16 @@ from bot.services.plan_service import (
 )
 
 router = APIRouter()
+
+
+# Mini App'da BARCHA reja mutation'lari (qo'shish/tahrirlash/o'chirish/belgilash)
+# Premium talab qiladi. Bepul foydalanuvchi Mini App'da rejalarni KO'RIShI mumkin,
+# ammo yaratish/belgilash uchun bot chatidan foydalanishi kerak (bot kuniga 3 ta
+# reja limitigacha ruxsat beradi; belgilash ham botda ochiq).
+_PREMIUM_REQ_MSG = (
+    "Mini App'da reja qo'shish va belgilash faqat Premium foydalanuvchilar uchun. "
+    "Bepul rejimda botning o'zida kuniga 3 tagacha reja qo'shishingiz mumkin."
+)
 
 
 class PlanOut(BaseModel):
@@ -112,6 +123,12 @@ async def add_plan(
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
+    # PREMIUM GATE: Mini App'da reja qo'shish faqat Premium uchun.
+    # Bepul foydalanuvchilar botning o'ziga yozib reja qo'shishlari mumkin
+    # (bot kuniga 3 tagacha limitini o'zi ushlab turadi).
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_REQ_MSG)
+
     # O'tib ketgan kun uchun reja qo'shib bo'lmaydi
     if body.plan_date:
         from datetime import date as _date, datetime as _dt
@@ -125,18 +142,6 @@ async def add_plan(
                 status_code=409,
                 detail="O'tib ketgan kun uchun reja qo'shib bo'lmaydi.",
             )
-
-    # Free-tier kunlik limit (premium foydalanuvchilarga cheksiz)
-    from bot.services.premium_service import check_plan_limit
-    limit = await check_plan_limit(session, user, adding=1)
-    if not limit.allowed:
-        raise HTTPException(
-            status_code=402,
-            detail=(
-                f"Bepul kunlik limit tugadi ({limit.used}/{limit.limit}). "
-                "Cheksiz reja uchun Premium oling."
-            ),
-        )
 
     plan = await create_plan_single(
         session, user,
@@ -159,6 +164,12 @@ async def edit_plan(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Mini App'da reja tahrirlash / belgilash faqat Premium uchun.
+    # Bepul foydalanuvchilar botning inline "Bajardim/Bajarmadim" tugmalaridan
+    # foydalanishi mumkin.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_REQ_MSG)
 
     # Status o'zgartirish (done / failed / pending) — toggle/qayta belgilash.
     if body.status in ("done", "failed", "pending"):
@@ -196,8 +207,8 @@ async def edit_plan(
         }[body.status]
         await set_plan_status(session, user, plan, target)
 
-        # Reja "done" bo'lgan bo'lsa — aktivatsiya (trial + referral mukofoti).
-        # Idempotent: bir marta bajarilgach keyingi safar no-op.
+        # Reja "done" bo'lgan bo'lsa — referral mukofoti aktivatsiyasi.
+        # (Trial olib tashlangan; referral bonusi idempotent.)
         if target == PlanStatus.done:
             try:
                 from bot.services.activation import on_first_completion
@@ -238,6 +249,10 @@ async def remove_plan(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Mini App'da rejani o'chirish faqat Premium uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_REQ_MSG)
 
     # O'tib ketgan kundagi rejani o'chirib bo'lmaydi — adashib o'chirib qo'yib,
     # keyin qayta belgilab bo'lmay qolmasligi uchun (tarix saqlanadi).

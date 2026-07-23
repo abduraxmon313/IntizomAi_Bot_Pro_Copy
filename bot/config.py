@@ -70,9 +70,12 @@ FREE_HABIT_LIMIT = int(os.getenv("FREE_HABIT_LIMIT", 3))
 HABIT_REMINDER_HOUR = int(os.getenv("HABIT_REMINDER_HOUR", 19))
 HABIT_REMINDER_MINUTE = int(os.getenv("HABIT_REMINDER_MINUTE", 0))
 
-# Yangi foydalanuvchiga avtomatik beriladigan Premium sinov (trial) kunlari.
-# 0 bo'lsa — trial berilmaydi. Loss-aversion: 3 kun premiumdan keyin limitlar.
-TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", 3))
+# DEPRECATED: Trial (bepul sinov) funksiyasi butunlay olib tashlangan.
+# Bu konstanta faqat backward-compat uchun saqlanadi. Qiymati 0 ga majburan
+# fiksatsiya qilingan — env orqali ham 0'dan boshqa qiymat sozlab bo'lmaydi.
+# Sabab: bepul foydalanuvchilar hech qachon avtomatik Premium OLMAYDI. Yagona
+# bepul Premium yo'li — do'st taklif qilish (referral bonusi).
+TRIAL_DAYS = 0
 
 # Obuna planlari: kalit -> (nom, davomiylik kun, narx so'mda, emoji, teg).
 # Faqat 3 ta tarif — 7 kunlik va 6 oylik olib tashlandi (paywall soddaligi uchun).

@@ -836,7 +836,31 @@ function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_
 async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('📋','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
 
 const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
-function renderThemes(){const g=document.getElementById('themeGrid');g.innerHTML=THEMES.map(t=>`<div class="theme-tile ${State.theme===t.k?'active':''}" data-th="${t.k}"><div class="sw" style="background:${t.g}"></div><div class="nm">${t.n}</div></div>`).join('');g.querySelectorAll('.theme-tile').forEach(t=>t.onclick=()=>{State.theme=t.dataset.th;document.documentElement.setAttribute('data-theme',State.theme);localStorage.setItem('iz_theme',State.theme);renderThemes();toast('🎨 Tema o\'zgartirildi');if(document.querySelector('.page[data-page="stats"]').classList.contains('active'))renderStats();});}
+// Tema tanlash — faqat Premium foydalanuvchilar uchun.
+// Bepul foydalanuvchi tugmani bosa, temani o'zgartirmaymiz va paywall'ni ochamiz.
+// (Faol tema (State.theme) old-oldindan localStorage'dan yuklanadi, shuning uchun
+// bepul foydalanuvchi hech bo'lmaganda default temani ko'rishi mumkin.)
+function renderThemes(){
+  const g=document.getElementById('themeGrid');
+  if(!g)return;
+  const isPremium=!!(State.sub&&State.sub.is_premium);
+  g.innerHTML=THEMES.map(t=>`<div class="theme-tile ${State.theme===t.k?'active':''}${isPremium?'':' locked'}" data-th="${t.k}"><div class="sw" style="background:${t.g}"></div><div class="nm">${t.n}${isPremium?'':' 🔒'}</div></div>`).join('');
+  g.querySelectorAll('.theme-tile').forEach(t=>t.onclick=()=>{
+    if(!(State.sub&&State.sub.is_premium)){
+      // Premium yo'q — tema o'zgartirmaymiz, paywall'ni ochamiz.
+      try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
+      toast('🎨 Temani o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
+      setTimeout(()=>openPaywall(),300);
+      return;
+    }
+    State.theme=t.dataset.th;
+    document.documentElement.setAttribute('data-theme',State.theme);
+    localStorage.setItem('iz_theme',State.theme);
+    renderThemes();
+    toast('🎨 Tema o\'zgartirildi');
+    if(document.querySelector('.page[data-page="stats"]').classList.contains('active'))renderStats();
+  });
+}
 
 function applyMode(){document.documentElement.setAttribute('data-mode',State.mode);document.getElementById('darkToggle').classList.toggle('on',State.mode==='dark');document.getElementById('modeIcon').textContent=State.mode==='dark'?'🌙':'☀️';}
 

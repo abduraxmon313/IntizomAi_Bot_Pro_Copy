@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -146,7 +147,7 @@ async def process_next_no_time_plan(message_or_callback, state: FSMContext, curr
 #  REJA QO'SHISH
 # ─────────────────────────────────────────
 
-@router.message(F.text == "➕ Reja qo'shish")
+@router.message(F.text == "➕ Reja qo'shish", F.chat.type == ChatType.PRIVATE)
 async def add_plan_btn(message: Message, state: FSMContext):
     await message.answer(
         "➕ <b>Yangi reja</b>\n\n"
@@ -174,7 +175,9 @@ async def add_plan_callback(callback: CallbackQuery, state: FSMContext):
 #  OVOZ — istalgan vaqt
 # ─────────────────────────────────────────
 
-@router.message(F.voice)
+# Ovozli reja yaratish faqat DM'da — guruhdagi audio xabarlar botga
+# reja sifatida talqin qilinmaydi.
+@router.message(F.voice, F.chat.type == ChatType.PRIVATE)
 async def handle_voice_any(message: Message, state: FSMContext, session: AsyncSession):
     current_state = await state.get_state()
 
@@ -247,10 +250,17 @@ async def handle_voice_for_time(message: Message, state: FSMContext):
 #  MATN — istalgan vaqt
 # ─────────────────────────────────────────
 
-@router.message(F.text & ~F.text.startswith("/") & ~F.text.in_({
-    "📊 Mening statusim", "📋 Rejalarim", "📈 Hisobot", "➕ Reja qo'shish", "💎 Premium",
-    "📞 Bog'lanish"
-}))
+# Matn xabar (reja yozish) faqat DM'da — guruhda foydalanuvchilar xabar
+# yozayotganda bot bularni reja sifatida qabul qilmaydi.
+# Guruhda `📊 Umumiy hisobot` va `📞 Bog'lanish` matnlari alohida (task 10)
+# handlerlar tomonidan boshqariladi.
+@router.message(
+    F.text & ~F.text.startswith("/") & ~F.text.in_({
+        "📊 Mening statusim", "📋 Rejalarim", "📈 Hisobot", "➕ Reja qo'shish", "💎 Premium",
+        "📞 Bog'lanish", "📊 Umumiy hisobot",
+    }),
+    F.chat.type == ChatType.PRIVATE,
+)
 async def handle_text_any(message: Message, state: FSMContext, session: AsyncSession):
     current_state = await state.get_state()
 
@@ -408,7 +418,7 @@ async def cancel_plans_handler(callback: CallbackQuery, state: FSMContext):
 #  REJALARIM
 # ─────────────────────────────────────────
 
-@router.message(F.text == "📋 Rejalarim")
+@router.message(F.text == "📋 Rejalarim", F.chat.type == ChatType.PRIVATE)
 async def my_plans_message(message: Message, session: AsyncSession):
     user = await get_user_by_telegram_id(session, message.from_user.id)
     plans = await get_today_plans(session, user)

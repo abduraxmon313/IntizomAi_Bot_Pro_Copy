@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from database.db import AsyncSessionLocal
 from webapp.security import resolve_telegram_id
+from bot.services.premium_service import user_is_premium
 from bot.services.user_service import get_user_by_telegram_id
 from bot.services.habit_service import (
     list_habit_snapshots,
@@ -16,6 +17,15 @@ from bot.services.habit_service import (
 )
 
 router = APIRouter()
+
+
+# Mini App'da BARCHA odat mutation'lari (qo'shish/tahrirlash/o'chirish/toggle)
+# Premium talab qiladi. Bepul foydalanuvchi odatlarini ko'ra oladi ammo
+# ular ustida ish qilolmaydi.
+_PREMIUM_HABIT_MSG = (
+    "Odat qo'shish va belgilash faqat Premium foydalanuvchilar uchun. "
+    "💎 Premium oling va cheksiz odatlaringizni kuzating!"
+)
 
 
 class HabitOut(BaseModel):
@@ -93,19 +103,13 @@ async def add_habit(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Odat yaratish faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_HABIT_MSG)
+
     if not (body.title or "").strip():
         raise HTTPException(status_code=400, detail="Sarlavha bo'sh bo'lishi mumkin emas")
-    # Free-tier odat limiti (premium — cheksiz)
-    from bot.services.premium_service import check_habit_limit
-    lim = await check_habit_limit(session, user, adding=1)
-    if not lim.allowed:
-        raise HTTPException(
-            status_code=402,
-            detail=(
-                f"Bepul odat limiti tugadi ({lim.used}/{lim.limit}). "
-                "Cheksiz odatlar uchun Premium oling."
-            ),
-        )
     habit = await create_habit(
         session, user, body.title, body.description, body.icon,
         frequency=body.frequency, weekdays=body.weekdays,
@@ -125,6 +129,11 @@ async def edit_habit(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Odat tahrirlash faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_HABIT_MSG)
+
     habit = await update_habit(
         session, habit_id, user.id, body.title, body.description, body.icon,
         frequency=body.frequency, weekdays=body.weekdays,
@@ -146,6 +155,11 @@ async def toggle_habit(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Odatni belgilash faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_HABIT_MSG)
+
     target_date = None
     if body.date:
         from datetime import date as _date
@@ -161,8 +175,8 @@ async def toggle_habit(
     if snap is None:
         raise HTTPException(status_code=404, detail="Odat topilmadi")
 
-    # Odat bajarilgan (done_today=True) bo'lsa — aktivatsiya (trial + referral).
-    # Idempotent: bir marta bajarilgach keyingi safar no-op.
+    # Odat bajarilgan (done_today=True) bo'lsa — referral aktivatsiyasi.
+    # (Trial olib tashlangan; referral bonusi idempotent.)
     if snap.get("done_today"):
         try:
             from bot.services.activation import on_first_completion
@@ -181,6 +195,11 @@ async def remove_habit(
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+    # PREMIUM GATE: Odatni o'chirish faqat Premium foydalanuvchilar uchun.
+    if not user_is_premium(user):
+        raise HTTPException(status_code=402, detail=_PREMIUM_HABIT_MSG)
+
     ok = await delete_habit(session, habit_id, user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Odat topilmadi")

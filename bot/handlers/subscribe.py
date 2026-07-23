@@ -19,6 +19,7 @@ import logging
 from datetime import datetime
 
 from aiogram import Router, F
+from aiogram.enums import ChatType
 from aiogram.types import (
     Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton,
 )
@@ -236,7 +237,10 @@ async def open_premium_flow(
 # ─────────────────────────────────────────────────────────────
 #  KIRISH NUQTALARI
 # ─────────────────────────────────────────────────────────────
-@router.message(F.text == "💎 Premium")
+# "💎 Premium" faqat DM chatlarda ishlaydi. Guruhda bu tugma matnini yozgan
+# foydalanuvchiga bot javob bermaydi (guruhda "Umumiy hisobot" va "Bog'lanish"
+# tugmalari alohida ishlaydi).
+@router.message(F.text == "💎 Premium", F.chat.type == ChatType.PRIVATE)
 async def subscription_button(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
 
