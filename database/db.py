@@ -127,6 +127,8 @@ GROUPS_NEW_COLUMNS = [
     ("plans_time", "VARCHAR(5) DEFAULT '07:00' NOT NULL"),
     ("plans_last_sent_at", "TIMESTAMP"),
     ("plans_last_error", "VARCHAR(300)"),
+    # ── Ma'lumot manbasi: "plans" | "habits" | "both" (default)
+    ("report_source", "VARCHAR(10) DEFAULT 'both' NOT NULL"),
 ]
 
 # plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).

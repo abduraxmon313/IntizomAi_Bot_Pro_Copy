@@ -333,6 +333,46 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   background:rgba(239,68,68,.08);
 }
 .btn-icon.btn-icon-danger:active{background:rgba(239,68,68,.15)}
+
+/* ── Hisobot tab: "Nima yuborilsin" segmentli tanlov (plans/both/habits) ──
+   Uchta tugma, birini tanlash mumkin. Faol tugma primary rangda urg'ulanadi. */
+.ge-src-seg{
+  display:inline-flex;
+  gap:2px;
+  padding:3px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  width:100%;
+  max-width:100%;
+  flex-wrap:nowrap;
+}
+.ge-src-seg .src-opt{
+  flex:1 1 0;
+  background:transparent;
+  border:none;
+  color:var(--text-2);
+  font-size:12px;
+  font-weight:700;
+  padding:7px 6px;
+  border-radius:7px;
+  cursor:pointer;
+  transition:background .18s,color .18s,transform .12s;
+  font-family:inherit;
+  letter-spacing:.1px;
+  white-space:nowrap;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ge-src-seg .src-opt:hover{color:var(--text)}
+.ge-src-seg .src-opt:active{transform:scale(.96)}
+.ge-src-seg .src-opt.active{
+  background:var(--surface);
+  color:var(--primary);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px -4px var(--primary-soft);
+}
+.ge-src-seg .src-opt.busy{opacity:.55;pointer-events:none}
 .mem-datenav{display:flex;align-items:center;gap:10px;margin:4px 0 6px}
 .mem-datenav .nav-btn{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--text);font-size:18px;font-weight:700;flex-shrink:0}
 .mem-datenav .nav-btn:disabled{opacity:.35;cursor:default}

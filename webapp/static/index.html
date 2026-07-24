@@ -329,6 +329,21 @@
           </div>
         </div>
 
+        <!-- ── Ma'lumot manbasi (nima yuborilsin): plans / habits / both.
+             Uchta segmentli tugma — birini tanlash mumkin. Bu tanlov barcha
+             Telegram xabarlariga (kunlik reja, kunlik hisobot, aggregate
+             /hisobot digest) ta'sir qiladi. -->
+        <div class="digest-row">
+          <div class="digest-label">Nima yuborilsin</div>
+          <div class="digest-value">
+            <div class="ge-src-seg" id="geReportSourceSeg" role="radiogroup" aria-label="Ma'lumot manbasi">
+              <button type="button" class="src-opt" data-src="plans" role="radio" aria-checked="false">📋 Rejalar</button>
+              <button type="button" class="src-opt active" data-src="both" role="radio" aria-checked="true">🔀 Ikkisi ham</button>
+              <button type="button" class="src-opt" data-src="habits" role="radio" aria-checked="false">🔁 Odatlar</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Kunlik REJA (plans) qatori: vaqt + kichkina test tugma + toggle -->
         <div class="digest-row">
           <div class="digest-label">Kunlik plan yuborish vaqti</div>

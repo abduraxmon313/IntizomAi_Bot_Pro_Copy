@@ -180,25 +180,39 @@ async def list_telegram_candidates(
 # ─────────────────────────────────────────────────────────────
 
 
+def _group_source(group: Group) -> str:
+    """
+    Guruhning `report_source` sozlamasini xavfsiz o'qib qaytaradi. Yaroqsiz
+    yoki mavjud emas bo'lsa default "both" qaytadi.
+    """
+    src = (getattr(group, "report_source", None) or "both").strip().lower()
+    return src if src in ("plans", "habits", "both") else "both"
+
+
 async def _member_today_counts(
     session: AsyncSession, user_ids: list[int], today: date,
+    *,
+    source: str = "both",
 ) -> dict[int, dict]:
     """
     Har bir a'zoning bugungi RAQAMLARI — WEBAPP `Friends → group → member`
-    ko'rinishi bilan MOS keladigan filtrlar:
+    ko'rinishi bilan MOS filtrlar bilan:
 
       • Plans: shu kunga rejalashtirilgan bo'lganlar (Plan.plan_date == today).
-      • Habits: arxivlanmagan VA `is_due_on(today)` — shu kunga rejalashtirilgan
-        (haftalik odat uchun weekday tekshiriladi) VA `not is_finished(today)`
-        — muddati tugamagan.
+      • Habits: arxivlanmagan VA `is_due_on(today)` VA `not is_finished(today)`.
       • Habit completion: HabitLog.log_date == today.
 
-    Bu foydalanuvchining talabiga muvofiq: "biror odat bugun uchun emas
-    bolsa ham bajarmadi deyadi" — ilgari barcha odatlar total'ga qo'shilar edi,
-    endi faqat bugun rejalashtirilganlar hisoblanadi (webapp bilan bir xil).
+    `source` — guruh sozlamasi (Group.report_source):
+      • "plans"  — faqat rejalar (habits_* har doim 0)
+      • "habits" — faqat odatlar (plans_* har doim 0)
+      • "both"   — ikkisi ham (default)
+    Kerak bo'lmagan turdagi SQL so'rovlar umuman bajarilmaydi.
 
     Qaytadi: {user_id: {plans_total, plans_done, habits_total, habits_done_today}}
     """
+    include_plans = source in ("plans", "both")
+    include_habits = source in ("habits", "both")
+
     out = {
         uid: {
             "plans_total": 0, "plans_done": 0,
@@ -209,47 +223,47 @@ async def _member_today_counts(
     if not user_ids:
         return out
 
-    # ── Plans (bulk, GROUP BY)
-    done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
-    for uid, total, done in (await session.execute(
-        select(Plan.user_id, func.count(Plan.id), done_case)
-        .where(and_(Plan.user_id.in_(user_ids), Plan.plan_date == today))
-        .group_by(Plan.user_id)
-    )).all():
-        out[uid]["plans_total"] = int(total or 0)
-        out[uid]["plans_done"] = int(done or 0)
+    # ── Plans (bulk, GROUP BY) — faqat kerak bo'lsa
+    if include_plans:
+        done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
+        for uid, total, done in (await session.execute(
+            select(Plan.user_id, func.count(Plan.id), done_case)
+            .where(and_(Plan.user_id.in_(user_ids), Plan.plan_date == today))
+            .group_by(Plan.user_id)
+        )).all():
+            out[uid]["plans_total"] = int(total or 0)
+            out[uid]["plans_done"] = int(done or 0)
 
-    # ── Habits — arxivlanmaganlarni bulk olib, Python'da is_due_on/is_finished
-    #    filtrini qo'llaymiz. Habit modelining barcha maydonlari (frequency,
-    #    weekdays, start_date, target_days, duration_type) shu filter uchun
-    #    kerak, shuning uchun select(Habit) (butun obyekt) chaqiramiz.
-    all_habits = (await session.execute(
-        select(Habit).where(and_(
-            Habit.user_id.in_(user_ids),
-            Habit.archived == False,  # noqa: E712
-        ))
-    )).scalars().all()
-
-    due_ids_by_user: dict[int, set[int]] = {uid: set() for uid in user_ids}
-    for h in all_habits:
-        if is_due_on(h, today) and not is_finished(h, today):
-            due_ids_by_user.setdefault(int(h.user_id), set()).add(int(h.id))
-    for uid, hids in due_ids_by_user.items():
-        out[uid]["habits_total"] = len(hids)
-
-    # ── HabitLog — bugungi log yozuvlari (faqat filtrlangan habit_ids uchun)
-    all_due_ids: list[int] = [hid for hids in due_ids_by_user.values() for hid in hids]
-    if all_due_ids:
-        rows = (await session.execute(
-            select(HabitLog.user_id, HabitLog.habit_id).where(and_(
-                HabitLog.habit_id.in_(all_due_ids),
-                HabitLog.log_date == today,
+    # ── Habits — faqat kerak bo'lsa. Arxivlanmaganlarni bulk olib,
+    #    Python'da is_due_on/is_finished filtrini qo'llaymiz.
+    if include_habits:
+        all_habits = (await session.execute(
+            select(Habit).where(and_(
+                Habit.user_id.in_(user_ids),
+                Habit.archived == False,  # noqa: E712
             ))
-        )).all()
-        for uid, hid in rows:
-            uid_i = int(uid)
-            if int(hid) in due_ids_by_user.get(uid_i, set()):
-                out[uid_i]["habits_done_today"] += 1
+        )).scalars().all()
+
+        due_ids_by_user: dict[int, set[int]] = {uid: set() for uid in user_ids}
+        for h in all_habits:
+            if is_due_on(h, today) and not is_finished(h, today):
+                due_ids_by_user.setdefault(int(h.user_id), set()).add(int(h.id))
+        for uid, hids in due_ids_by_user.items():
+            out[uid]["habits_total"] = len(hids)
+
+        # HabitLog — bugungi log yozuvlari (faqat filtrlangan habit_ids uchun)
+        all_due_ids: list[int] = [hid for hids in due_ids_by_user.values() for hid in hids]
+        if all_due_ids:
+            rows = (await session.execute(
+                select(HabitLog.user_id, HabitLog.habit_id).where(and_(
+                    HabitLog.habit_id.in_(all_due_ids),
+                    HabitLog.log_date == today,
+                ))
+            )).all()
+            for uid, hid in rows:
+                uid_i = int(uid)
+                if int(hid) in due_ids_by_user.get(uid_i, set()):
+                    out[uid_i]["habits_done_today"] += 1
 
     return out
 
@@ -383,8 +397,10 @@ async def build_digest_html(
 
     today = datetime.now(TIMEZONE).date()
     user_ids = [u.id for _gm, u in rows]
-    # WEBAPP bilan mos count: is_due_on + not is_finished filtrlari.
-    summaries = await _member_today_counts(session, user_ids, today)
+    # WEBAPP bilan mos count. Guruhning report_source sozlamasiga rioya qilamiz
+    # (plans/habits/both) — faqat tanlangan turdagi ma'lumot hisoblanadi.
+    source = _group_source(group)
+    summaries = await _member_today_counts(session, user_ids, today, source=source)
 
     # A'zolarni 4 guruhga ajratamiz:
     #   • full_rows    — bugun HAMMASINI bajardi
@@ -524,8 +540,9 @@ async def build_digest_keyboard(
 
     today = datetime.now(TIMEZONE).date()
     user_ids = [u.id for _gm, u in rows]
-    # WEBAPP bilan mos count (is_due_on + not is_finished filtrlari bilan).
-    summaries = await _member_today_counts(session, user_ids, today)
+    # WEBAPP bilan mos count + guruh report_source sozlamasiga rioya.
+    source = _group_source(group)
+    summaries = await _member_today_counts(session, user_ids, today, source=source)
 
     # A'zolarni bo'limlarga ajratib tartiblash — hisobotdagi tartib bilan bir xil:
     #   0 → full (to'liq bajarganlar)
@@ -591,65 +608,72 @@ async def build_digest_keyboard(
 # ─────────────────────────────────────────────────────────────
 async def _get_user_today_items(
     session: AsyncSession, user_id: int,
+    *,
+    source: str = "both",
 ) -> tuple[list[tuple[str, bool]], list[tuple[str, bool]]]:
     """
     Foydalanuvchining bugungi rejalar va odatlarini nom+bajarilish bilan qaytaradi.
     Qaytadi: (plans, habits) — har biri [(title, is_done), ...].
 
+    `source` — guruh sozlamasi (Group.report_source):
+      • "plans"  — faqat rejalar (habits har doim [])
+      • "habits" — faqat odatlar (plans har doim [])
+      • "both"   — ikkisi ham (default)
+
     Filtrlash WEBAPP `Friends → group → member` ko'rinishi bilan MOS keladi:
       • Plans: shu kunga rejalashtirilganlar (Plan.plan_date == today).
       • Habits: arxivlanmagan + `is_due_on(today)` + `not is_finished(today)`.
-        (Ilgari BARCHA arxivlanmagan odatlar ko'rinar edi va foydalanuvchi
-        haqli ravishda bugun uchun bo'lmagan odatni "bajarmagan" deb ko'rish
-        noto'g'ri ekanligini aytdi.)
       • Habit completion: HabitLog.log_date == today.
     """
+    include_plans = source in ("plans", "both")
+    include_habits = source in ("habits", "both")
     today = datetime.now(TIMEZONE).date()
 
-    # ── Plans (webapp bilan bir xil filter)
-    plan_rows = (await session.execute(
-        select(Plan.title, Plan.status)
-        .where(and_(Plan.user_id == user_id, Plan.plan_date == today))
-        .order_by(Plan.scheduled_time.nullslast(), Plan.id)
-    )).all()
-    plans = [(row[0] or "-", row[1] == PlanStatus.done) for row in plan_rows]
+    # ── Plans — faqat kerak bo'lsa
+    plans: list[tuple[str, bool]] = []
+    if include_plans:
+        plan_rows = (await session.execute(
+            select(Plan.title, Plan.status)
+            .where(and_(Plan.user_id == user_id, Plan.plan_date == today))
+            .order_by(Plan.scheduled_time.nullslast(), Plan.id)
+        )).all()
+        plans = [(row[0] or "-", row[1] == PlanStatus.done) for row in plan_rows]
 
-    # ── Habits — arxivlanmagan hammasini olib, Python'da is_due_on/is_finished
-    #    filterni qo'llaymiz (webapp bilan aynan bir xil).
-    all_habits = (await session.execute(
-        select(Habit).where(and_(
-            Habit.user_id == user_id,
-            Habit.archived == False,  # noqa: E712
-        ))
-    )).scalars().all()
-
-    # Faqat shu kunga rejalashtirilgan va muddati tugamagan odatlar.
-    filtered_habits = [
-        h for h in all_habits
-        if is_due_on(h, today) and not is_finished(h, today)
-    ]
-
-    # Saralash — webapp bilan bir xil: eslatma vaqti bor bo'lgan (ertaroq)
-    # oldindan, vaqtsizlar oxirda.
-    def _habit_sort_key(h: Habit):
-        rt = (h.reminder_time or "").strip()
-        return (0, rt) if rt else (1, "")
-
-    filtered_habits.sort(key=_habit_sort_key)
-
-    if filtered_habits:
-        habit_ids = [int(h.id) for h in filtered_habits]
-        done_ids: set[int] = set()
-        for (hid,) in (await session.execute(
-            select(HabitLog.habit_id).where(and_(
-                HabitLog.habit_id.in_(habit_ids),
-                HabitLog.log_date == today,
+    # ── Habits — faqat kerak bo'lsa
+    habits: list[tuple[str, bool]] = []
+    if include_habits:
+        all_habits = (await session.execute(
+            select(Habit).where(and_(
+                Habit.user_id == user_id,
+                Habit.archived == False,  # noqa: E712
             ))
-        )).all():
-            done_ids.add(int(hid))
-        habits = [(h.title or "-", int(h.id) in done_ids) for h in filtered_habits]
-    else:
-        habits = []
+        )).scalars().all()
+
+        # Faqat shu kunga rejalashtirilgan va muddati tugamagan odatlar.
+        filtered_habits = [
+            h for h in all_habits
+            if is_due_on(h, today) and not is_finished(h, today)
+        ]
+
+        # Saralash — webapp bilan bir xil: eslatma vaqti bor bo'lgan (ertaroq)
+        # oldindan, vaqtsizlar oxirda.
+        def _habit_sort_key(h: Habit):
+            rt = (h.reminder_time or "").strip()
+            return (0, rt) if rt else (1, "")
+
+        filtered_habits.sort(key=_habit_sort_key)
+
+        if filtered_habits:
+            habit_ids = [int(h.id) for h in filtered_habits]
+            done_ids: set[int] = set()
+            for (hid,) in (await session.execute(
+                select(HabitLog.habit_id).where(and_(
+                    HabitLog.habit_id.in_(habit_ids),
+                    HabitLog.log_date == today,
+                ))
+            )).all():
+                done_ids.add(int(hid))
+            habits = [(h.title or "-", int(h.id) in done_ids) for h in filtered_habits]
 
     return plans, habits
 
@@ -692,7 +716,9 @@ async def build_user_plans_html(
     HAR DOIM string qaytaradi — hech qachon None (a'zo bo'sh bo'lsa ham
     guruhga "Rejasi yo'q" xabari yuboriladi).
     """
-    plans, habits = await _get_user_today_items(session, user.id)
+    plans, habits = await _get_user_today_items(
+        session, user.id, source=_group_source(group),
+    )
     items: list[str] = []
     # Rejalar avval (chronological), keyin odatlar (reminder_time tartibi).
     for title, _done in plans:
@@ -740,7 +766,9 @@ async def build_user_report_html(
     Bajarilganlar (✅) avval, bajarilmaganlar (❌) keyin. Raqamlar 1..N ketma-ket.
     HAR DOIM string qaytaradi — hech qachon None.
     """
-    plans, habits = await _get_user_today_items(session, user.id)
+    plans, habits = await _get_user_today_items(
+        session, user.id, source=_group_source(group),
+    )
 
     # Bajarilgan/bajarilmagan tartibi bilan yig'amiz (avval done, keyin undone).
     done_items: list[str] = []
