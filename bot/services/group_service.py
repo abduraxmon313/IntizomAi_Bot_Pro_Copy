@@ -328,11 +328,19 @@ async def _member_today_summary(session: AsyncSession, user_id: int) -> dict:
 
 
 async def _effective_visible(
-    session: AsyncSession, group_id: int, owner_id: int, viewer_id: int
+    session: AsyncSession, group_id: int, owner_id: int, viewer_id: int,
+    *,
+    target_is_active: bool = True,
+    viewer_is_group_owner: bool = False,
 ) -> bool:
     """
-    Viewer, guruhda owner'ning ma'lumotlarini ko'ra oladimi?
+    Viewer, guruhda owner'ning (bu funksiyada "data owner" — a'zoning ma'lumoti
+    egasi) ma'lumotlarini ko'ra oladimi?
+
+    Qoidalar:
       • O'ziga har doim ko'rinadi.
+      • Target `is_active=False` bo'lsa (guruh egasi vaqtincha o'chirgan): faqat
+        target o'zi va guruh egasi ko'ra oladi. Boshqa a'zolar → False.
       • Global "guruh ruxsatlar menyusi" o'chirilgan bo'lsa → hamma birdek
         ko'radi (admin foydalanuvchilarga ruxsatlar tanlash imkonini o'chirib
         qo'ygan, natijada default hamma ochiq).
@@ -341,6 +349,10 @@ async def _effective_visible(
     """
     if owner_id == viewer_id:
         return True
+    # A'zo egasi tomonidan o'chirilgan (is_active=False) → faqat guruh egasi
+    # ko'ra oladi (target'ni yoqib qo'yish imkoniyati uchun).
+    if not target_is_active:
+        return viewer_is_group_owner
     # Admin panelidan ruxsatlar menyusi o'chirilgan bo'lsa qulflarni chetlab
     # o'tamiz — bu holatda hamma bir-birini avtomatik ko'radi.
     if not await is_group_perms_menu_enabled(session):
@@ -405,9 +417,18 @@ async def _bulk_today_summary(session: AsyncSession, user_ids: list[int]) -> dic
 async def get_group_detail(
     session: AsyncSession, user: User, group_id: int
 ) -> dict:
-    """Guruh + a'zolar ro'yxati + bugungi xulosa (visibility bilan) + permissions."""
+    """Guruh + a'zolar ro'yxati + bugungi xulosa (visibility bilan) + permissions.
+
+    is_active=False bo'lgan a'zolar:
+      • Guruh egasi — barcha a'zolarni ko'radi (jumladan o'chirilganlarini),
+        `is_active` bayrog'i bilan (UI toggle ko'rsatishi uchun).
+      • Boshqalar — o'chirilgan a'zolar ro'yxatga umuman qo'shilmaydi (ular
+        guruhdan chiqarilgandek bo'ladi).
+    """
     g = await get_group(session, group_id)
     await require_member(session, group_id, user.id)
+
+    is_group_owner = (g.owner_user_id == user.id)
 
     members_res = await session.execute(
         select(GroupMember, User)
@@ -416,6 +437,17 @@ async def get_group_detail(
         .order_by(GroupMember.joined_at)
     )
     rows = members_res.all()
+
+    # is_active mapping — a'zo id → aktiv (True/False).
+    active_map: dict[int, bool] = {u.id: bool(gm.is_active) for gm, u in rows}
+
+    # Egadan boshqalar uchun o'chirilgan a'zolarni ro'yxatdan olib tashlaymiz.
+    if not is_group_owner:
+        rows = [
+            (gm, u) for gm, u in rows
+            if bool(gm.is_active) or u.id == user.id
+        ]
+
     member_ids = [u.id for _gm, u in rows]
 
     # Admin panelidan "Guruh ruxsatlar menyusi" o'chirilgan bo'lsa — barcha
@@ -443,6 +475,9 @@ async def get_group_detail(
     def _is_visible(uid: int) -> bool:
         if uid == user.id:
             return True
+        # is_active=False a'zoni faqat guruh egasi ko'ra oladi.
+        if not active_map.get(uid, True):
+            return is_group_owner
         # Ruxsatlar menyusi global o'chirilgan bo'lsa hamma ko'rinadi.
         if not perms_menu_on:
             return True
@@ -469,6 +504,9 @@ async def get_group_detail(
             "summary": summary,
             "can_i_manage": can_i_manage,
             "visible": vis,
+            # Guruh egasi UI toggle uchun ishlatadi. Boshqalar uchun bu qiymat
+            # ma'nosiz (ular is_active=False a'zolarni ko'rmaydi umuman).
+            "is_active": bool(gm.is_active),
         })
 
     return {
@@ -476,7 +514,7 @@ async def get_group_detail(
         "name": g.name,
         "description": g.description,
         "invite_code": g.invite_code,
-        "is_owner": g.owner_user_id == user.id,
+        "is_owner": is_group_owner,
         "owner_user_id": g.owner_user_id,
         "members": members,
     }
@@ -508,7 +546,22 @@ async def get_member_view(
     if not target:
         raise GroupNotFound("Foydalanuvchi topilmadi.")
 
-    visible = await _effective_visible(session, group_id, target.id, user.id)
+    # Target'ning aktiv holati — is_active=False bo'lsa faqat ega yoki target
+    # o'zi ko'ra oladi.
+    target_membership = (await session.execute(
+        select(GroupMember).where(and_(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == target_user_id,
+        ))
+    )).scalar_one_or_none()
+    target_is_active = bool(target_membership.is_active) if target_membership else True
+    is_group_owner = (g.owner_user_id == user.id)
+
+    visible = await _effective_visible(
+        session, group_id, target.id, user.id,
+        target_is_active=target_is_active,
+        viewer_is_group_owner=is_group_owner,
+    )
 
     # Joriy user shu a'zo uchun yozishga huquqlimi (can_manage → visible ham True)
     can_manage = False
@@ -540,6 +593,7 @@ async def get_member_view(
                 "streak": int(target.streak or 0),
                 "total_score": int(target.total_score or 0),
                 "is_me": False,
+                "is_active": target_is_active,
             },
             # Maqsad guruh kontekstida ko'rinmaydi. Frontend uchun to'liq
             # backward-compat saqlash uchun bo'sh ro'yxatni qaytarmaymiz.
@@ -626,6 +680,7 @@ async def get_member_view(
             "streak": int(target.streak or 0),
             "total_score": int(target.total_score or 0),
             "is_me": target.id == user.id,
+            "is_active": target_is_active,
         },
         "plans": [_plan_dict(p) for p in plans],
         "habits": [_habit_dict(h) for h in habits],
@@ -790,6 +845,51 @@ async def remove_member(
         )
     )
     await session.commit()
+
+
+async def set_member_active(
+    session: AsyncSession, actor: User, group_id: int, target_user_id: int,
+    is_active: bool,
+) -> dict:
+    """
+    Guruh egasi tomonidan a'zoning "aktiv" holatini o'zgartirish.
+
+    is_active=False bo'lsa:
+      • A'zoning reja/odatlari webapp'da boshqa a'zolarga ko'rinmaydi
+      • Telegram guruh xabarlarida (kunlik reja, kunlik hisobot, aggregate
+        /hisobot digest) bu a'zo umuman ko'rinmaydi va hisoblanmaydi
+      • Ega hech tegilmaydi — u a'zoni qayta yoqishi mumkin
+
+    Ega o'zini o'chira olmaydi (bu ma'nosiz — ega o'z ma'lumotini ko'ra oladi).
+    Boshqa egalik holatlari (ega bo'lmagan actor) — GroupForbidden.
+    """
+    g = await get_group(session, group_id)
+    if g.owner_user_id != actor.id:
+        raise GroupForbidden("Faqat guruh egasi a'zoni yoqish/o'chirishi mumkin.")
+    if target_user_id == actor.id:
+        raise GroupError("Ega o'zini o'chira olmaydi.")
+
+    row = (await session.execute(
+        select(GroupMember).where(and_(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == target_user_id,
+        ))
+    )).scalar_one_or_none()
+    if row is None:
+        raise GroupNotFound("Bunday a'zo bu guruhda yo'q.")
+
+    row.is_active = bool(is_active)
+    try:
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        raise GroupError(f"Saqlashda xato: {e}")
+
+    return {
+        "group_id": group_id,
+        "user_id": target_user_id,
+        "is_active": bool(row.is_active),
+    }
 
 
 async def ensure_can_manage(

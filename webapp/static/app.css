@@ -288,6 +288,27 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .perm-row .locked-hint{font-size:10.5px;color:var(--text-3);margin-left:8px}
 .mem-kick{width:32px;height:32px;border-radius:10px;background:transparent;border:1px solid var(--border);color:var(--danger,#ef4444);display:grid;place-items:center;cursor:pointer;flex-shrink:0;padding:0}
 .mem-kick:active{transform:scale(.9);background:rgba(239,68,68,.08)}
+
+/* ── Guruh sozlamalari: A'zolar tab qatorlari ──────────────────────────
+   Har a'zo qatorida: ism | on/off toggle | 🗑 qizil chiqarish icon-tugma.
+   Toggle o'chirilsa qator dim bo'ladi (visual "pauza" holati). */
+.perm-row.ge-mem-row{gap:8px}
+.perm-row.ge-mem-row .nm{transition:opacity .2s,color .2s}
+.perm-row.ge-mem-row.ge-mem-off .nm{opacity:.5;text-decoration:line-through}
+.ge-mem-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.ge-mem-actions .toggle.busy{opacity:.6;pointer-events:none}
+
+/* Xavfli icon-tugma variantasi (qizil border/matn, kichkina). Chiqarish
+   uchun ishlatiladi — .btn-icon dan meros oladi. */
+.btn-icon.btn-icon-danger{
+  color:var(--danger,#ef4444);
+  border-color:rgba(239,68,68,.35);
+}
+.btn-icon.btn-icon-danger:hover{
+  border-color:var(--danger,#ef4444);
+  background:rgba(239,68,68,.08);
+}
+.btn-icon.btn-icon-danger:active{background:rgba(239,68,68,.15)}
 .mem-datenav{display:flex;align-items:center;gap:10px;margin:4px 0 6px}
 .mem-datenav .nav-btn{width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--text);font-size:18px;font-weight:700;flex-shrink:0}
 .mem-datenav .nav-btn:disabled{opacity:.35;cursor:default}

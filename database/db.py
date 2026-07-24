@@ -137,6 +137,13 @@ GROUP_PERMISSIONS_NEW_COLUMNS = [
     ("can_view", "BOOLEAN DEFAULT FALSE NOT NULL"),
 ]
 
+# group_members jadvali uchun yangi ustunlar. `is_active` — guruh egasi
+# a'zoni vaqtincha "pauza" qilishi mumkin (rejalari boshqalarga ko'rinmaydi
+# va Telegram hisobotlarida hisoblanmaydi, lekin a'zo guruhdan chiqarilmaydi).
+GROUP_MEMBERS_NEW_COLUMNS = [
+    ("is_active", "BOOLEAN DEFAULT TRUE NOT NULL"),
+]
+
 # Hot so'rovlar uchun indekslar (Postgres). Foreign-key ustunlar Postgres'da
 # avtomatik indekslanmaydi — shuning uchun qo'lda qo'shamiz.
 NEW_INDEXES = [
@@ -243,6 +250,15 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip group_permissions.{col}: {e}")
+
+    # group_members: is_active — guruh egasi tomonidan a'zoni "pauza" qilish.
+    for col, ddl in GROUP_MEMBERS_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE group_members ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip group_members.{col}: {e}")
 
     # habits uchun yangi ustunlar (frequency/weekdays/duration/start_date...).
     # Jadval shu transaksiyada create_all bilan yaratilgani uchun yangi DB'da

@@ -32,6 +32,7 @@ from bot.services.group_service import (
     list_permissions,
     remove_member,
     rename_group,
+    set_member_active,
     set_permission,
     unlink_telegram,
     update_telegram_settings,
@@ -308,6 +309,32 @@ async def remove_member_api(
     except GroupError as e:
         raise _map_group_error(e)
     return {"ok": True}
+
+
+class MemberActiveUpdate(BaseModel):
+    """A'zoning 'aktiv' holatini yangilash uchun DTO (faqat guruh egasi)."""
+    is_active: bool
+
+
+@router.put("/friends/groups/{group_id}/members/{user_id}/active")
+async def set_member_active_api(
+    group_id: int, user_id: int,
+    body: MemberActiveUpdate,
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Guruh egasi tomonidan a'zoni "pauza" (is_active=False) yoki qayta
+    yoqish (is_active=True). O'chirilgan a'zoning ma'lumotlari webapp va
+    Telegram guruh xabarlarida ko'rinmaydi (a'zolikni saqlab qoladi).
+    """
+    user = await _require_user(session, telegram_id)
+    try:
+        return await set_member_active(
+            session, user, group_id, user_id, is_active=bool(body.is_active),
+        )
+    except GroupError as e:
+        raise _map_group_error(e)
 
 
 # ─────────────────────────────────────────────────────────────
