@@ -852,22 +852,20 @@ async def set_member_active(
     is_active: bool,
 ) -> dict:
     """
-    Guruh egasi tomonidan a'zoning "aktiv" holatini o'zgartirish.
+    Guruh egasi tomonidan a'zoning "aktiv" holatini o'zgartirish (jumladan
+    o'zining ham — ega o'zining ma'lumotlarini boshqalardan yashira oladi).
 
     is_active=False bo'lsa:
-      • A'zoning reja/odatlari webapp'da boshqa a'zolarga ko'rinmaydi
+      • Target'ning reja/odatlari webapp'da boshqa a'zolarga ko'rinmaydi
       • Telegram guruh xabarlarida (kunlik reja, kunlik hisobot, aggregate
-        /hisobot digest) bu a'zo umuman ko'rinmaydi va hisoblanmaydi
-      • Ega hech tegilmaydi — u a'zoni qayta yoqishi mumkin
+        /hisobot digest) target umuman ko'rinmaydi va hisoblanmaydi
+      • Target o'zi ma'lumotini ko'ra oladi (self-visibility har doim ochiq)
 
-    Ega o'zini o'chira olmaydi (bu ma'nosiz — ega o'z ma'lumotini ko'ra oladi).
-    Boshqa egalik holatlari (ega bo'lmagan actor) — GroupForbidden.
+    Ega bo'lmagan actor uchun — GroupForbidden.
     """
     g = await get_group(session, group_id)
     if g.owner_user_id != actor.id:
         raise GroupForbidden("Faqat guruh egasi a'zoni yoqish/o'chirishi mumkin.")
-    if target_user_id == actor.id:
-        raise GroupError("Ega o'zini o'chira olmaydi.")
 
     row = (await session.execute(
         select(GroupMember).where(and_(
