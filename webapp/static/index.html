@@ -389,30 +389,29 @@
   </div>
 </div>
 
-<!-- Friends: ruxsatlar (2 seksiya — ko'ra oladi + yarata oladi) -->
+<!-- Friends: ruxsatlar (2 seksiya)
+     • ✍️ Kim men uchun yarata oladi — reja/odat yaratish huquqini berish
+     • 📥 Menga ruxsat berganlar — kimlar menga huquq berganini ko'rish
+     Eslatma: ilgari "👁 Kim meni ko'radi" bo'limi ham bor edi — foydalanuvchi
+     so'roviga muvofiq olib tashlandi. Hamma bir-birining reja/odatlarini har
+     doim ko'radi; visibility guruh egasi tomonidan A'zolar bo'limidagi
+     on/off toggle bilan boshqariladi. -->
 <div class="modal-back" id="permsBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Ruxsatlar 🛡</h3>
 
-    <!-- Ko'rinish (kim mening ma'lumotlarimni ko'radi) -->
-    <div style="margin-top:8px">
-      <h3 style="font-size:14px;margin-bottom:2px">👁 Kim meni ko'radi</h3>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Rejalarim, odat va maqsadlarimni kim ko'ra oladi. Default: yashirin.</p>
-      <div id="permsView"></div>
-    </div>
-
     <!-- Boshqarish (kim men uchun yarata oladi) -->
-    <div style="margin-top:14px">
+    <div style="margin-top:8px">
       <h3 style="font-size:14px;margin-bottom:2px">✍️ Kim men uchun yarata oladi</h3>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Reja, odat va maqsadlarni men uchun qo'shish huquqi. Ruxsat berilgan a'zo avtomatik ko'radi ham.</p>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Reja va odatlarni men uchun qo'shish huquqi.</p>
       <div id="permsGrantsOut"></div>
     </div>
 
     <!-- Menga berilgan huquqlar (info) -->
     <div style="margin-top:14px">
       <h3 style="font-size:14px;margin-bottom:2px">📥 Menga ruxsat berganlar</h3>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Bu odamlar sizga ular uchun reja/maqsad/odat yaratishga ruxsat berdi.</p>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Bu odamlar sizga ular uchun reja/odat yaratishga ruxsat berdi.</p>
       <div id="permsGrantsIn"></div>
     </div>
 

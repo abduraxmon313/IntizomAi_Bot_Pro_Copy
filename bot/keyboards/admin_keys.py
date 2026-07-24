@@ -28,23 +28,15 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def admin_webapp_keyboard(*, perms_menu_enabled: bool) -> InlineKeyboardMarkup:
+def admin_webapp_keyboard() -> InlineKeyboardMarkup:
     """
     "🌐 WebApp imkoniyatlari" menyusi tugmalari.
 
-    Hozircha bitta boshqaruv:
-      • "Guruh ruxsatlar menyusi" — Do'stlar sahifasidagi "🛡 Ruxsatlar"
-        tugmasini yoqish/o'chirish. Tugma matnida joriy holat ko'rsatiladi
-        (ON/OFF) — bosilganda holat teskarisiga o'zgaradi.
+    Hozircha bu yerda sozlamalar yo'q — kelajakda WebApp'ga global ta'sir
+    qiluvchi yangi bayroqlar shu menyuga qo'shiladi. Bo'lim bo'sh bo'lsa
+    ham menyuni saqlaymiz (admin infrastruktura tayyor bo'lsin).
     """
-    state_label = "✅ Yoqilgan" if perms_menu_enabled else "⛔️ O'chirilgan"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text=f"🛡 Guruh ruxsatlar menyusi — {state_label}",
-                callback_data="admin_toggle_group_perms",
-            ),
-        ],
         [
             InlineKeyboardButton(text="🔙 Orqaga", callback_data="admin_panel"),
         ],
