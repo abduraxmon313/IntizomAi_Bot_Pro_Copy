@@ -1823,23 +1823,26 @@ function renderGroupEditMembers(){
   if(!box||!wrap)return;
   if(!g||!g.is_owner){wrap.style.display='none';box.innerHTML='';return;}
   wrap.style.display='';
-  const others=(g.members||[]).filter(m=>!m.is_me&&m.role!=='owner');
-  if(!others.length){
-    box.innerHTML='<div style="font-size:12px;color:var(--text-3);padding:6px">Boshqa a\'zo yo\'q</div>';
-    return;
-  }
-  // Har qatorda: ism | is_active toggle | qizil chiqarish icon tugma.
-  // Toggle o'chirilsa a'zoning ma'lumotlari boshqalarga ko'rinmaydi va
-  // Telegram guruh hisobotlarida hisoblanmaydi (a'zolik saqlanadi).
-  // Chiqarish tugmasi (🗑) esa a'zoni butunlay guruhdan olib tashlaydi.
-  box.innerHTML=others.map(m=>{
+  // A'zolar ro'yxati — barcha a'zolar, jumladan guruh egasi (o'zi) ham.
+  // Foydalanuvchi so'ragan: ega o'zining ma'lumotlarini yashira olishi kerak.
+  // Ega uchun chiqarish (🗑) tugmasi ko'rsatilmaydi — u o'zini chiqara olmaydi.
+  // Tartib: ega tepada, keyin qolganlar.
+  const list = (g.members||[]).slice().sort((a,b)=>{
+    if(a.is_me && !b.is_me) return -1;
+    if(!a.is_me && b.is_me) return 1;
+    return 0;
+  });
+  box.innerHTML=list.map(m=>{
     const active = m.is_active !== false;  // default TRUE (backward compat)
+    const isMe = !!m.is_me;
+    const nameTag = isMe ? ' <span class="ge-mem-tag">EGA</span>' : '';
+    const kickBtn = isMe ? '' : `<button class="btn-icon btn-icon-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" title="Guruhdan chiqarish" aria-label="Guruhdan chiqarish">🗑</button>`;
     return `
-    <div class="perm-row ge-mem-row${active?'':' ge-mem-off'}">
-      <div class="nm">${esc(m.name)}</div>
+    <div class="perm-row ge-mem-row${active?'':' ge-mem-off'}${isMe?' ge-mem-me':''}">
+      <div class="nm">${esc(m.name)}${nameTag}</div>
       <div class="ge-mem-actions">
         <div class="toggle ${active?'on':''}" data-active-uid="${m.user_id}" role="switch" aria-label="${active?'O\'chirish':'Yoqish'}" title="${active?'Aktiv — ma\'lumotlari ko\'rinadi':'O\'chirilgan — ma\'lumotlari yashirin'}"><i></i></div>
-        <button class="btn-icon btn-icon-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" title="Guruhdan chiqarish" aria-label="Guruhdan chiqarish">🗑</button>
+        ${kickBtn}
       </div>
     </div>`;
   }).join('');

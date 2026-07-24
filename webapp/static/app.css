@@ -291,10 +291,34 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 
 /* ── Guruh sozlamalari: A'zolar tab qatorlari ──────────────────────────
    Har a'zo qatorida: ism | on/off toggle | 🗑 qizil chiqarish icon-tugma.
+   Guruh egasi (o'zi) ham ro'yxatda — o'z ma'lumotlarini yashira olishi
+   uchun. Ega qatorida "EGA" yorlig'i ko'rinadi va chiqarish tugmasi yo'q.
    Toggle o'chirilsa qator dim bo'ladi (visual "pauza" holati). */
 .perm-row.ge-mem-row{gap:8px}
-.perm-row.ge-mem-row .nm{transition:opacity .2s,color .2s}
+.perm-row.ge-mem-row .nm{
+  transition:opacity .2s,color .2s;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  flex:1 1 auto;
+}
 .perm-row.ge-mem-row.ge-mem-off .nm{opacity:.5;text-decoration:line-through}
+/* Ega qatori uchun kichkina "EGA" yorlig'i (chip-style) */
+.ge-mem-tag{
+  display:inline-block;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.5px;
+  color:var(--primary);
+  background:var(--primary-soft);
+  border:1px solid var(--border);
+  padding:2px 7px;
+  border-radius:999px;
+  flex:0 0 auto;
+  text-transform:uppercase;
+}
+.perm-row.ge-mem-row.ge-mem-off .ge-mem-tag{opacity:.55}
 .ge-mem-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .ge-mem-actions .toggle.busy{opacity:.6;pointer-events:none}
 
