@@ -29,7 +29,6 @@ from aiogram.exceptions import (
     TelegramForbiddenError,
     TelegramRetryAfter,
 )
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,11 +38,6 @@ from bot.models.group import Group, GroupMember
 from bot.models.user import User
 from bot.services.group_service import _bulk_today_summary
 from database.db import AsyncSessionLocal
-
-# Digest xabaridagi "Batafsil" tugmalar uchun MAX foydalanuvchi soni.
-# Ko'proq bo'lsa xabar juda uzun tugmalar bilan to'lib ketardi va
-# Telegram inline_keyboard chegarasi (~100 tugma) yaqinlashardi.
-_MAX_DETAIL_BUTTONS = 10
 
 logger = logging.getLogger(__name__)
 
@@ -260,60 +254,12 @@ def _uz_date(d: date) -> str:
     return f"{d.day}-{UZ_MONTHS[d.month - 1]} ({UZ_WEEKDAYS[d.weekday()]})"
 
 
-@dataclass
-class DigestBuild:
-    """
-    Digest xabari uchun to'liq ma'lumot to'plami:
-      • html   — Telegram xabari matni (parse_mode="HTML")
-      • active — bugun ish qilgan a'zolar ranked ro'yxati (User obyektlari
-                 bilan). Bu ro'yxatdan chaqiruvchi kod inline "Batafsil"
-                 tugmalarini yasashi mumkin (har bir foydalanuvchi uchun).
-    """
-    html: str
-    active: list[User]
-
-
-def _build_detail_keyboard(active_users: list[User]) -> Optional[InlineKeyboardMarkup]:
-    """
-    Digest xabari tagida joylashadigan "Batafsil" inline tugmalari.
-    Har bir aktiv (bugun ish qilgan) foydalanuvchi uchun bitta tugma:
-      "👤 <name>"  →  callback_data="grp_det_<user_id>"
-
-    Tugmalar 2 tadan bir qatorda joylashtiriladi. `_MAX_DETAIL_BUTTONS` dan
-    ortiq bo'lsa keyingilari o'tkazib yuboriladi (Telegram xabari juda
-    uzun bo'lmasin).
-    """
-    if not active_users:
-        return None
-    rows: list[list[InlineKeyboardButton]] = []
-    row: list[InlineKeyboardButton] = []
-    for u in active_users[:_MAX_DETAIL_BUTTONS]:
-        raw = (u.display_name or u.full_name or "Foydalanuvchi").strip() or "Foydalanuvchi"
-        # Telegram inline button matni cheklovlar bilan (odatda ~64 belgigacha
-        # to'g'ri ko'rinadi). ~14 belgi guruh a'zolari ismini yaxshi ko'rsatadi.
-        display = raw[:14]
-        row.append(InlineKeyboardButton(
-            text=f"👤 {display}",
-            callback_data=f"grp_det_{u.id}",
-        ))
-        if len(row) == 2:
-            rows.append(row)
-            row = []
-    if row:
-        rows.append(row)
-    return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
-
-
-async def build_digest(
+async def build_digest_html(
     session: AsyncSession, group: Group,
-) -> Optional[DigestBuild]:
+) -> Optional[str]:
     """
-    Berilgan WebApp guruh uchun bugungi digest matnini VA aktiv a'zolar
-    ro'yxatini birga quradi. None qaytarsa — a'zolar yo'q yoki chat bog'lanmagan;
-    yuborilmaydi.
-
-    Chaqiruvchi kod (`send_digest_for_group`) qaytgan `active` ro'yxatidan
-    inline "Batafsil" tugmalarini yasab, digest xabari bilan birga yuboradi.
+    Berilgan WebApp guruh uchun bugungi digest HTML matnini quradi.
+    None qaytarsa — a'zolar yo'q yoki chat bog'lanmagan; yuborilmaydi.
     """
     if not group.telegram_chat_id:
         return None
@@ -411,25 +357,7 @@ async def build_digest(
 
     lines.append("")
     lines.append("💪 Ertaga davom etaylik!")
-    lines.append("")
-    lines.append("<i>👇 Har bir a'zoning batafsil hisobotini ko'rish uchun tugmani bosing.</i>")
-
-    return DigestBuild(
-        html="\n".join(lines),
-        active=[r["user"] for r in active_rows],
-    )
-
-
-async def build_digest_html(
-    session: AsyncSession, group: Group,
-) -> Optional[str]:
-    """
-    Backward-compat shim. Boshqa chaqiruvchilar (masalan test / cron) faqat
-    HTML matnini kutayotgan bo'lishi mumkin. Bu funksiya yangi
-    `build_digest(...)` ni chaqirib, HTML qismini qaytaradi.
-    """
-    result = await build_digest(session, group)
-    return result.html if result else None
+    return "\n".join(lines)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -458,18 +386,12 @@ async def send_digest_for_group(
     if not group.digest_enabled and not is_test:
         return SendResult(ok=False, reason="Digest o'chirilgan.")
 
-    built = await build_digest(session, group)
-    if not built:
+    html = await build_digest_html(session, group)
+    if not html:
         return SendResult(ok=False, reason="Yuboriladigan mazmun yo'q.")
 
-    html = built.html
     if is_test:
         html = "🧪 <b>Test hisobot</b>\n\n" + html
-
-    # Har bir aktiv a'zo uchun "Batafsil" inline tugma — bosilsa bot shu
-    # foydalanuvchining bugungi barcha rejalari va odatlarini alohida javob
-    # xabarida ko'rsatadi (chat_events.py `grp_details_callback` ushlaydi).
-    reply_markup = _build_detail_keyboard(built.active)
 
     async with _BotContext(bot) as b:
         try:
@@ -477,7 +399,6 @@ async def send_digest_for_group(
                 group.telegram_chat_id, html,
                 parse_mode="HTML",
                 disable_web_page_preview=True,
-                reply_markup=reply_markup,
             )
             reason = "ok"
             should_unlink = False
@@ -488,7 +409,6 @@ async def send_digest_for_group(
                     group.telegram_chat_id, html,
                     parse_mode="HTML",
                     disable_web_page_preview=True,
-                    reply_markup=reply_markup,
                 )
                 reason = "ok"
                 should_unlink = False
