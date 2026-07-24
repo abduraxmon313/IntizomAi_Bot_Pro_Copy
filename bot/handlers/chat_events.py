@@ -24,7 +24,7 @@ from aiogram.types import (
     CallbackQuery, ChatMemberUpdated, InlineKeyboardButton,
     InlineKeyboardMarkup, Message, ReplyKeyboardRemove,
 )
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.bot_chat import BotChat
@@ -377,6 +377,96 @@ async def grp_contact_callback(callback: CallbackQuery):
     except (TelegramForbiddenError, TelegramBadRequest) as e:
         await callback.answer(f"Xatolik: {e}", show_alert=True)
         return
+    await callback.answer()
+
+
+# ─────────────────────────────────────────────────────────────
+#  Guruh digest: a'zo tafsilotini ochish tugmasi (du:<group_id>:<user_id>)
+# ─────────────────────────────────────────────────────────────
+@router.callback_query(F.data.startswith("du:"))
+async def grp_digest_user_callback(callback: CallbackQuery, session: AsyncSession):
+    """
+    Guruh digest xabari ostidagi "👤 A'zo · X/Y" tugmasi bosilganda:
+      • Callback data: `du:<group_id>:<user_id>` (butun sonlar).
+      • O'sha a'zoning bugungi bajarilgan/bajarilmagan rejalari+odatlari
+        ro'yxatini digest xabarga REPLY qilib yuboramiz (ID_ni saqlaydi,
+        guruh a'zolari birgalikda ko'ra oladi, digest joyida qoladi).
+
+    Xavfsizlik/UX cheklovlari:
+      • Faqat guruh chatlarida ishlaydi.
+      • Har qanday a'zo har qanday a'zo tugmasini bosishi mumkin (digest
+        allaqachon barcha a'zolarning umumiy son ko'rsatgichlarini omma
+        oldida ko'rsatgan — batafsil ko'rish qo'shimcha maxfiy ma'lumot
+        emas).
+    """
+    from bot.models.group import Group
+    from bot.services.digest_service import build_user_detail_html
+
+    if callback.message is None or callback.message.chat is None:
+        await callback.answer("Chat aniqlanmadi.", show_alert=True)
+        return
+    if callback.message.chat.type not in ("group", "supergroup"):
+        await callback.answer("Bu tugma faqat guruhlarda ishlaydi.", show_alert=True)
+        return
+
+    # Callback data'ni parse qilamiz — `du:<gid>:<uid>`.
+    try:
+        _, gid_s, uid_s = callback.data.split(":", 2)
+        group_id = int(gid_s)
+        target_user_id = int(uid_s)
+    except (ValueError, AttributeError):
+        await callback.answer("Xato ma'lumot.", show_alert=True)
+        return
+
+    # Guruhni topamiz va Telegram chat_id mos kelishini tekshiramiz — boshqa
+    # guruh tugmasini nusxa olib ko'chirish orqali kirmasin (audit safety).
+    group = await session.get(Group, group_id)
+    if group is None or group.telegram_chat_id != callback.message.chat.id:
+        await callback.answer("Bu tugma bu chatga tegishli emas.", show_alert=True)
+        return
+
+    # A'zoni topamiz va guruhda ekanligini tekshiramiz.
+    from bot.models.group import GroupMember
+    from bot.models.user import User
+    membership = (await session.execute(
+        select(GroupMember, User)
+        .join(User, User.id == GroupMember.user_id)
+        .where(and_(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == target_user_id,
+        ))
+    )).first()
+    if membership is None:
+        await callback.answer("A'zo topilmadi.", show_alert=True)
+        return
+    _gm, target_user = membership
+
+    try:
+        html = await build_user_detail_html(session, group, target_user)
+    except Exception as e:
+        logger.warning(
+            f"user_detail xato group={group_id} user={target_user_id}: {type(e).__name__}: {e}"
+        )
+        await callback.answer("Tafsilotni olishda xatolik.", show_alert=True)
+        return
+
+    # Digest xabariga REPLY qilib yuboramiz — chatda kontekst yo'qolmasin.
+    try:
+        await callback.message.reply(
+            html,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
+    except (TelegramForbiddenError, TelegramBadRequest) as e:
+        # Reply xato bo'lsa oddiy xabar sifatida urinib ko'ramiz.
+        try:
+            await callback.message.answer(
+                html, parse_mode="HTML", disable_web_page_preview=True,
+            )
+        except Exception:
+            await callback.answer(f"Xatolik: {e}", show_alert=True)
+            return
+
     await callback.answer()
 
 

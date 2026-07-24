@@ -9,6 +9,9 @@ Asosiy funksiyalar:
     (test tugmasidan yoki cron'dan chaqiriladi).
   • send_due_digests(...) — schedulerdan har daqiqada chaqiriladi; joriy vaqtga
     mos guruhlarni topib yuboradi.
+  • build_user_detail_html(...) — bitta a'zoning bugungi tafsilotini (bajarilgan
+    va bajarilmagan rejalar+odatlar ro'yxati) HTML shaklida qaytaradi
+    (guruhdagi inline tugma bosilganda chaqiriladi).
 
 Xavfsizlik: WebApp API endpoint'lari egalikni tekshirgach shu funksiyalarni
 chaqiradi. Bu modul o'zi qo'shimcha auth tekshirmaydi — u ishonchli chaqiruv
@@ -29,14 +32,18 @@ from aiogram.exceptions import (
     TelegramForbiddenError,
     TelegramRetryAfter,
 )
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import BOT_TOKEN, TIMEZONE
 from bot.models.bot_chat import BotChat
 from bot.models.group import Group, GroupMember
+from bot.models.habit import Habit, HabitLog
+from bot.models.plan import Plan, PlanStatus
 from bot.models.user import User
 from bot.services.group_service import _bulk_today_summary
+from bot.services.premium_service import user_is_premium
 from database.db import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -171,13 +178,11 @@ async def list_telegram_candidates(
 # ─────────────────────────────────────────────────────────────
 #  Digest xabari qurish
 # ─────────────────────────────────────────────────────────────
-_MEDALS = ("🥇", "🥈", "🥉")
 
 
 def _score_key(s: dict) -> float:
     """
-    Leaderboard uchun bajarilish foizi.
-      • Reja va odat bajarilish yig'indisi (mavjud bo'lgan).
+    Bajarilish foizi (reja + odat).
       • Umuman reja/odat bo'lmagan a'zolar 0 ga tushadi (past reyting).
     """
     plans_t = int(s.get("plans_total") or 0)
@@ -191,6 +196,13 @@ def _score_key(s: dict) -> float:
     return round(100.0 * total_done / total_items, 1)
 
 
+def _totals(s: dict) -> tuple[int, int]:
+    """Bugungi 'bajarilgan/jami' (reja+odat qo'shilgan) qiymatlarini qaytaradi."""
+    done = int(s.get("plans_done") or 0) + int(s.get("habits_done_today") or 0)
+    total = int(s.get("plans_total") or 0) + int(s.get("habits_total") or 0)
+    return done, total
+
+
 def _escape(text: str) -> str:
     """Telegram HTML uchun minimal escape (< > &)."""
     return (
@@ -201,48 +213,25 @@ def _escape(text: str) -> str:
     )
 
 
-def _member_line(
-    rank_symbol: str,
-    name: str,
-    summary: dict,
-    streak: int,
-    telegram_id: int,
-    *,
-    mention_html: bool,
-) -> str:
-    """
-    Bitta a'zo uchun leaderboard qatori.
-    `mention_html=True` bo'lsa ismni <a href="tg://user?id=..."> bilan mentionlaymiz.
-    """
-    display = _escape(name)
-    if mention_html and telegram_id:
-        display = f'<a href="tg://user?id={int(telegram_id)}">{display}</a>'
+def _display_name(u: User) -> str:
+    """A'zoning ko'rsatiladigan ismi (display_name > full_name > fallback)."""
+    return (
+        (u.display_name or u.full_name or "Foydalanuvchi").strip()
+        or "Foydalanuvchi"
+    )
 
-    p_t = int(summary.get("plans_total") or 0)
-    p_d = int(summary.get("plans_done") or 0)
-    h_t = int(summary.get("habits_total") or 0)
-    h_d = int(summary.get("habits_done_today") or 0)
 
-    parts: list[str] = []
-    if p_t > 0:
-        mark = "✅" if p_d >= p_t else ""
-        parts.append(f"{p_d}/{p_t} reja {mark}".strip())
-    if h_t > 0:
-        mark = "🔥" if h_d >= h_t else ""
-        parts.append(f"{h_d}/{h_t} odat {mark}".strip())
-    if not parts:
-        parts.append("bugun rejasiz")
-
-    tail = ""
-    if streak > 0:
-        tail = f"  ·  🔥{int(streak)}"
-
-    return f"{rank_symbol} <b>{display}</b>  —  {'  ·  '.join(parts)}{tail}"
+def _name_html(u: User, *, mention: bool) -> str:
+    """Ism HTML — mention yoqilgan bo'lsa <a href="tg://user?id=…">."""
+    n = _escape(_display_name(u))
+    if mention and u.telegram_id:
+        return f'<a href="tg://user?id={int(u.telegram_id)}">{n}</a>'
+    return n
 
 
 UZ_WEEKDAYS = [
-    "dushanba", "seshanba", "chorshanba", "payshanba",
-    "juma", "shanba", "yakshanba",
+    "Dushanba", "Seshanba", "Chorshanba", "Payshanba",
+    "Juma", "Shanba", "Yakshanba",
 ]
 UZ_MONTHS = [
     "yanvar", "fevral", "mart", "aprel", "may", "iyun",
@@ -251,6 +240,7 @@ UZ_MONTHS = [
 
 
 def _uz_date(d: date) -> str:
+    """Masalan: "24-iyul (Juma)"."""
     return f"{d.day}-{UZ_MONTHS[d.month - 1]} ({UZ_WEEKDAYS[d.weekday()]})"
 
 
@@ -260,6 +250,22 @@ async def build_digest_html(
     """
     Berilgan WebApp guruh uchun bugungi digest HTML matnini quradi.
     None qaytarsa — a'zolar yo'q yoki chat bog'lanmagan; yuborilmaydi.
+
+    Yangi format (foydalanuvchi so'ragan tuzilma):
+        📊 IntizomAi — Bugungi hisobot
+        📅 24-iyul (Juma)
+        👥 Guruh: Sinov
+
+        ✅ Bajarganlar:
+        🟢 Abduraxmon — 4/14
+
+        ❌ Umuman bajarmaganlar:
+        🔴 abdusattor — 0/1
+        🔴 asror — 0/2
+
+        ━━━━━━━━━━━━━━
+
+        📈 Guruh faolligi: 9.5%
     """
     if not group.telegram_chat_id:
         return None
@@ -278,85 +284,287 @@ async def build_digest_html(
     user_ids = [u.id for _gm, u in rows]
     summaries = await _bulk_today_summary(session, user_ids)
 
-    # A'zolarni bajarilish foizi bo'yicha kamayish tartibida saralaymiz.
-    ranked = []
+    # A'zolarni 3 guruhga ajratamiz:
+    #   • done_rows      — bugun kamida bitta narsa bajargan (done >= 1)
+    #   • undone_rows    — bugun rejalar/odatlar bor, lekin hech narsa qilmagan (done == 0, total > 0)
+    #   • idle_rows      — bugun umuman reja/odat qo'shmagan (total == 0)
+    done_rows: list[dict] = []
+    undone_rows: list[dict] = []
+    idle_rows: list[dict] = []
     for _gm, u in rows:
         s = summaries.get(u.id) or {}
-        pct = _score_key(s)
-        # Total items = 0 bo'lgan a'zolar (bugun umuman reja/odat qo'shmagan)
-        # oxirida turadi.
-        has_items = (int(s.get("plans_total") or 0) + int(s.get("habits_total") or 0)) > 0
-        ranked.append({
-            "user": u,
-            "summary": s,
-            "pct": pct,
-            "has_items": has_items,
-        })
+        d, t = _totals(s)
+        entry = {"user": u, "summary": s, "done": d, "total": t, "pct": _score_key(s)}
+        if t <= 0:
+            idle_rows.append(entry)
+        elif d >= 1:
+            done_rows.append(entry)
+        else:
+            undone_rows.append(entry)
 
-    # Bugun umuman ish bo'lmaganlarni pastroqqa surish.
-    ranked.sort(key=lambda r: (not r["has_items"], -r["pct"], -(r["user"].streak or 0)))
+    # Bajarganlar — done/total bo'yicha kamayish tartibida (yuqori foiz tepada).
+    done_rows.sort(key=lambda r: (-r["pct"], -(r["user"].streak or 0)))
+    # Bajarmaganlar — total (rejalar soni) bo'yicha kamayish tartibida.
+    undone_rows.sort(key=lambda r: (-r["total"], -(r["user"].streak or 0)))
 
     show_zero = bool(group.digest_show_zero)
     mention = bool(group.digest_mention)
     today = datetime.now(TIMEZONE).date()
 
-    # Sarlavha
+    if not done_rows and not undone_rows and not show_zero:
+        # Hech kim hech narsa qilmagan/rejalashtirmagan va idle'larni ko'rsatish
+        # o'chirilgan — spam bo'lmasligi uchun digest yubormaymiz.
+        return None
+
+    # Sarlavha bloki (foydalanuvchi so'ragan aynan formatda).
     lines: list[str] = [
-        f"📊 <b>IntizomAi hisobot</b> — {_uz_date(today)}",
-        f"👥 <b>{_escape(group.name)}</b>",
+        "📊 <b>IntizomAi — Bugungi hisobot</b>",
+        f"📅 {_uz_date(today)}",
+        f"👥 Guruh: <b>{_escape(group.name)}</b>",
         "",
     ]
 
-    # Aktiv qatnashuvchilar (bugun items bor)
-    active_rows = [r for r in ranked if r["has_items"]]
-    idle_rows = [r for r in ranked if not r["has_items"]]
+    # ── Bajarganlar bloki
+    if done_rows:
+        lines.append("✅ <b>Bajarganlar:</b>")
+        for r in done_rows:
+            u = r["user"]
+            name = _name_html(u, mention=mention)
+            lines.append(f"🟢 {name} — {r['done']}/{r['total']}")
+        lines.append("")
 
-    if not active_rows and not show_zero:
-        # Hech kim hech narsa qilmagan va "0 larni ko'rsatmaslik" yoqilgan —
-        # digest yubormaymiz (spam bo'lmasin).
+    # ── Umuman bajarmaganlar bloki
+    if undone_rows:
+        lines.append("❌ <b>Umuman bajarmaganlar:</b>")
+        for r in undone_rows:
+            u = r["user"]
+            name = _name_html(u, mention=mention)
+            lines.append(f"🔴 {name} — {r['done']}/{r['total']}")
+        lines.append("")
+
+    # ── Idle (bugun umuman reja/odat qo'shmagan) — faqat show_zero yoqilgan bo'lsa
+    if idle_rows and show_zero:
+        names = [_name_html(r["user"], mention=mention) for r in idle_rows[:10]]
+        extra = f" +{len(idle_rows) - 10} kishi" if len(idle_rows) > 10 else ""
+        lines.append(f"😴 <b>Bugun rejasiz:</b> {', '.join(names)}{extra}")
+        lines.append("")
+
+    # ── Faollik foizi (barcha a'zolar bo'yicha o'rtacha)
+    #   Idle a'zolar hisobga OLINMAYDI (ular bugun umuman qatnashmadi) — faqat
+    #   done_rows + undone_rows dagi haqiqiy qatnashuvchilar o'rtachasi.
+    lines.append("━━━━━━━━━━━━━━")
+    active = done_rows + undone_rows
+    if active:
+        avg = sum(r["pct"] for r in active) / len(active)
+        lines.append(f"📈 Guruh faolligi: <b>{avg:.1f}%</b>")
+    else:
+        lines.append("📈 Guruh faolligi: <b>0%</b>")
+
+    return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Digest inline keyboard — har bir a'zo uchun tugma
+# ─────────────────────────────────────────────────────────────
+# Callback data limiti Telegram tomonidan 64 baytga cheklangan. Format:
+#   du:<group_id>:<user_id>   — "digest user" (a'zo tafsiloti)
+# Butun sonlar, shuning uchun 64 bayt limitidan ancha ostida.
+DGST_USER_CB_PREFIX = "du"
+
+
+async def build_digest_keyboard(
+    session: AsyncSession, group: Group,
+) -> Optional[InlineKeyboardMarkup]:
+    """
+    Digest xabari ostiga qo'yiladigan inline keyboard — har bir a'zo uchun
+    "👤 Ism  •  X/Y" ko'rinishida tugma. Bosilganda o'sha a'zoning bugungi
+    bajargan va bajarmagan rejalari/odatlari ro'yxatiga o'tiladi.
+
+    A'zolar ikki qatorda joylashadi (kichik ekran uchun sig'ish). Umuman
+    reja/odat qo'shmaganlar tugmasi ham chiqadi — "0/0" bilan.
+    """
+    rows = (await session.execute(
+        select(GroupMember, User)
+        .join(User, User.id == GroupMember.user_id)
+        .where(GroupMember.group_id == group.id)
+        .order_by(GroupMember.joined_at)
+    )).all()
+
+    if not rows:
         return None
 
-    if not active_rows:
-        lines.append("😴 Bugun guruhda hech kim reja/odat qo'shmagan.")
-        lines.append("")
-    else:
-        # Top qatnashuvchilar
-        total_pct_sum = 0.0
-        for i, r in enumerate(active_rows):
-            symbol = _MEDALS[i] if i < 3 else "  •"
-            name = (
-                (r["user"].display_name or r["user"].full_name or "Foydalanuvchi").strip()
-                or "Foydalanuvchi"
-            )
-            lines.append(_member_line(
-                symbol, name, r["summary"], int(r["user"].streak or 0),
-                r["user"].telegram_id, mention_html=mention,
+    user_ids = [u.id for _gm, u in rows]
+    summaries = await _bulk_today_summary(session, user_ids)
+
+    # A'zolarni tartiblash: avval bajarganlar (done>=1), keyin bajarmaganlar,
+    # oxirida idle (total=0). Har bir kategoriya ichida done/total bo'yicha.
+    def _sort_key(item):
+        _gm, u = item
+        s = summaries.get(u.id) or {}
+        d, t = _totals(s)
+        if t <= 0:
+            bucket = 2
+        elif d >= 1:
+            bucket = 0
+        else:
+            bucket = 1
+        return (bucket, -_score_key(s), -(u.streak or 0))
+
+    rows.sort(key=_sort_key)
+
+    # Har bir a'zo uchun tugma — matn: "👤 <name> · X/Y"
+    kb_rows: list[list[InlineKeyboardButton]] = []
+    row_buf: list[InlineKeyboardButton] = []
+    # Nom uzunligini cheklaymiz — Telegram tugma matnini juda uzun ko'rsata olmaydi.
+    NAME_MAX = 14
+    # Maksimum 30 ta a'zo tugmasi — juda katta guruhlar uchun UI portlab
+    # ketmasligi uchun (kelajakda pagination qo'shiladi).
+    MAX_BUTTONS = 30
+    for _gm, u in rows[:MAX_BUTTONS]:
+        s = summaries.get(u.id) or {}
+        d, t = _totals(s)
+        name = _display_name(u)
+        if len(name) > NAME_MAX:
+            name = name[: NAME_MAX - 1] + "…"
+        emoji = "🟢" if (t > 0 and d >= 1) else ("🔴" if t > 0 else "⚪️")
+        label = f"{emoji} {name} · {d}/{t}"
+        cb = f"{DGST_USER_CB_PREFIX}:{group.id}:{u.id}"
+        row_buf.append(InlineKeyboardButton(text=label, callback_data=cb))
+        if len(row_buf) >= 2:
+            kb_rows.append(row_buf)
+            row_buf = []
+    if row_buf:
+        kb_rows.append(row_buf)
+
+    if not kb_rows:
+        return None
+
+    return InlineKeyboardMarkup(inline_keyboard=kb_rows)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Bitta a'zoning bugungi tafsiloti
+# ─────────────────────────────────────────────────────────────
+async def _get_user_today_items(
+    session: AsyncSession, user_id: int,
+) -> tuple[list[tuple[str, bool]], list[tuple[str, bool]]]:
+    """
+    Foydalanuvchining bugungi rejalar va odatlarini nom+bajarilish bilan qaytaradi.
+    Qaytadi: (plans, habits) — har biri [(title, is_done), ...].
+    """
+    today = datetime.now(TIMEZONE).date()
+
+    plan_rows = (await session.execute(
+        select(Plan.title, Plan.status)
+        .where(and_(Plan.user_id == user_id, Plan.plan_date == today))
+        .order_by(Plan.scheduled_time.nullslast(), Plan.id)
+    )).all()
+    plans = [(row[0] or "-", row[1] == PlanStatus.done) for row in plan_rows]
+
+    # Odatlar — arxivlanmaganlarni oldindan olib, bugungi HabitLog bilan JOIN.
+    habit_rows = (await session.execute(
+        select(Habit.id, Habit.title)
+        .where(and_(Habit.user_id == user_id, Habit.archived == False))  # noqa: E712
+        .order_by(Habit.sort_order, Habit.id)
+    )).all()
+    if habit_rows:
+        habit_ids = [row[0] for row in habit_rows]
+        done_ids = set()
+        for (hid,) in (await session.execute(
+            select(HabitLog.habit_id).where(and_(
+                HabitLog.habit_id.in_(habit_ids),
+                HabitLog.log_date == today,
             ))
-            total_pct_sum += r["pct"]
+        )).all():
+            done_ids.add(int(hid))
+        habits = [(row[1] or "-", int(row[0]) in done_ids) for row in habit_rows]
+    else:
+        habits = []
 
-        avg = round(total_pct_sum / max(1, len(active_rows)), 1)
-        lines.append("")
-        lines.append(f"📈 O'rtacha bajarilish: <b>{avg:g}%</b>")
+    return plans, habits
 
-    # Bugun hech narsa qilmaganlar (agar show_zero=TRUE)
-    if idle_rows and show_zero:
-        names = []
-        for r in idle_rows[:10]:
-            n = (
-                (r["user"].display_name or r["user"].full_name or "Foydalanuvchi").strip()
-                or "Foydalanuvchi"
-            )
-            if mention and r["user"].telegram_id:
-                n = f'<a href="tg://user?id={int(r["user"].telegram_id)}">{_escape(n)}</a>'
-            else:
-                n = _escape(n)
-            names.append(n)
-        extra = f" +{len(idle_rows) - 10} kishi" if len(idle_rows) > 10 else ""
-        lines.append("")
-        lines.append(f"😴 Bugun ish yo'q: {', '.join(names)}{extra}")
 
+async def build_user_detail_html(
+    session: AsyncSession, group: Group, user: User,
+) -> str:
+    """
+    Bitta a'zo uchun bugungi tafsilotni HTML shaklida qaytaradi:
+
+        👤 <name>  ·  🔥 5  ·  💎
+
+        📊 Bugungi natija: 4/14
+
+        ✅ Bajarilgan (4)
+        🟢 Ingliz tili
+        🟢 Kitob o'qish
+        ...
+
+        ━━━━━━━━━━━━━━
+
+        ❌ Bajarilmagan (10)
+        🔴 Ertalab yugurish
+        ...
+    """
+    plans, habits = await _get_user_today_items(session, user.id)
+
+    # Har bir item — (title, done). Rejalar va odatlarni birlashtirib, done/undone
+    # ro'yxatlarini quramiz. Rejalar oxiriga "(reja)" belgisi qo'shilmaydi —
+    # foydalanuvchi so'ragan sodda ko'rinish.
+    done_items: list[str] = []
+    undone_items: list[str] = []
+    for title, is_done in plans:
+        (done_items if is_done else undone_items).append(_escape(title))
+    for title, is_done in habits:
+        (done_items if is_done else undone_items).append(_escape(title))
+
+    total_done = len(done_items)
+    total_items = total_done + len(undone_items)
+
+    # Sarlavha: 👤 ism  ·  🔥 streak  ·  💎 (agar premium)
+    name = _escape(_display_name(user))
+    streak = int(user.streak or 0)
+    header_parts = [f"👤 <b>{name}</b>"]
+    if streak > 0:
+        header_parts.append(f"🔥 {streak}")
+    if user_is_premium(user):
+        header_parts.append("💎")
+
+    lines: list[str] = [
+        "  ·  ".join(header_parts),
+        "",
+        f"📊 Bugungi natija: <b>{total_done}/{total_items}</b>",
+        "",
+    ]
+
+    # ── Bajarilgan blok
+    lines.append(f"✅ <b>Bajarilgan ({total_done})</b>")
+    if done_items:
+        for it in done_items:
+            lines.append(f"🟢 {it}")
+    else:
+        lines.append("<i>— hech narsa yo'q</i>")
+
+    # Ajratuvchi chiziq
     lines.append("")
-    lines.append("💪 Ertaga davom etaylik!")
+    lines.append("━━━━━━━━━━━━━━")
+    lines.append("")
+
+    # ── Bajarilmagan blok
+    lines.append(f"❌ <b>Bajarilmagan ({len(undone_items)})</b>")
+    if undone_items:
+        for it in undone_items:
+            lines.append(f"🔴 {it}")
+    else:
+        lines.append("<i>— barchasi bajarildi, zo'r! 🔥</i>")
+
+    if total_items == 0:
+        # Foydalanuvchi bugun umuman reja/odat qo'shmagan
+        lines = [
+            "  ·  ".join(header_parts),
+            "",
+            "😴 Bugun hali reja yoki odat qo'shmagan.",
+        ]
+
     return "\n".join(lines)
 
 
@@ -393,12 +601,22 @@ async def send_digest_for_group(
     if is_test:
         html = "🧪 <b>Test hisobot</b>\n\n" + html
 
+    # Har bir a'zo uchun tafsilotni ochish tugmasi (inline keyboard).
+    # Xatoga qarshi himoya — keyboard qurishda muammo bo'lsa, digest matn holida
+    # baribir yuboriladi.
+    try:
+        keyboard = await build_digest_keyboard(session, group)
+    except Exception as e:
+        logger.warning(f"digest keyboard xato group={group.id}: {type(e).__name__}: {e}")
+        keyboard = None
+
     async with _BotContext(bot) as b:
         try:
             await b.send_message(
                 group.telegram_chat_id, html,
                 parse_mode="HTML",
                 disable_web_page_preview=True,
+                reply_markup=keyboard,
             )
             reason = "ok"
             should_unlink = False
@@ -409,6 +627,7 @@ async def send_digest_for_group(
                     group.telegram_chat_id, html,
                     parse_mode="HTML",
                     disable_web_page_preview=True,
+                    reply_markup=keyboard,
                 )
                 reason = "ok"
                 should_unlink = False

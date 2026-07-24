@@ -474,21 +474,33 @@
 <div class="paywall" id="paywall" aria-hidden="true">
   <div class="pw-orbs"><span></span><span></span><span></span></div>
   <div class="pw-inner">
-    <div class="pw-crown">👑</div>
-    <h1>Intizom AI <span class="pw-pro">PREMIUM</span></h1>
     <!--
-      Feature ro'yxati olib tashlandi: 4 ta ikon+matn joyi katta o'rin egallar edi
-      va tafsilotlar bir xil takrorlanardi (pw-sub ham "Cheksiz reja, maqsad va
-      odat. Cheksiz AI Coach." derdi). Endi ikkinchi qatorda bitta aniq va qisqa
-      strong statement qoladi.
+      Yangi sodda dizayn:
+        [💎]
+        IntizomAi Premium
+        Premium bilan barcha imkoniyatlardan cheksiz foydalaning.
+        ──────────────
+        [tariflar ro'yxati — bosiladigan qatorlar]
+        ──────────────
+        🔒 Xavfsiz to'lov
+        ⚡ To'lov tasdiqlangach Premium avtomatik faollashadi.
+        [💎 Tarifni tanlash]
+        [⬅️ Orqaga]
     -->
-    <div class="pw-sub">Barcha imkoniyatlar cheklovsiz — reja, maqsad, odat va AI Coach.</div>
+    <div class="pw-crown">💎</div>
+    <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span></h1>
+    <div class="pw-sub" id="pwSub">Premium bilan barcha imkoniyatlardan cheksiz foydalaning.</div>
+    <div class="pw-divider"></div>
     <!-- Tariflar shu yerga JavaScript'dan render qilinadi -->
     <div class="pw-plans" id="pwPlans"></div>
-    <div class="pw-note" id="pwNote">Tarifni tanlang — to'lov sahifasi darhol ochiladi. Muvaffaqiyatli to'lovdan so'ng Premium avtomatik faollashadi.</div>
-    <button class="pw-cta" id="pwCta">💎 Tarifni tanlang</button>
-    <button class="pw-back" id="pwBack">⬅️ Orqaga qaytish</button>
-    <span class="pw-badge">✦ INTIZOM AI PREMIUM ✦</span>
+    <div class="pw-divider"></div>
+    <div class="pw-info">
+      <div class="pw-info-row"><span class="pw-info-ic">🔒</span><span>Xavfsiz to'lov</span></div>
+      <div class="pw-info-row"><span class="pw-info-ic">⚡</span><span>To'lov tasdiqlangach Premium avtomatik faollashadi.</span></div>
+    </div>
+    <div class="pw-note" id="pwNote" hidden></div>
+    <button class="pw-cta" id="pwCta">💎 Tarifni tanlash</button>
+    <button class="pw-back" id="pwBack">⬅️ Orqaga</button>
   </div>
 </div>
 

@@ -511,18 +511,18 @@ function openPaywall(){
   const isPremium=!!(State.sub&&State.sub.is_premium);
   const h=ov.querySelector('h1');
   const sb=ov.querySelector('.pw-sub');
-  const nt=ov.querySelector('.pw-note');
   const cta=document.getElementById('pwCta');
+  // Yangi sodda dizayn: har doim "IntizomAi Premium" sarlavhasi va bitta
+  // qisqa tag-line. Premium bo'lsa CTA matni "uzaytirish" bo'ladi, aks holda
+  // "Tarifni tanlash".
   if(isPremium){
-    if(h)h.innerHTML='Obunani uzaytirish';
-    if(sb)sb.innerHTML='Yangi kunlar joriy obuna tugash sanasi <b>ustiga qo\'shiladi</b> — Premium uzaytiriladi, boshqatdan boshlanmaydi.';
-    if(nt)nt.innerHTML='Tarifni tanlang — sizni botga o\'tkazamiz va to\'lovni botda yakunlaysiz.';
-    if(cta)cta.textContent='💳 Uzaytirish uchun tarifni tanlang';
+    if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
+    if(sb)sb.innerHTML='Obunani uzaytirish — yangi kunlar joriy tugash sanasi ustiga qo\'shiladi.';
+    if(cta)cta.textContent='💳 Uzaytirish';
   }else{
-    if(h)h.innerHTML='Intizom AI <span class="pw-pro">PREMIUM</span>';
-    if(sb)sb.innerHTML='Cheksiz reja, maqsad va odat. Cheksiz AI Coach.';
-    if(nt)nt.innerHTML='Tarifni tanlang — sizni botga o\'tkazamiz va to\'lovni botda yakunlaysiz. To\'lovdan so\'ng Premium avtomatik faollashadi.';
-    if(cta)cta.textContent='💎 Tarifni tanlang';
+    if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
+    if(sb)sb.innerHTML='Premium bilan barcha imkoniyatlardan cheksiz foydalaning.';
+    if(cta)cta.textContent='💎 Tarifni tanlash';
   }
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
   renderPaywallPlans(State.sub&&State.sub.plans);
@@ -547,29 +547,16 @@ function maybePeakUpsell(snap){
     setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
   }catch(_){}
 }
-// Paywall'dagi tarif kartochkalari — sodda vertikal layout.
+// Paywall'dagi tarif kartochkalari — YAGONA QATORDA (foydalanuvchi so'ragan
+// yangi format):
+//   ✅ 1 oylik    39 900 so'm
+//   ⭐ 3 oy       79 900 so'm (33% tejaysiz)
+//   💎 12 oy      179 900 so'm (≈ 14 990 so'm/oy)
 //
-// Foydalanuvchi so'ragan aynan format:
-//   ✅ 1 oy
-//   39 900 so'm
-//
-//   ⭐ 3 oy
-//   79 900 so'm (33% tejaysiz)
-//
-//   💎 12 oy
-//   179 900 so'm (≈ 14 990 so'm/oy)
-//
-// Har bir karta 2 qatordan iborat:
-//   1) [emoji] [title]              — ikon + nom
-//   2) [price] so'm [(tag)]         — narx, agar tag mavjud bo'lsa qavs ichida
-//
+// Har bir karta: chap tomonda [emoji] [title], o'ng tomonda [price] so'm [(tag)].
 // `tag` qiymatlari SUBSCRIPTION_PLANS (bot/config.py) dan keladi va allaqachon
-// ma'noli matn saqlaydi ("33% tejaysiz", "≈ 14 990 so'm/oy"). Frontend hech
-// qanday qo'shimcha hisob-kitob yoki savings badge chizmayapti — admin
-// panelidan tarif tagi o'zgartirilsa, foydalanuvchiga darhol ko'rinadi.
-// Bu yondashuv oldingi "auto-calculate savings + per-month" murakkabligini
-// yo'q qildi (foydalanuvchi feedback: "juda oddiy, ayniqsa narxlar haqida
-// malumot berish" — endi format aniq va bosqichma-bosqich o'qib bo'ladi).
+// ma'noli matn saqlaydi ("33% tejaysiz", "≈ 14 990 so'm/oy"). Admin panelidan
+// tarif tagi o'zgartirilsa, foydalanuvchiga darhol ko'rinadi.
 function renderPaywallPlans(plans){
   const el=document.getElementById('pwPlans');
   if(!el)return;
@@ -582,9 +569,9 @@ function renderPaywallPlans(plans){
     // gradient chetlik va ustuvor vizual og'irlik oladi.
     const isFeatured = tag !== '';
     return `<button class="pw-plan pw-plan-btn${isFeatured?' featured':''}" data-plan="${esc(p.key)}" type="button" aria-label="${esc(p.title)} tarifi">
-      <span class="pw-plan-title">${emoji} ${esc(p.title)}</span>
+      <span class="pw-plan-title"><span class="pw-plan-emoji">${emoji}</span>${esc(p.title)}</span>
       <span class="pw-plan-price-line">
-        <span class="pw-plan-amount">${esc(p.price_label)} so'm</span>${tag?` <span class="pw-plan-tag">(${esc(tag)})</span>`:''}
+        <span class="pw-plan-amount">${esc(p.price_label)} so'm</span>${tag?`<span class="pw-plan-tag">(${esc(tag)})</span>`:''}
       </span>
     </button>`;
   }).join('');
