@@ -39,6 +39,8 @@ from bot.services.group_service import (
 from bot.services.digest_service import (
     list_telegram_candidates,
     send_digest_for_group,
+    send_per_user_plans_for_group,
+    send_per_user_reports_for_group,
 )
 # Eslatma: Do'stlar guruhida MAQSAD bo'limi olib tashlandi. `create_goal` va
 # `ALLOWED_GOAL_TYPES` importlari olib tashlandi — endi maqsadni faqat
@@ -415,8 +417,13 @@ class TelegramSettingsUpdate(BaseModel):
     # Barchasi ixtiyoriy — faqat berilgani yangilanadi.
     telegram_chat_id: Optional[int] = None
     telegram_chat_title: Optional[str] = None
+    # ── Kunlik HISOBOT (report) sozlamalari
     digest_enabled: Optional[bool] = None
     digest_time: Optional[str] = None  # HH:MM Toshkent
+    # ── Kunlik REJA (plans) sozlamalari (yangi)
+    plans_enabled: Optional[bool] = None
+    plans_time: Optional[str] = None  # HH:MM Toshkent
+    # ── Backward compat — UI'da endi ko'rinmaydi (doim TRUE deb hisoblanadi)
     digest_show_zero: Optional[bool] = None
     digest_mention: Optional[bool] = None
 
@@ -491,6 +498,8 @@ async def telegram_settings_update(
             telegram_chat_title=body.telegram_chat_title,
             digest_enabled=body.digest_enabled,
             digest_time=body.digest_time,
+            plans_enabled=body.plans_enabled,
+            plans_time=body.plans_time,
             digest_show_zero=body.digest_show_zero,
             digest_mention=body.digest_mention,
         )
@@ -535,33 +544,50 @@ async def telegram_unlink(
     return {"ok": True}
 
 
-@router.post("/friends/groups/{group_id}/telegram/test")
-async def telegram_test(
-    group_id: int,
-    telegram_id: int = Depends(resolve_telegram_id),
-    session: AsyncSession = Depends(get_session),
-):
-    """
-    Hoziroq test hisobot yuborish. Faqat guruh egasi. `digest_enabled` FALSE
-    bo'lsa ham ishlaydi (foydalanuvchi sinamoqchi).
-    """
-    user = await _require_user(session, telegram_id)
+async def _load_group_for_test(session, user, group_id: int):
+    """Test tugmalar uchun umumiy helper: sozlamalarni tekshirib guruhni yuklaydi."""
     try:
         st = await get_telegram_settings(session, user, group_id)
     except GroupError as e:
         raise _map_group_error(e)
     if not st.get("telegram_chat_id"):
         raise HTTPException(status_code=400, detail="Avval Telegram guruhni tanlang.")
-
-    # Guruhni to'liq yuklab olib yuboramiz
     from bot.services.group_service import get_group
     try:
-        g = await get_group(session, group_id)
+        return await get_group(session, group_id)
     except GroupError as e:
         raise _map_group_error(e)
 
-    result = await send_digest_for_group(session, g, is_test=True)
-    return {
-        "ok": result.ok,
-        "reason": result.reason,
-    }
+
+@router.post("/friends/groups/{group_id}/telegram/plans-test")
+async def telegram_plans_test(
+    group_id: int,
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Kunlik REJA (plans) xabarlarini hoziroq test yuborish (per-user).
+    Xabar tarkibida "test" yozuvi bo'lmaydi — real avtomatik yuborish bilan
+    aynan bir xil ko'rinishda. `plans_enabled` FALSE bo'lsa ham ishlaydi.
+    """
+    user = await _require_user(session, telegram_id)
+    g = await _load_group_for_test(session, user, group_id)
+    result = await send_per_user_plans_for_group(session, g, is_test=True)
+    return {"ok": result.ok, "reason": result.reason}
+
+
+@router.post("/friends/groups/{group_id}/telegram/report-test")
+async def telegram_report_test(
+    group_id: int,
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Kunlik HISOBOT (report) xabarlarini hoziroq test yuborish (per-user).
+    Xabar tarkibida "test" yozuvi bo'lmaydi. `digest_enabled` FALSE bo'lsa ham
+    ishlaydi (foydalanuvchi sinamoqchi).
+    """
+    user = await _require_user(session, telegram_id)
+    g = await _load_group_for_test(session, user, group_id)
+    result = await send_per_user_reports_for_group(session, g, is_test=True)
+    return {"ok": result.ok, "reason": result.reason}

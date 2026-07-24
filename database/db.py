@@ -113,12 +113,20 @@ REFERRAL_NEW_COLUMNS = [
 GROUPS_NEW_COLUMNS = [
     ("telegram_chat_id", "BIGINT"),
     ("telegram_chat_title", "VARCHAR(200)"),
+    # ── Kunlik HISOBOT (report) sozlamalari
     ("digest_enabled", "BOOLEAN DEFAULT FALSE NOT NULL"),
     ("digest_time", "VARCHAR(5) DEFAULT '21:00' NOT NULL"),
+    # digest_show_zero va digest_mention endi doim TRUE — UI olib tashlangan.
+    # DB'da saqlanadi backward compat uchun (default TRUE).
     ("digest_show_zero", "BOOLEAN DEFAULT TRUE NOT NULL"),
-    ("digest_mention", "BOOLEAN DEFAULT FALSE NOT NULL"),
+    ("digest_mention", "BOOLEAN DEFAULT TRUE NOT NULL"),
     ("digest_last_sent_at", "TIMESTAMP"),
     ("digest_last_error", "VARCHAR(300)"),
+    # ── Kunlik REJA (plans) sozlamalari (yangi)
+    ("plans_enabled", "BOOLEAN DEFAULT FALSE NOT NULL"),
+    ("plans_time", "VARCHAR(5) DEFAULT '07:00' NOT NULL"),
+    ("plans_last_sent_at", "TIMESTAMP"),
+    ("plans_last_error", "VARCHAR(300)"),
 ]
 
 # plans/goals/habits jadvallarida "kim yaratgan" audit ustuni (Do'stlar moduli).
@@ -151,9 +159,10 @@ NEW_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_group_members_user ON group_members (user_id)",
     "CREATE INDEX IF NOT EXISTS ix_group_members_group ON group_members (group_id)",
     "CREATE INDEX IF NOT EXISTS ix_group_permissions_group ON group_permissions (group_id)",
-    # Digest cron har daqiqada `WHERE digest_enabled=TRUE AND digest_time='HH:MM'`
+    # Digest/plans cron har daqiqada `WHERE *_enabled=TRUE AND *_time='HH:MM'`
     # so'rovi qiladi — bu ustunlar bo'yicha kompozit indeks.
     "CREATE INDEX IF NOT EXISTS ix_groups_digest_due ON groups (digest_enabled, digest_time)",
+    "CREATE INDEX IF NOT EXISTS ix_groups_plans_due ON groups (plans_enabled, plans_time)",
     "CREATE INDEX IF NOT EXISTS ix_groups_telegram_chat ON groups (telegram_chat_id)",
     # bot_chats — status bo'yicha faol chatlarni ajratish.
     "CREATE INDEX IF NOT EXISTS ix_bot_chats_status ON bot_chats (bot_status)",

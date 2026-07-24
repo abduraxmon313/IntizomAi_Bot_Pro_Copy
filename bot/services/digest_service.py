@@ -412,12 +412,15 @@ async def build_digest_html(
     partial_rows.sort(key=lambda r: (-r["pct"], -(r["user"].streak or 0)))
     none_rows.sort(key=lambda r: (-r["total"], -(r["user"].streak or 0)))
 
-    show_zero = bool(group.digest_show_zero)
-    mention = bool(group.digest_mention)
+    # Foydalanuvchi so'raganidek: idle a'zolarni ko'rsatish va nomlarni
+    # mention qilish DOIM YONIQ. Guruh sozlamalari UI'dan olib tashlangan;
+    # DB'dagi qiymatlar (backward compat uchun saqlangan) endi INTIZOMga
+    # ta'sir qilmaydi.
+    show_zero = True
+    mention = True
 
-    if not full_rows and not partial_rows and not none_rows and not show_zero:
-        # Hech kim hech narsa qilmagan/rejalashtirmagan va idle'larni ko'rsatish
-        # o'chirilgan — spam bo'lmasligi uchun digest yubormaymiz.
+    if not full_rows and not partial_rows and not none_rows and not idle_rows:
+        # Umuman a'zo yo'q — digest yubormaymiz.
         return None
 
     # Sarlavha bloki
@@ -728,6 +731,101 @@ async def build_user_detail_html(
 
 
 # ─────────────────────────────────────────────────────────────
+#  Per-user builderlar: kunlik REJA va kunlik HISOBOT xabarlari
+#  (avtomatik yuborishlar uchun — har a'zo alohida xabar oladi)
+# ─────────────────────────────────────────────────────────────
+async def build_user_plans_html(
+    session: AsyncSession, group: Group, user: User,
+) -> Optional[str]:
+    """
+    Bitta a'zoning bugungi REJA + ODAT ro'yxatini quradi (nima qilishi kerak).
+    Foydalanuvchi so'ragan format:
+
+        👤 Marveljon 💎
+        📋 Jami N ta reja:
+        1) Sjsbbs
+        2) asdf
+        3) …
+
+    Filter WebApp bilan bir xil (is_due_on + not is_finished). Agar user'da
+    bugun umuman reja/odat yo'q bo'lsa — None qaytadi (xabar yuborilmaydi).
+    """
+    plans, habits = await _get_user_today_items(session, user.id)
+    items: list[str] = []
+    # Rejalar avval (chronological), keyin odatlar (reminder_time tartibi).
+    for title, _done in plans:
+        items.append(_escape(title))
+    for title, _done in habits:
+        items.append(_escape(title))
+
+    if not items:
+        return None
+
+    # Sarlavha: 👤 ism 💎 (agar premium)
+    name = _escape(_display_name(user))
+    header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
+
+    lines: list[str] = [
+        header,
+        f"📋 Jami {len(items)} ta reja:",
+    ]
+    for i, it in enumerate(items, start=1):
+        lines.append(f"{i}) {it}")
+
+    return "\n".join(lines)
+
+
+async def build_user_report_html(
+    session: AsyncSession, group: Group, user: User,
+) -> Optional[str]:
+    """
+    Bitta a'zoning bugungi NATIJASINI quradi (nechta bajarildi/qolgan).
+    Foydalanuvchi so'ragan format:
+
+        👤 Abduraxmon X 💎 — 4/10
+        1) 🟢 Uygonish
+        2) 🟢 Suv ichish
+        3) 🔴 Gusl
+        …
+
+    Bajarilganlar avval, bajarilmaganlar keyin. Har item raqamlangan.
+    Filter WebApp bilan mos. Agar bugun umuman reja/odat yo'q — None.
+    """
+    plans, habits = await _get_user_today_items(session, user.id)
+
+    # Bajarilgan/bajarilmagan tartibi bilan yig'amiz
+    done_items: list[str] = []
+    undone_items: list[str] = []
+    for title, is_done in plans:
+        (done_items if is_done else undone_items).append(_escape(title))
+    for title, is_done in habits:
+        (done_items if is_done else undone_items).append(_escape(title))
+
+    total = len(done_items) + len(undone_items)
+    if total == 0:
+        return None
+
+    done_count = len(done_items)
+    name = _escape(_display_name(user))
+    header = (
+        f"👤 <b>{name}</b> 💎 — {done_count}/{total}"
+        if user_is_premium(user)
+        else f"👤 <b>{name}</b> — {done_count}/{total}"
+    )
+
+    lines: list[str] = [header]
+    counter = 1
+    for it in done_items:
+        lines.append(f"{counter}) 🟢 {it}")
+        counter += 1
+    for it in undone_items:
+        lines.append(f"{counter}) 🔴 {it}")
+        counter += 1
+
+    return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────────────────────
 #  Yuborish (test / cron)
 # ─────────────────────────────────────────────────────────────
 @dataclass
@@ -838,16 +936,190 @@ async def send_digest_for_group(
 
 
 # ─────────────────────────────────────────────────────────────
+#  Per-user send: KUNLIK REJA (plans) va KUNLIK HISOBOT (report)
+#  Har bir a'zoga ALOHIDA xabar yuboriladi (navbatma-navbat).
+# ─────────────────────────────────────────────────────────────
+async def _iter_group_members_sorted(
+    session: AsyncSession, group: Group,
+) -> list[User]:
+    """Guruh a'zolarini ism (display_name) bo'yicha alifbo tartibida qaytaradi."""
+    rows = (await session.execute(
+        select(GroupMember, User)
+        .join(User, User.id == GroupMember.user_id)
+        .where(GroupMember.group_id == group.id)
+        .order_by(GroupMember.joined_at)
+    )).all()
+    users = [u for _gm, u in rows]
+    users.sort(key=lambda u: _display_name(u).lower())
+    return users
+
+
+async def _send_per_user_messages(
+    session: AsyncSession, group: Group,
+    builder,  # async (session, group, user) -> Optional[str]
+    *,
+    kind: str,  # "plans" | "report" (loglar va last_error uchun)
+    bot: Optional[Bot] = None,
+    is_test: bool = False,
+) -> SendResult:
+    """
+    Har bir a'zo uchun `builder`(session, group, user) chaqirib olingan HTML
+    xabarini Telegram guruhga NAVBATMA-NAVBAT yuboradi. Bir a'zo uchun mazmun
+    yo'q bo'lsa (builder None qaytarsa) — o'tkazib yuboradi.
+
+    `is_test=True` bo'lsa:
+      • last_sent_at yangilanmaydi
+      • xabarga qo'shimcha "🧪 Test" prefiksi qo'shilmaydi (foydalanuvchi
+        so'ragan: "habarda test degan narsa kerak emas")
+
+    Xato bo'lsa (bot chiqarilgan, chat topilmadi va h.k.) — auto-unlink va
+    kind ga tegishli enabled flag'ni False qilamiz.
+    """
+    if not group.telegram_chat_id:
+        return SendResult(ok=False, reason="Telegram chat bog'lanmagan.")
+
+    members = await _iter_group_members_sorted(session, group)
+    if not members:
+        return SendResult(ok=False, reason="Guruh a'zolari yo'q.")
+
+    sent_count = 0
+    reason = "ok"
+    should_unlink = False
+
+    async with _BotContext(bot) as b:
+        for u in members:
+            try:
+                html = await builder(session, group, u)
+            except Exception as e:
+                logger.warning(
+                    f"{kind} builder xato group={group.id} user={u.id}: {type(e).__name__}: {e}"
+                )
+                continue
+            if not html:
+                continue  # bu user'da bugun rejasi/natijasi yo'q
+
+            try:
+                await b.send_message(
+                    group.telegram_chat_id, html,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
+                sent_count += 1
+            except TelegramRetryAfter as e:
+                await asyncio.sleep(min(e.retry_after + 1, 10))
+                try:
+                    await b.send_message(
+                        group.telegram_chat_id, html,
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    )
+                    sent_count += 1
+                except Exception as e2:
+                    reason = f"retry_after_fail: {type(e2).__name__}"
+                    break
+            except TelegramForbiddenError as e:
+                reason = f"forbidden: {e}"
+                should_unlink = True
+                break
+            except TelegramBadRequest as e:
+                msg = str(e).lower()
+                should_unlink = any(k in msg for k in (
+                    "chat not found", "chat_not_found",
+                    "kicked", "not enough rights",
+                    "chat_write_forbidden", "bot was blocked",
+                    "supergroup was deactivated",
+                ))
+                reason = f"bad_request: {e}"
+                break
+            except Exception as e:
+                reason = f"error: {type(e).__name__}: {e}"
+                break
+
+            # Har xabar orasida kichik pauza — Telegram burst limitidan
+            # oshib ketmaslik va guruh chatida "xabar to'qiladi" tuyg'usini
+            # kamaytirish uchun.
+            await asyncio.sleep(_SEND_PAUSE)
+
+    # Umuman xabar yuborilmagan bo'lsa — noqulay holat (mazmun yo'q).
+    if reason == "ok" and sent_count == 0:
+        reason = "Yuboriladigan mazmun yo'q."
+
+    # Natija saqlash (test bo'lmasa)
+    if not is_test:
+        now = datetime.utcnow()
+        if reason == "ok":
+            if kind == "plans":
+                group.plans_last_sent_at = now
+                group.plans_last_error = None
+            else:
+                group.digest_last_sent_at = now
+                group.digest_last_error = None
+        else:
+            err = reason[:300]
+            if kind == "plans":
+                group.plans_last_error = err
+                if should_unlink:
+                    group.plans_enabled = False
+            else:
+                group.digest_last_error = err
+                if should_unlink:
+                    group.digest_enabled = False
+            if should_unlink:
+                logger.warning(
+                    f"{kind} auto-unlink group={group.id} chat={group.telegram_chat_id}: {reason}"
+                )
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    return SendResult(
+        ok=(reason == "ok"),
+        reason=reason,
+        should_unlink=should_unlink,
+    )
+
+
+async def send_per_user_plans_for_group(
+    session: AsyncSession, group: Group,
+    *,
+    bot: Optional[Bot] = None,
+    is_test: bool = False,
+) -> SendResult:
+    """Guruhga har bir a'zoning bugungi REJA+ODAT ro'yxatini yuboradi."""
+    return await _send_per_user_messages(
+        session, group, build_user_plans_html,
+        kind="plans", bot=bot, is_test=is_test,
+    )
+
+
+async def send_per_user_reports_for_group(
+    session: AsyncSession, group: Group,
+    *,
+    bot: Optional[Bot] = None,
+    is_test: bool = False,
+) -> SendResult:
+    """Guruhga har bir a'zoning bugungi NATIJASINI (bajarilgan/qolgan) yuboradi."""
+    return await _send_per_user_messages(
+        session, group, build_user_report_html,
+        kind="report", bot=bot, is_test=is_test,
+    )
+
+
+# ─────────────────────────────────────────────────────────────
 #  Cron: joriy vaqtga mos digestlarni yuborish
 # ─────────────────────────────────────────────────────────────
 async def send_due_digests(bot: Optional[Bot] = None) -> None:
     """
     APScheduler har daqiqada chaqiradi. Joriy Toshkent vaqtiga (HH:MM) mos
-    keluvchi guruhlarni topib, digestni yuboradi.
+    keluvchi guruhlarni topib, PER-USER HISOBOT xabarlarini yuboradi (har
+    a'zoga alohida xabar — foydalanuvchi so'ragan format).
+
+    Aggregate 3-bo'limli hisobot endi FAQAT manual `/hisobot@bot` chaqiruvi
+    bilan yuboriladi (chat_events.py orqali).
 
     Duplikat yuborishdan himoya: agar shu daqiqada `digest_last_sent_at`
-    allaqachon yozilgan bo'lsa — o'tkazib yuboriladi (bir minut ichida qayta
-    ishga tushirilsa spam bo'lmasin).
+    allaqachon yozilgan bo'lsa — o'tkazib yuboriladi.
     """
     now = datetime.now(TIMEZONE)
     hhmm = now.strftime("%H:%M")
@@ -866,8 +1138,6 @@ async def send_due_digests(bot: Optional[Bot] = None) -> None:
         if not due:
             return
 
-        # Bir daqiqa ichida takrorlanishdan himoya: last_sent_at hozirgi
-        # daqiqa bilan bir xil bo'lsa o'tkazamiz.
         window_start = datetime.utcnow() - timedelta(minutes=1)
         to_send = [
             g for g in due
@@ -876,12 +1146,67 @@ async def send_due_digests(bot: Optional[Bot] = None) -> None:
         if not to_send:
             return
 
-        logger.info(f"digest: {len(to_send)} ta guruhga yuborish (soat {hhmm})")
+        logger.info(
+            f"per-user report: {len(to_send)} ta guruhga yuborish (soat {hhmm})"
+        )
 
         async with _BotContext(bot) as b:
             for g in to_send:
                 try:
-                    await send_digest_for_group(session, g, bot=b, is_test=False)
+                    await send_per_user_reports_for_group(
+                        session, g, bot=b, is_test=False,
+                    )
                 except Exception as e:
-                    logger.warning(f"digest group={g.id} xato: {e}")
+                    logger.warning(
+                        f"per-user report group={g.id} xato: {type(e).__name__}: {e}"
+                    )
+                await asyncio.sleep(_SEND_PAUSE)
+
+
+async def send_due_plans(bot: Optional[Bot] = None) -> None:
+    """
+    APScheduler har daqiqada chaqiradi. Joriy Toshkent vaqtiga (HH:MM) mos
+    keluvchi guruhlarni topib, PER-USER REJA (plans) xabarlarini yuboradi.
+
+    Har a'zoga alohida xabar — foydalanuvchining bugungi reja+odat ro'yxati.
+    """
+    now = datetime.now(TIMEZONE)
+    hhmm = now.strftime("%H:%M")
+
+    async with AsyncSessionLocal() as session:
+        due = (await session.execute(
+            select(Group).where(
+                and_(
+                    Group.plans_enabled == True,          # noqa: E712
+                    Group.plans_time == hhmm,
+                    Group.telegram_chat_id.is_not(None),
+                )
+            )
+        )).scalars().all()
+
+        if not due:
+            return
+
+        window_start = datetime.utcnow() - timedelta(minutes=1)
+        to_send = [
+            g for g in due
+            if not g.plans_last_sent_at or g.plans_last_sent_at < window_start
+        ]
+        if not to_send:
+            return
+
+        logger.info(
+            f"per-user plans: {len(to_send)} ta guruhga yuborish (soat {hhmm})"
+        )
+
+        async with _BotContext(bot) as b:
+            for g in to_send:
+                try:
+                    await send_per_user_plans_for_group(
+                        session, g, bot=b, is_test=False,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"per-user plans group={g.id} xato: {type(e).__name__}: {e}"
+                    )
                 await asyncio.sleep(_SEND_PAUSE)

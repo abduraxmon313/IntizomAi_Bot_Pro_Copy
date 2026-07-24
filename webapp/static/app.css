@@ -528,15 +528,20 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   color:var(--text);
   display:none;
   flex-direction:column;
-  justify-content:center;
+  /* MUHIM: `justify-content:center` bilan uzun content viewport'dan chiqib
+     ketardi va yuqori qismi scroll qilib bo'lmasdi. Endi `flex-start` +
+     `.pw-inner` ga `margin:auto` — kontent qisqa bo'lsa markazlashadi,
+     uzun bo'lsa yuqoridan boshlab natural scroll ishlaydi. */
+  justify-content:flex-start;
   height:100vh;
   height:100dvh;
   min-height:100dvh;
   padding:
-    calc(clamp(20px,3.5vh,32px) + env(safe-area-inset-top))
+    calc(clamp(16px,2.5vh,24px) + env(safe-area-inset-top))
     20px
-    calc(clamp(20px,3vh,28px) + env(safe-area-inset-bottom));
+    calc(clamp(16px,2.5vh,24px) + env(safe-area-inset-bottom));
   overflow-y:auto;
+  overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
 }
 .paywall.show{display:flex;animation:pwFade .35s ease}

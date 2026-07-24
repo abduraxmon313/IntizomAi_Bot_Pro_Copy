@@ -39,22 +39,29 @@ class Group(Base):
     invite_code = Column(String(16), unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # ── Telegram digest bog'lanishi (owner konfiguratsiyalaydi) ──
+    # ── Telegram digest/plans bog'lanishi (owner konfiguratsiyalaydi) ──
     # Guruh statistikasi (reja + odat) shu Telegram chatga har kuni yuboriladi.
     # Bog'lanmagan bo'lsa telegram_chat_id = NULL va digest_enabled = FALSE.
     telegram_chat_id = Column(BigInteger, nullable=True, index=True)
     telegram_chat_title = Column(String(200), nullable=True)
+    # ── Kunlik HISOBOT (report) sozlamalari ──
+    # Belgilangan vaqtda har bir a'zoning bugungi natijasi (ishlar bajarilgan/
+    # bajarilmagan) alohida xabar bo'lib yuboriladi (per-user).
     digest_enabled = Column(Boolean, default=False, nullable=False)
-    # Toshkent vaqti bo'yicha, HH:MM formatida (masalan "21:00").
     digest_time = Column(String(5), default="21:00", nullable=False)
-    # Bugun hech narsa qilmagan a'zolarni digestga qo'shish (default: HA).
+    # Eski toggle'lar (digest_show_zero, digest_mention) endi doim TRUE deb
+    # hisoblanadi (UI'dan olib tashlangan). DB'da saqlanadi backward compat uchun.
     digest_show_zero = Column(Boolean, default=True, nullable=False)
-    # Yaxshi bajarganlarni @username bilan mention qilish (Telegram bildirishnoma
-    # yuboradi). Default: yo'q (xushmuomalalik uchun).
-    digest_mention = Column(Boolean, default=False, nullable=False)
+    digest_mention = Column(Boolean, default=True, nullable=False)
     digest_last_sent_at = Column(DateTime, nullable=True)
-    # Oxirgi yuborishdagi xato (bo'lsa) — troubleshooting uchun.
     digest_last_error = Column(String(300), nullable=True)
+    # ── Kunlik REJA (plans) sozlamalari ──
+    # Belgilangan vaqtda har bir a'zoning bugungi reja+odatlar ro'yxati
+    # (nima qilishi kerak) alohida xabar bo'lib yuboriladi (per-user).
+    plans_enabled = Column(Boolean, default=False, nullable=False)
+    plans_time = Column(String(5), default="07:00", nullable=False)
+    plans_last_sent_at = Column(DateTime, nullable=True)
+    plans_last_error = Column(String(300), nullable=True)
 
     members = relationship(
         "GroupMember", back_populates="group", cascade="all, delete-orphan",

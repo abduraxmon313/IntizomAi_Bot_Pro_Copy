@@ -154,13 +154,17 @@ const apiForMemberPlan = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'
 // Eslatma: apiForMemberGoal olib tashlandi — a'zolar bir-biriga maqsad qo'sha
 // olmaydi (foydalanuvchi talabiga muvofiq). Faqat reja va odat qoldi.
 const apiForMemberHabit = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/habits',{method:'POST',body:JSON.stringify(body)});
-// Telegram digest sozlamalari (faqat guruh egasi)
+// Telegram digest/plans sozlamalari (faqat guruh egasi)
 const apiDigestSettings = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/settings');
 const apiDigestCandidates = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/candidates');
 const apiDigestUpdate = (gid,body)=>api('/api/webapp/friends/groups/'+gid+'/telegram/settings',{method:'PUT',body:JSON.stringify(body||{})});
 const apiDigestLink = (gid,chatId,chatTitle)=>api('/api/webapp/friends/groups/'+gid+'/telegram/link',{method:'POST',body:JSON.stringify({telegram_chat_id:chatId,telegram_chat_title:chatTitle||null})});
 const apiDigestUnlink = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/unlink',{method:'POST'});
-const apiDigestTest = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/test',{method:'POST'});
+// Yangi: ikki alohida test yuborish endpoint'lari (per-user rejalar/hisobot)
+const apiPlansTest = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/plans-test',{method:'POST'});
+const apiReportTest = (gid)=>api('/api/webapp/friends/groups/'+gid+'/telegram/report-test',{method:'POST'});
+// Eslatma: eski `apiDigestTest` (/telegram/test) endi mavjud emas — o'rniga
+// apiPlansTest va apiReportTest ishlatiladi (yuqorida).
 const apiPlanCreate=p=>api('/api/webapp/plans',{method:'POST',body:JSON.stringify(p)});
 const apiPlanUpdate=(id,p)=>api('/api/webapp/plans/'+id,{method:'PUT',body:JSON.stringify(p)});
 const apiPlanDelete=id=>api('/api/webapp/plans/'+id,{method:'DELETE'});
@@ -1584,11 +1588,10 @@ function renderDigestSettings(){
   const s=State.digest.settings;
   const wrap=document.getElementById('geDigestWrap');
   if(!wrap||!s)return;
-  // Enable toggle
+  // Enable toggle — kunlik HISOBOT
   const enBtn=document.getElementById('geDigestEnable');
   if(enBtn){
     enBtn.classList.toggle('on', !!s.digest_enabled);
-    // Bog'lanmasa Yoqishni bloklaymiz — foydalanuvchi avval chat tanlashi kerak.
     if(!s.telegram_chat_id){
       enBtn.classList.add('disabled');
     }else{
@@ -1607,22 +1610,34 @@ function renderDigestSettings(){
   // Unlink tugmasi
   const unlinkBtn=document.getElementById('geDigestUnlink');
   if(unlinkBtn)unlinkBtn.style.display=s.telegram_chat_id?'':'none';
-  // Vaqt selektori
+  // Vaqt selektorlari — hisobot va rejalar
   _fillDigestTimeOptions(document.getElementById('geDigestTime'), s.digest_time);
-  // Ikkinchi toggle'lar
-  const zeroBtn=document.getElementById('geDigestShowZero');
-  if(zeroBtn)zeroBtn.classList.toggle('on', s.digest_show_zero!==false);
-  const menBtn=document.getElementById('geDigestMention');
-  if(menBtn)menBtn.classList.toggle('on', !!s.digest_mention);
-  // Meta (last sent / error)
+  _fillDigestTimeOptions(document.getElementById('gePlansTime'), s.plans_time||'07:00');
+  // Kunlik REJA (plans) enable toggle
+  const plansEnBtn=document.getElementById('gePlansEnable');
+  if(plansEnBtn){
+    plansEnBtn.classList.toggle('on', !!s.plans_enabled);
+    if(!s.telegram_chat_id){
+      plansEnBtn.classList.add('disabled');
+    }else{
+      plansEnBtn.classList.remove('disabled');
+    }
+  }
+  // Meta (last sent / error) — hisobot va rejalar birgalikda ko'rsatiladi
   const meta=document.getElementById('geDigestMeta');
   if(meta){
     const parts=[];
     if(s.digest_last_sent_at){
-      try{const d=new Date(s.digest_last_sent_at);parts.push('✅ Oxirgi yuborilgan: '+d.toLocaleString('uz-UZ'));}catch(_){}
+      try{const d=new Date(s.digest_last_sent_at);parts.push('📊 Oxirgi hisobot: '+d.toLocaleString('uz-UZ'));}catch(_){}
+    }
+    if(s.plans_last_sent_at){
+      try{const d=new Date(s.plans_last_sent_at);parts.push('📋 Oxirgi reja: '+d.toLocaleString('uz-UZ'));}catch(_){}
     }
     if(s.digest_last_error){
-      parts.push('⚠️ Oxirgi xato: '+s.digest_last_error);
+      parts.push('⚠️ Hisobot xato: '+s.digest_last_error);
+    }
+    if(s.plans_last_error){
+      parts.push('⚠️ Reja xato: '+s.plans_last_error);
     }
     meta.innerHTML=parts.map(esc).join(' · ');
   }
@@ -1657,13 +1672,15 @@ async function toggleDigestEnable(){
   const nowOn=State.digest.settings && State.digest.settings.digest_enabled;
   toast(nowOn?'✅ Kunlik hisobot yoqildi':'⏸ Kunlik hisobot to\'xtatildi');
 }
-async function toggleDigestShowZero(){
+async function togglePlansEnable(){
   const s=State.digest.settings;if(!s)return;
-  await _digestSet({digest_show_zero: !s.digest_show_zero}, 'showzero');
-}
-async function toggleDigestMention(){
-  const s=State.digest.settings;if(!s)return;
-  await _digestSet({digest_mention: !s.digest_mention}, 'mention');
+  if(!s.telegram_chat_id){
+    toast('Avval Telegram guruhni tanlang',true);
+    return;
+  }
+  await _digestSet({plans_enabled: !s.plans_enabled}, 'plansenable');
+  const nowOn=State.digest.settings && State.digest.settings.plans_enabled;
+  toast(nowOn?'✅ Kunlik reja yuborish yoqildi':'⏸ Kunlik reja yuborish to\'xtatildi');
 }
 async function changeDigestTime(){
   const s=State.digest.settings;if(!s)return;
@@ -1672,7 +1689,16 @@ async function changeDigestTime(){
   const nv=sel.value;
   if(nv===s.digest_time)return;
   await _digestSet({digest_time: nv}, 'time');
-  toast('⏰ Vaqt yangilandi: '+nv);
+  toast('📊 Hisobot vaqti: '+nv);
+}
+async function changePlansTime(){
+  const s=State.digest.settings;if(!s)return;
+  const sel=document.getElementById('gePlansTime');
+  if(!sel)return;
+  const nv=sel.value;
+  if(nv===(s.plans_time||'07:00'))return;
+  await _digestSet({plans_time: nv}, 'planstime');
+  toast('📋 Reja vaqti: '+nv);
 }
 
 async function unlinkDigestChat(){
@@ -1685,27 +1711,36 @@ async function unlinkDigestChat(){
   }catch(e){toast('Xato: '+e.message,true);}
 }
 
-async function sendDigestTest(){
+// ── Yangi: ikkita alohida test yuborish funksiyasi (kunlik reja / kunlik hisobot)
+// Xabar tarkibida "test" yozuvi bo'lmaydi — real avtomatik yuborish bilan
+// aynan bir xil ko'rinishda. Faqat DB'dagi last_sent_at yangilanmaydi.
+async function _runTestSend(kind /* 'plans' | 'report' */){
   const g=State.currentGroup;if(!g||!g.is_owner)return;
   const s=State.digest.settings;
   if(!s||!s.telegram_chat_id){toast('Avval Telegram guruhni tanlang',true);return;}
-  const btn=document.getElementById('geDigestTest');
+  const btnId = kind==='plans' ? 'gePlansTest' : 'geDigestTest';
+  const btn=document.getElementById(btnId);
+  const origText = btn ? btn.textContent : null;
   if(btn){btn.disabled=true;btn.textContent='⏳ Yuborilmoqda…';}
   try{
-    const r=await apiDigestTest(g.id);
+    const r = kind==='plans'
+      ? await apiPlansTest(g.id)
+      : await apiReportTest(g.id);
     if(r&&r.ok){
-      toast('📨 Test hisobot yuborildi');
+      toast(kind==='plans' ? '📨 Kunlik reja yuborildi' : '📨 Kunlik hisobot yuborildi');
     }else{
       toast('⚠️ '+(r&&r.reason||'Yuborib bo\'lmadi'),true);
     }
   }catch(e){
     toast('Xato: '+e.message,true);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='🧪 Hoziroq test yuborish';}
+    if(btn){btn.disabled=false;btn.textContent=origText;}
     // Xato bo'lgan bo'lsa auto-unlink bo'lishi mumkin — qayta yuklab olamiz.
     loadDigestSettings();
   }
 }
+async function sendPlansTest(){ await _runTestSend('plans'); }
+async function sendDigestTest(){ await _runTestSend('report'); }
 
 // ── Chat picker: bot bilan birga bo'lgan Telegram guruhlar ro'yxati ─────
 async function openDigestPicker(){
@@ -2038,14 +2073,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _geB=document.getElementById('groupEditBack');if(_geB)_geB.onclick=e=>{if(e.target.id==='groupEditBack')_geB.classList.remove('show');};
   const _pC=document.getElementById('permsClose');if(_pC)_pC.onclick=()=>document.getElementById('permsBack').classList.remove('show');
   const _pB=document.getElementById('permsBack');if(_pB)_pB.onclick=e=>{if(e.target.id==='permsBack')_pB.classList.remove('show');};
-  // ── Telegram digest wiring ─────────────────────────────────
+  // ── Telegram digest/plans wiring ─────────────────────────────
   const _dgEn=document.getElementById('geDigestEnable');if(_dgEn)_dgEn.onclick=toggleDigestEnable;
-  const _dgZ=document.getElementById('geDigestShowZero');if(_dgZ)_dgZ.onclick=toggleDigestShowZero;
-  const _dgM=document.getElementById('geDigestMention');if(_dgM)_dgM.onclick=toggleDigestMention;
   const _dgT=document.getElementById('geDigestTime');if(_dgT)_dgT.onchange=changeDigestTime;
   const _dgP=document.getElementById('geDigestPick');if(_dgP)_dgP.onclick=openDigestPicker;
   const _dgU=document.getElementById('geDigestUnlink');if(_dgU)_dgU.onclick=unlinkDigestChat;
   const _dgTest=document.getElementById('geDigestTest');if(_dgTest)_dgTest.onclick=sendDigestTest;
+  // Yangi: kunlik REJA (plans) sozlamalari
+  const _plEn=document.getElementById('gePlansEnable');if(_plEn)_plEn.onclick=togglePlansEnable;
+  const _plT=document.getElementById('gePlansTime');if(_plT)_plT.onchange=changePlansTime;
+  const _plTest=document.getElementById('gePlansTest');if(_plTest)_plTest.onclick=sendPlansTest;
   const _tpC=document.getElementById('tgPickerCancel');if(_tpC)_tpC.onclick=()=>document.getElementById('tgPickerBack').classList.remove('show');
   const _tpR=document.getElementById('tgPickerReload');if(_tpR)_tpR.onclick=openDigestPicker;
   const _tpB=document.getElementById('tgPickerBack');if(_tpB)_tpB.onclick=e=>{if(e.target.id==='tgPickerBack')_tpB.classList.remove('show');};
