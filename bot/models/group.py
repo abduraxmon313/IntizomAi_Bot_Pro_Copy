@@ -89,6 +89,13 @@ class GroupMember(Base):
     # Hozircha faqat `owner` va `member` ishlatiladi.
     role = Column(String(12), default="member", nullable=False)
     joined_at = Column(DateTime, default=datetime.utcnow)
+    # Guruh egasi tomonidan boshqariladigan "aktiv" holati.
+    # FALSE bo'lsa:
+    #   • A'zoning reja/odatlari boshqa a'zolar ko'ra olmaydi (webapp)
+    #   • Telegram guruh xabarlarida (kunlik reja, hisobot, aggregate digest)
+    #     bu a'zoning ma'lumoti ko'rinmaydi va hisoblanmaydi
+    # A'zo guruhdan chiqarilmaydi — vaqtincha "pauza". Egasi qayta yoqishi mumkin.
+    is_active = Column(Boolean, default=True, nullable=False)
 
     group = relationship("Group", back_populates="members")
 

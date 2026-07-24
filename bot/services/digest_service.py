@@ -367,10 +367,14 @@ async def build_digest_html(
         return None
 
     # A'zolar (users bilan) — leaderboard uchun barchasini olamiz.
+    # Faqat AKTIV a'zolar (guruh egasi tomonidan o'chirilmagan) hisoblanadi.
     rows = (await session.execute(
         select(GroupMember, User)
         .join(User, User.id == GroupMember.user_id)
-        .where(GroupMember.group_id == group.id)
+        .where(and_(
+            GroupMember.group_id == group.id,
+            GroupMember.is_active == True,  # noqa: E712
+        ))
         .order_by(GroupMember.joined_at)
     )).all()
 
@@ -508,7 +512,10 @@ async def build_digest_keyboard(
     rows = (await session.execute(
         select(GroupMember, User)
         .join(User, User.id == GroupMember.user_id)
-        .where(GroupMember.group_id == group.id)
+        .where(and_(
+            GroupMember.group_id == group.id,
+            GroupMember.is_active == True,  # noqa: E712
+        ))
         .order_by(GroupMember.joined_at)
     )).all()
 
@@ -882,11 +889,18 @@ async def send_digest_for_group(
 async def _iter_group_members_sorted(
     session: AsyncSession, group: Group,
 ) -> list[User]:
-    """Guruh a'zolarini ism (display_name) bo'yicha alifbo tartibida qaytaradi."""
+    """
+    Guruh a'zolarini ism (display_name) bo'yicha alifbo tartibida qaytaradi.
+    Faqat AKTIV a'zolar — guruh egasi tomonidan o'chirilganlar (is_active=False)
+    Telegram hisobotlarida umuman ko'rinmaydi (webapp bilan mos xatti-harakat).
+    """
     rows = (await session.execute(
         select(GroupMember, User)
         .join(User, User.id == GroupMember.user_id)
-        .where(GroupMember.group_id == group.id)
+        .where(and_(
+            GroupMember.group_id == group.id,
+            GroupMember.is_active == True,  # noqa: E712
+        ))
         .order_by(GroupMember.joined_at)
     )).all()
     users = [u for _gm, u in rows]

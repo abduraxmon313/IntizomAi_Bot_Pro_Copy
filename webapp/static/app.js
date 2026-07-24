@@ -150,6 +150,10 @@ const apiPerms = (gid)=>api('/api/webapp/friends/groups/'+gid+'/permissions');
 const apiPermsSet = (gid,granteeId,body)=>api('/api/webapp/friends/groups/'+gid+'/permissions/'+granteeId,{method:'PUT',body:JSON.stringify(body||{})});
 // Ega tomonidan guruhdan a'zoni chiqarib yuborish
 const apiRemoveMember = (gid,uid)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid,{method:'DELETE'});
+// Ega tomonidan a'zoni "pauza" qilish yoki qayta yoqish (is_active).
+// FALSE bo'lsa a'zoning ma'lumotlari boshqalarga ko'rinmaydi va Telegram
+// hisobotlarida umuman hisoblanmaydi.
+const apiSetMemberActive = (gid,uid,active)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/active',{method:'PUT',body:JSON.stringify({is_active:!!active})});
 const apiForMemberPlan = (gid,uid,body)=>api('/api/webapp/friends/groups/'+gid+'/members/'+uid+'/plans',{method:'POST',body:JSON.stringify(body)});
 // Eslatma: apiForMemberGoal olib tashlandi — a'zolar bir-biriga maqsad qo'sha
 // olmaydi (foydalanuvchi talabiga muvofiq). Faqat reja va odat qoldi.
@@ -1824,11 +1828,53 @@ function renderGroupEditMembers(){
     box.innerHTML='<div style="font-size:12px;color:var(--text-3);padding:6px">Boshqa a\'zo yo\'q</div>';
     return;
   }
-  box.innerHTML=others.map(m=>`
-    <div class="perm-row">
+  // Har qatorda: ism | is_active toggle | qizil chiqarish icon tugma.
+  // Toggle o'chirilsa a'zoning ma'lumotlari boshqalarga ko'rinmaydi va
+  // Telegram guruh hisobotlarida hisoblanmaydi (a'zolik saqlanadi).
+  // Chiqarish tugmasi (🗑) esa a'zoni butunlay guruhdan olib tashlaydi.
+  box.innerHTML=others.map(m=>{
+    const active = m.is_active !== false;  // default TRUE (backward compat)
+    return `
+    <div class="perm-row ge-mem-row${active?'':' ge-mem-off'}">
       <div class="nm">${esc(m.name)}</div>
-      <button class="btn btn-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" style="width:auto;flex:0 0 auto;padding:8px 14px;font-size:12.5px">Chiqarish</button>
-    </div>`).join('');
+      <div class="ge-mem-actions">
+        <div class="toggle ${active?'on':''}" data-active-uid="${m.user_id}" role="switch" aria-label="${active?'O\'chirish':'Yoqish'}" title="${active?'Aktiv — ma\'lumotlari ko\'rinadi':'O\'chirilgan — ma\'lumotlari yashirin'}"><i></i></div>
+        <button class="btn-icon btn-icon-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" title="Guruhdan chiqarish" aria-label="Guruhdan chiqarish">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Aktiv toggle click handler
+  box.querySelectorAll('[data-active-uid]').forEach(t=>t.onclick=async()=>{
+    if(t.classList.contains('busy'))return;  // ikki marta bosishdan himoya
+    const uid=+t.dataset.activeUid;
+    const nextActive = !t.classList.contains('on');
+    t.classList.add('busy');
+    // Optimistic UI: darhol o'zgartiramiz; xato bo'lsa qaytaramiz.
+    t.classList.toggle('on', nextActive);
+    const row=t.closest('.perm-row');
+    if(row)row.classList.toggle('ge-mem-off', !nextActive);
+    try{
+      await apiSetMemberActive(g.id, uid, nextActive);
+      toast(nextActive ? '✅ A\'zo yoqildi' : '⏸ A\'zo o\'chirildi (ma\'lumotlari yashirin)');
+      // State.currentGroup.members ichidagi is_active flag'ni yangilaymiz —
+      // modal qayta ochilganda toggle to'g'ri holatda ko'rinsin (openGroup
+      // chaqiruvi UI'ni orqada refresh qilmaydi).
+      const gm = (State.currentGroup && State.currentGroup.members || []).find(x=>x.user_id===uid);
+      if(gm) gm.is_active = nextActive;
+    }catch(err){
+      // Rollback UI
+      t.classList.toggle('on', !nextActive);
+      if(row)row.classList.toggle('ge-mem-off', nextActive);
+      const msg=String(err&&err.message||'');
+      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
+      else toast('Xato: '+msg,true);
+    }finally{
+      t.classList.remove('busy');
+    }
+  });
+
+  // ── Chiqarish (kick) tugma click handler
   box.querySelectorAll('[data-kick]').forEach(b=>b.onclick=async()=>{
     const uid=+b.dataset.kick;
     const name=b.dataset.name||'a\'zo';
