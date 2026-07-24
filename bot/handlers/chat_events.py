@@ -22,7 +22,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     CallbackQuery, ChatMemberUpdated, InlineKeyboardButton,
-    InlineKeyboardMarkup, Message,
+    InlineKeyboardMarkup, Message, ReplyKeyboardRemove,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -164,12 +164,21 @@ async def on_bot_membership_change(
     became_member = new_status in ("member", "administrator", "creator")
     if was_absent and became_member and can_send:
         try:
+            # Avval ReplyKeyboardRemove yuboramiz — guruhda reply keyboard
+            # ko'rsatilmasligi kafolatlanadi.
             await event.bot.send_message(
                 chat.id,
                 GROUP_WELCOME_TEXT,
                 parse_mode="HTML",
-                reply_markup=group_menu_keyboard(),
+                reply_markup=ReplyKeyboardRemove(),
                 disable_web_page_preview=True,
+            )
+            # Keyin inline tugmalarni alohida xabar sifatida yuboramiz
+            await event.bot.send_message(
+                chat.id,
+                "👇 Quyidagi tugmalardan foydalaning:",
+                parse_mode="HTML",
+                reply_markup=group_menu_keyboard(),
             )
             logger.info(f"👋 group welcome sent: chat_id={chat.id}")
         except (TelegramForbiddenError, TelegramBadRequest) as e:
@@ -289,13 +298,21 @@ async def group_start(message: Message):
     """
     Guruhda /start — welcome xabari va 2 ta tugma. Bot shaxsiy menyu tugmalarini
     (statusim/rejalarim/premium/...) guruhda ko'rsatmaydi.
+    Reply Keyboard mavjud bo'lsa — olib tashlanadi (ReplyKeyboardRemove).
     """
     try:
+        # Avval mavjud Reply Keyboard'ni olib tashlaymiz (agar bor bo'lsa)
         await message.answer(
             GROUP_WELCOME_TEXT,
             parse_mode="HTML",
-            reply_markup=group_menu_keyboard(),
+            reply_markup=ReplyKeyboardRemove(),
             disable_web_page_preview=True,
+        )
+        # Keyin inline tugmalar bilan alohida xabar yuboramiz
+        await message.answer(
+            "👇 Quyidagi tugmalardan foydalaning:",
+            parse_mode="HTML",
+            reply_markup=group_menu_keyboard(),
         )
     except (TelegramForbiddenError, TelegramBadRequest) as e:
         logger.info(f"group /start reply skip chat_id={message.chat.id}: {e}")
