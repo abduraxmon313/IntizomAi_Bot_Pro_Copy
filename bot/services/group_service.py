@@ -29,7 +29,6 @@ from bot.models.group import Group, GroupMember, GroupPermission
 from bot.models.habit import Habit, HabitLog
 from bot.models.plan import Plan, PlanStatus
 from bot.models.user import User
-from bot.services.app_settings import is_group_perms_menu_enabled
 from bot.services.habit_service import is_due_on as _habit_is_due_on, is_finished as _habit_is_finished
 # Eslatma: Do'stlar guruhida MAQSAD (goal) bo'limi olib tashlandi.
 # A'zolar bir-birining maqsadini ko'rmaydi va bir-biriga maqsad qo'sha olmaydi
@@ -337,36 +336,24 @@ async def _effective_visible(
     Viewer, guruhda owner'ning (bu funksiyada "data owner" — a'zoning ma'lumoti
     egasi) ma'lumotlarini ko'ra oladimi?
 
-    Qoidalar:
+    Yagona qoida (foydalanuvchi so'roviga muvofiq soddalashtirildi):
       • O'ziga har doim ko'rinadi.
-      • Target `is_active=False` bo'lsa (guruh egasi vaqtincha o'chirgan): faqat
-        target o'zi va guruh egasi ko'ra oladi. Boshqa a'zolar → False.
-      • Global "guruh ruxsatlar menyusi" o'chirilgan bo'lsa → hamma birdek
-        ko'radi (admin foydalanuvchilarga ruxsatlar tanlash imkonini o'chirib
-        qo'ygan, natijada default hamma ochiq).
-      • Aks holda owner viewer'ga `can_view` yoki `can_manage` bergan bo'lsa → True.
-      • Bo'lmasa → False (default yashirin).
+      • Target `is_active=False` bo'lsa (guruh egasi vaqtincha o'chirgan) —
+        faqat target o'zi va guruh egasi ko'ra oladi.
+      • Boshqa barcha holatlarda ko'rinadi (hamma bir-birining reja/odatlarini
+        ko'radi). Ilgari `can_view` per-user toggle bor edi, u olib tashlandi
+        (visibility endi faqat guruh egasi A'zolar bo'limidagi is_active
+        toggle bilan boshqariladi). Not-touched: `can_manage` — "kim men uchun
+        yarata oladi" alohida qolgan.
+
+    `group_id`, `owner_id` argumentlari signature'ni buzmaslik uchun saqlangan
+    (chaqiruvchilar hali ham eski shaklda uzatadi).
     """
     if owner_id == viewer_id:
         return True
-    # A'zo egasi tomonidan o'chirilgan (is_active=False) → faqat guruh egasi
-    # ko'ra oladi (target'ni yoqib qo'yish imkoniyati uchun).
     if not target_is_active:
         return viewer_is_group_owner
-    # Admin panelidan ruxsatlar menyusi o'chirilgan bo'lsa qulflarni chetlab
-    # o'tamiz — bu holatda hamma bir-birini avtomatik ko'radi.
-    if not await is_group_perms_menu_enabled(session):
-        return True
-    row = await session.scalar(
-        select(GroupPermission).where(and_(
-            GroupPermission.group_id == group_id,
-            GroupPermission.grantor_user_id == owner_id,
-            GroupPermission.grantee_user_id == viewer_id,
-        ))
-    )
-    if not row:
-        return False
-    return bool(row.can_view) or bool(row.can_manage)
+    return True
 
 
 def _empty_summary() -> dict:
@@ -450,15 +437,12 @@ async def get_group_detail(
 
     member_ids = [u.id for _gm, u in rows]
 
-    # Admin panelidan "Guruh ruxsatlar menyusi" o'chirilgan bo'lsa — barcha
-    # a'zolar bir-birini ko'radi (default hamma ochiq). Bu holatda perms
-    # so'rovi umuman kerak emas.
-    perms_menu_on = await is_group_perms_menu_enabled(session)
-
-    # ── N+1 yo'q: barcha ruxsatlar BITTA so'rovda (visible + can_i_manage) ──
-    # Bu a'zolar MENGA (grantee=user.id) qanday ruxsat bergan: {grantor_id: (view, manage)}
+    # ── N+1 yo'q: `can_manage` bayroqlarini BITTA so'rovda olamiz.
+    # Bu — a'zolar MENGA (grantee=user.id) qanday MANAGE ruxsati bergan.
+    # `can_view` endi ishlatilmaydi (visibility har doim ochiq, is_active bilan
+    # boshqariladi) — lekin DB qatorlarida saqlanadi (backward compat).
     perms: dict[int, tuple[bool, bool]] = {}
-    if member_ids and perms_menu_on:
+    if member_ids:
         for gid, cv, cm in (await session.execute(
             select(
                 GroupPermission.grantor_user_id,
@@ -478,11 +462,9 @@ async def get_group_detail(
         # is_active=False a'zoni faqat guruh egasi ko'ra oladi.
         if not active_map.get(uid, True):
             return is_group_owner
-        # Ruxsatlar menyusi global o'chirilgan bo'lsa hamma ko'rinadi.
-        if not perms_menu_on:
-            return True
-        cv, cm = perms.get(uid, (False, False))
-        return cv or cm
+        # Boshqa hamma holatlarda ko'rinadi — foydalanuvchi so'roviga muvofiq
+        # (visibility uchun per-user "can_view" toggle olib tashlandi).
+        return True
 
     # Faqat KO'RINADIGAN a'zolar uchun xulosa hisoblaymiz (4 guruhli so'rov).
     visible_ids = [uid for uid in member_ids if _is_visible(uid)]

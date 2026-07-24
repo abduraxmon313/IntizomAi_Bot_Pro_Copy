@@ -198,17 +198,12 @@ async function loadAppConfig(){
   _applyAppConfig();
 }
 
-// Bayroqlar asosida DOM elementlarini yangilaydi. Hozir yagona effekt:
-// Do'stlar sahifasidagi "🛡 Ruxsatlar" tugmasini ko'rsatish/yashirish.
+// Bayroqlar asosida DOM elementlarini yangilaydi.
+// Hozircha bo'sh (foydalanuvchi so'roviga muvofiq: "🛡 Ruxsatlar" tugmasi
+// har doim ko'rinadi — admin toggle olib tashlandi). Kelajakda yangi bayroqlar
+// qo'shilsa shu yerda qo'llaniladi.
 function _applyAppConfig(){
-  const on=State.appConfig&&State.appConfig.group_perms_menu_enabled!==false;
-  const btn=document.getElementById('friendsPermsBtn');
-  if(btn)btn.style.display=on?'':'none';
-  // Modal ochilib turgan bo'lsa — flag o'chirilganda uni yopamiz.
-  if(!on){
-    const m=document.getElementById('permsBack');
-    if(m)m.classList.remove('show');
-  }
+  // no-op: hozircha DOM'ga hech qanday ta'sir yo'q.
 }
 
 async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
@@ -1943,34 +1938,23 @@ async function inviteFriend(){
   window.open(shareUrl,'_blank');
 }
 
-// ── Ruxsatlar modali — Ko'rinish (can_view) + Boshqarish (can_manage) ────
+// ── Ruxsatlar modali — Boshqarish (can_manage) + info panel ──────────────
+// "Kim meni ko'radi" (can_view) toggle olib tashlangan — hamma bir-birining
+// reja/odatlarini har doim ko'radi. Visibility endi faqat guruh egasi
+// A'zolar bo'limidagi on/off toggle bilan boshqariladi.
 async function openPermsModal(){
   const g=State.currentGroup;if(!g)return;
-  // Admin panelidan Ruxsatlar menyusi o'chirilgan bo'lsa modalni ochmaymiz —
-  // tugma yashiringan, lekin himoya qatlami sifatida shu tekshiruv ham bor.
-  if(State.appConfig&&State.appConfig.group_perms_menu_enabled===false)return;
   let d;try{d=await apiPerms(g.id);}catch(e){toast('Ruxsatlar yuklanmadi',true);return;}
 
-  const viewEl=document.getElementById('permsView');
   const manageEl=document.getElementById('permsGrantsOut');
   const inEl=document.getElementById('permsGrantsIn');
   const members=d.grants_out||[];
   const empty='<div style="font-size:12px;color:var(--text-3);padding:6px">Guruhda boshqa a\'zo yo\'q</div>';
 
+  // ✍️ Boshqarish toggle — kim men uchun yarata oladi
   if(!members.length){
-    viewEl.innerHTML=empty; manageEl.innerHTML='';
+    manageEl.innerHTML=empty;
   }else{
-    // 👁 Ko'rinish toggle — agar can_manage=True bo'lsa toggle qulflangan (on).
-    viewEl.innerHTML=members.map(m=>{
-      const locked=!!m.can_manage;
-      const on=locked||!!m.can_view;
-      return `<div class="perm-row">
-        <div class="nm">${esc(m.name)}</div>
-        <div class="toggle ${on?'on':''} ${locked?'locked':''}" data-view-uid="${m.user_id}"><i></i></div>
-        ${locked?'<span class="locked-hint">🔒 yarata oladi</span>':''}
-      </div>`;
-    }).join('');
-    // ✍️ Boshqarish toggle — mustaqil
     manageEl.innerHTML=members.map(m=>`
       <div class="perm-row">
         <div class="nm">${esc(m.name)}</div>
@@ -1978,30 +1962,16 @@ async function openPermsModal(){
       </div>`).join('');
   }
 
-  // 📥 Menga berilganlar (info): ikkala bayroq alohida chip'da
-  const givenTo=(d.grants_in||[]).filter(m=>m.can_manage||m.can_view);
+  // 📥 Menga berilganlar (info) — faqat can_manage huquqi berganlar.
+  // `can_view` endi UI'da ma'nosiz (visibility har doim ochiq), shu sabab
+  // e'tibordan chetlashtiriladi.
+  const givenTo=(d.grants_in||[]).filter(m=>m.can_manage);
   inEl.innerHTML=givenTo.length?givenTo.map(m=>{
-    const chips=[];
-    if(m.can_manage)chips.push('<span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">✍️ yarata oladi</span>');
-    else if(m.can_view)chips.push('<span class="chip" style="padding:2px 8px;font-size:10.5px;font-weight:700;background:var(--primary-soft);color:var(--primary);border-radius:999px">👁 ko\'radi</span>');
-    return `<div class="perm-row"><div class="nm">${esc(m.name)}</div>${chips.join(' ')}</div>`;
+    const chip='<span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">✍️ yarata oladi</span>';
+    return `<div class="perm-row"><div class="nm">${esc(m.name)}</div>${chip}</div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Hech kim sizga ruxsat bermagan</div>';
 
-  // 👁 Ko'rinish toggle handler
-  viewEl.querySelectorAll('.toggle:not(.locked)').forEach(t=>t.onclick=async()=>{
-    const uid=+t.dataset.viewUid;
-    const nv=!t.classList.contains('on');
-    t.classList.toggle('on',nv);
-    try{
-      await apiPermsSet(g.id,uid,{can_view:nv});
-      toast(nv?'👁 Ko\'rish yoqildi':'Ko\'rish o\'chirildi');
-    }catch(e){
-      t.classList.toggle('on',!nv);
-      toast('Xato: '+e.message,true);
-    }
-  });
-
-  // ✍️ Boshqarish toggle handler — yoqilsa 👁 ni ham auto-on qiladi
+  // ✍️ Boshqarish toggle handler
   manageEl.querySelectorAll('.toggle').forEach(t=>t.onclick=async()=>{
     const uid=+t.dataset.manageUid;
     const nv=!t.classList.contains('on');
@@ -2009,8 +1979,6 @@ async function openPermsModal(){
     try{
       await apiPermsSet(g.id,uid,{can_manage:nv});
       toast(nv?'✍️ Yaratish huquqi berildi':'Yaratish huquqi olindi');
-      // Modal'ni yangi holat bilan qayta yuklaymiz (view toggle qulf holati o'zgaradi)
-      await openPermsModal();
     }catch(e){
       t.classList.toggle('on',!nv);
       toast('Xato: '+e.message,true);
