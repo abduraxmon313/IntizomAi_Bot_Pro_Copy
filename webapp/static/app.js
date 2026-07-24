@@ -1,6 +1,6 @@
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'✅',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light',
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'🏃',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light',
   // Do'stlar (Friends) moduli
   friendsView:'list',       // 'list' | 'group' | 'member'
   groups:[],
@@ -264,7 +264,9 @@ function renderObHabits(){
   el.querySelectorAll('.opt').forEach(o=>o.onclick=()=>{const i=+o.dataset.i;State.obHabits[i].sel=!State.obHabits[i].sel;o.classList.toggle('sel');});
 }
 
-const HABIT_ICONS=['✅','🏃','📚','💧','🧘','💪','🌅','🛏️','🙏','🚭','🥗','✍️','🎯','💸','🧠','😴'];
+// Odat qo'shish modalida chiqadigan belgilar (emoji picker) — foydalanuvchi
+// so'ragan aynan ro'yxat. Default belgi endi 🏃 (birinchi element).
+const HABIT_ICONS=['🏃','💪','🌅','🛏️','💧','🍽️','🙏','📚','📖','💻','🧠','✍️','💼','🎯','💸','🧹','❤️','🚭','🫂','🛒','🚗'];
 const WD_SHORT=['Du','Se','Cho','Pa','Ju','Sha','Ya'];
 
 function habitMetaLabel(h){
@@ -368,7 +370,7 @@ function applyHabitFreqUI(){document.querySelectorAll('#hFreqSeg .hseg-item').fo
 function applyHabitDurUI(){document.querySelectorAll('#hDurSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.d===State.habitDur));const dw=document.getElementById('hDaysWrap');if(dw)dw.style.display=State.habitDur==='days'?'block':'none';}
 function applyHabitRemUI(){document.querySelectorAll('#hRemSeg .hseg-item').forEach(it=>it.classList.toggle('active',it.dataset.r===State.habitRem));const rw=document.getElementById('hRemWrap');if(rw)rw.style.display=State.habitRem==='on'?'block':'none';}
 
-function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'✅';State.habitFreq=(habit&&habit.frequency)||'daily';State.habitDur=(habit&&habit.duration_type)||'permanent';State.habitWeekdays=(habit&&Array.isArray(habit.weekdays))?habit.weekdays.slice():[];State.habitRem=(habit&&habit.reminder_time)?'on':'off';setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';const td=document.getElementById('hTargetDays');if(td)td.value=(habit&&habit.target_days)?habit.target_days:'';
+function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.habitIcon=(habit&&habit.icon)||'🏃';State.habitFreq=(habit&&habit.frequency)||'daily';State.habitDur=(habit&&habit.duration_type)||'permanent';State.habitWeekdays=(habit&&Array.isArray(habit.weekdays))?habit.weekdays.slice():[];State.habitRem=(habit&&habit.reminder_time)?'on':'off';setText('habitModalTitle',habit?'Odatni tahrirlash':'Yangi odat');const t=document.getElementById('hTitle');if(t)t.value=habit?habit.title:'';const d=document.getElementById('hDesc');if(d)d.value=habit&&habit.description?habit.description:'';const td=document.getElementById('hTargetDays');if(td)td.value=(habit&&habit.target_days)?habit.target_days:'';
   fillTimeSelectsFor('hRemHour','hRemMin');
   let rh='20',rm='00';
   if(habit&&habit.reminder_time&&habit.reminder_time.includes(':')){const pp=habit.reminder_time.split(':');rh=pad(parseInt(pp[0],10)||0);rm=pad(Math.round((parseInt(pp[1],10)||0)/5)*5%60);}
@@ -389,7 +391,7 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
   const remOn=State.habitRem==='on';
   let reminderTime=null;
   if(remOn){const rh=document.getElementById('hRemHour')?.value||'20';const rm=document.getElementById('hRemMin')?.value||'00';reminderTime=rh+':'+rm;}
-  const body={title:t,description:desc||null,icon:State.habitIcon||'✅',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays,reminder_time:reminderTime,clear_reminder:!remOn};
+  const body={title:t,description:desc||null,icon:State.habitIcon||'🏃',frequency:freq,weekdays:weekdays,duration_type:dur,target_days:targetDays,reminder_time:reminderTime,clear_reminder:!remOn};
   const isEdit=!!State.habitModal.id;
   // ── Boshqa a'zo uchun yaratish ──
   if(!isEdit && State.forMemberContext){
