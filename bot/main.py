@@ -8,10 +8,13 @@ from aiogram.types import (
     BotCommandScopeAllGroupChats,
     BotCommandScopeAllPrivateChats,
     BotCommandScopeDefault,
+    MenuButtonDefault,
+    MenuButtonCommands,
 )
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, plan, callback, report, admin, status, subscribe, chat_events
+from bot.middleware.group_keyboard import GroupKeyboardRemoveMiddleware
 from bot.services.scheduler import start_scheduler
 from database.db import create_tables
 
@@ -82,6 +85,20 @@ async def set_commands(bot: Bot):
         default_commands, scope=BotCommandScopeDefault(),
     )
 
+    # ── Menu Button sozlamalari ─────────────────────────────────
+    # Private chatlar uchun — Menu tugmasini ko'rsatamiz (commands menyusi).
+    try:
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonCommands(),
+        )
+    except Exception:
+        pass
+
+    # Guruh chatlarida Menu Button ko'rsatilmasin — MenuButtonDefault (bo'sh)
+    # Telegram API scope bo'yicha chat_menu_button o'rnatishga ruxsat bermaydi,
+    # lekin buyruqlar ro'yxati guruh uchun alohida o'rnatilgan (yuqorida).
+    # Bu yetarli — guruh foydalanuvchilari faqat guruh buyruqlarini ko'radi.
+
 
 async def main():
     # DB jadvallarini yaratish
@@ -129,6 +146,10 @@ async def main():
     # my_chat_member — bot Telegram guruhlariga qo'shilgan/chiqarilganida
     # `bot_chats` jadvaliga yozish uchun sessiya kerak (chat_events handler).
     dp.my_chat_member.middleware(DbSessionMiddleware())
+
+    # Guruh chatlarda Reply Keyboard va Menu Button ko'rsatilmasligini
+    # ta'minlovchi middleware.
+    dp.message.middleware(GroupKeyboardRemoveMiddleware())
     
     dp.include_router(start.router)
     dp.include_router(status.router)
