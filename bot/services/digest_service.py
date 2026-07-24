@@ -229,6 +229,18 @@ def _name_html(u: User, *, mention: bool) -> str:
     return n
 
 
+def _name_html_with_premium(u: User, *, mention: bool) -> str:
+    """
+    Ism HTML + Premium bo'lsa yonida 💎 belgisi.
+    Foydalanuvchi so'ragan: "manabu royhatda ham ism yonida olmos chiqsin
+    agar premium bolsa".
+    """
+    n = _name_html(u, mention=mention)
+    if user_is_premium(u):
+        return f"{n} 💎"
+    return n
+
+
 UZ_WEEKDAYS = [
     "Dushanba", "Seshanba", "Chorshanba", "Payshanba",
     "Juma", "Shanba", "Yakshanba",
@@ -324,27 +336,30 @@ async def build_digest_html(
         "",
     ]
 
-    # ── Bajarganlar bloki
+    # ── Bajarganlar bloki (premium userlar yoniga 💎 qo'shiladi)
     if done_rows:
         lines.append("✅ <b>Bajarganlar:</b>")
         for r in done_rows:
             u = r["user"]
-            name = _name_html(u, mention=mention)
+            name = _name_html_with_premium(u, mention=mention)
             lines.append(f"🟢 {name} — {r['done']}/{r['total']}")
         lines.append("")
 
-    # ── Umuman bajarmaganlar bloki
+    # ── Umuman bajarmaganlar bloki (premium userlar yoniga 💎 qo'shiladi)
     if undone_rows:
         lines.append("❌ <b>Umuman bajarmaganlar:</b>")
         for r in undone_rows:
             u = r["user"]
-            name = _name_html(u, mention=mention)
+            name = _name_html_with_premium(u, mention=mention)
             lines.append(f"🔴 {name} — {r['done']}/{r['total']}")
         lines.append("")
 
     # ── Idle (bugun umuman reja/odat qo'shmagan) — faqat show_zero yoqilgan bo'lsa
     if idle_rows and show_zero:
-        names = [_name_html(r["user"], mention=mention) for r in idle_rows[:10]]
+        names = [
+            _name_html_with_premium(r["user"], mention=mention)
+            for r in idle_rows[:10]
+        ]
         extra = f" +{len(idle_rows) - 10} kishi" if len(idle_rows) > 10 else ""
         lines.append(f"😴 <b>Bugun rejasiz:</b> {', '.join(names)}{extra}")
         lines.append("")
@@ -368,8 +383,24 @@ async def build_digest_html(
 # ─────────────────────────────────────────────────────────────
 # Callback data limiti Telegram tomonidan 64 baytga cheklangan. Format:
 #   du:<group_id>:<user_id>   — "digest user" (a'zo tafsiloti)
+#   dgb:<group_id>            — "digest back" (a'zo tafsilotidan hisobotga qaytish)
 # Butun sonlar, shuning uchun 64 bayt limitidan ancha ostida.
 DGST_USER_CB_PREFIX = "du"
+DGST_BACK_CB_PREFIX = "dgb"
+
+
+def build_user_detail_back_keyboard(group_id: int) -> InlineKeyboardMarkup:
+    """
+    A'zo tafsilotidan guruh hisobotiga qaytish uchun bitta tugmali keyboard.
+    Bosilganda `chat_events.py`dagi `grp_digest_back_callback` ishga tushadi
+    va xabarni qayta guruh hisobotiga aylantiradi.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="⬅️ Orqaga",
+            callback_data=f"{DGST_BACK_CB_PREFIX}:{int(group_id)}",
+        ),
+    ]])
 
 
 async def build_digest_keyboard(
@@ -520,17 +551,16 @@ async def build_user_detail_html(
     total_done = len(done_items)
     total_items = total_done + len(undone_items)
 
-    # Sarlavha: 👤 ism  ·  🔥 streak  ·  💎 (agar premium)
+    # Sarlavha: 👤 ism 💎 (agar premium). Streak (🔥) endi ko'rsatilmaydi —
+    # foydalanuvchi so'ragan: "ismni yonida olmos ozi yetadi".
     name = _escape(_display_name(user))
-    streak = int(user.streak or 0)
-    header_parts = [f"👤 <b>{name}</b>"]
-    if streak > 0:
-        header_parts.append(f"🔥 {streak}")
     if user_is_premium(user):
-        header_parts.append("💎")
+        header = f"👤 <b>{name}</b> 💎"
+    else:
+        header = f"👤 <b>{name}</b>"
 
     lines: list[str] = [
-        "  ·  ".join(header_parts),
+        header,
         "",
         f"📊 Bugungi natija: <b>{total_done}/{total_items}</b>",
         "",
@@ -560,7 +590,7 @@ async def build_user_detail_html(
     if total_items == 0:
         # Foydalanuvchi bugun umuman reja/odat qo'shmagan
         lines = [
-            "  ·  ".join(header_parts),
+            header,
             "",
             "😴 Bugun hali reja yoki odat qo'shmagan.",
         ]

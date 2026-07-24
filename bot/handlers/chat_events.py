@@ -400,7 +400,10 @@ async def grp_digest_user_callback(callback: CallbackQuery, session: AsyncSessio
         emas).
     """
     from bot.models.group import Group
-    from bot.services.digest_service import build_user_detail_html
+    from bot.services.digest_service import (
+        build_user_detail_html,
+        build_user_detail_back_keyboard,
+    )
 
     if callback.message is None or callback.message.chat is None:
         await callback.answer("Chat aniqlanmadi.", show_alert=True)
@@ -443,6 +446,7 @@ async def grp_digest_user_callback(callback: CallbackQuery, session: AsyncSessio
 
     try:
         html = await build_user_detail_html(session, group, target_user)
+        back_kb = build_user_detail_back_keyboard(group_id)
     except Exception as e:
         logger.warning(
             f"user_detail xato group={group_id} user={target_user_id}: {type(e).__name__}: {e}"
@@ -450,22 +454,99 @@ async def grp_digest_user_callback(callback: CallbackQuery, session: AsyncSessio
         await callback.answer("Tafsilotni olishda xatolik.", show_alert=True)
         return
 
-    # Digest xabariga REPLY qilib yuboramiz — chatda kontekst yo'qolmasin.
+    # Xabarni O'ZGARTIRAMIZ (edit_text) — reply emas. Foydalanuvchi so'ragan:
+    # "hisobotda kimnidur ismini bossa ... osha matn ozgarsin va orqaga tugmasi
+    # bolsin". Shu tariqa guruh chatida yangi xabarlar to'planib qolmaydi va
+    # kontekst joyida qoladi.
     try:
-        await callback.message.reply(
+        await callback.message.edit_text(
             html,
             parse_mode="HTML",
             disable_web_page_preview=True,
+            reply_markup=back_kb,
         )
-    except (TelegramForbiddenError, TelegramBadRequest) as e:
-        # Reply xato bo'lsa oddiy xabar sifatida urinib ko'ramiz.
-        try:
-            await callback.message.answer(
-                html, parse_mode="HTML", disable_web_page_preview=True,
-            )
-        except Exception:
-            await callback.answer(f"Xatolik: {e}", show_alert=True)
+    except TelegramBadRequest as e:
+        # "message is not modified" xatosi — bir xil user tugmasi ikki marta
+        # bosilgan bo'lishi mumkin (jim o'tamiz).
+        if "not modified" in str(e).lower():
+            await callback.answer()
             return
+        await callback.answer(f"Xatolik: {e}", show_alert=True)
+        return
+    except TelegramForbiddenError as e:
+        await callback.answer(f"Xatolik: {e}", show_alert=True)
+        return
+
+    await callback.answer()
+
+
+# ─────────────────────────────────────────────────────────────
+#  A'zo tafsilotidan guruh hisobotiga qaytish (dgb:<group_id>)
+# ─────────────────────────────────────────────────────────────
+@router.callback_query(F.data.startswith("dgb:"))
+async def grp_digest_back_callback(callback: CallbackQuery, session: AsyncSession):
+    """
+    A'zo tafsilotidan "⬅️ Orqaga" bosilganda — xabarni qayta guruh umumiy
+    hisobotiga aylantiramiz (edit_text). Yangi digest kompleksi (matn +
+    a'zolar tugmalari) shu vaqtdagi dolzarb ma'lumot bo'yicha qayta quriladi.
+    """
+    from bot.models.group import Group
+    from bot.services.digest_service import (
+        build_digest_html,
+        build_digest_keyboard,
+    )
+
+    if callback.message is None or callback.message.chat is None:
+        await callback.answer("Chat aniqlanmadi.", show_alert=True)
+        return
+    if callback.message.chat.type not in ("group", "supergroup"):
+        await callback.answer("Bu tugma faqat guruhlarda ishlaydi.", show_alert=True)
+        return
+
+    try:
+        _, gid_s = callback.data.split(":", 1)
+        group_id = int(gid_s)
+    except (ValueError, AttributeError):
+        await callback.answer("Xato ma'lumot.", show_alert=True)
+        return
+
+    group = await session.get(Group, group_id)
+    if group is None or group.telegram_chat_id != callback.message.chat.id:
+        await callback.answer("Bu tugma bu chatga tegishli emas.", show_alert=True)
+        return
+
+    try:
+        html = await build_digest_html(session, group)
+        keyboard = await build_digest_keyboard(session, group)
+    except Exception as e:
+        logger.warning(
+            f"digest rebuild xato group={group_id}: {type(e).__name__}: {e}"
+        )
+        await callback.answer("Hisobotni qayta qurishda xatolik.", show_alert=True)
+        return
+
+    if not html:
+        # Bu holat kamdan-kam — digest allaqachon yuborilgan bo'lsa mazmun bor
+        # bo'lishi kerak. Har qanday xatoga qarshi jim toast.
+        await callback.answer("Hisobot yangilanishga tayyor emas.", show_alert=True)
+        return
+
+    try:
+        await callback.message.edit_text(
+            html,
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=keyboard,
+        )
+    except TelegramBadRequest as e:
+        if "not modified" in str(e).lower():
+            await callback.answer()
+            return
+        await callback.answer(f"Xatolik: {e}", show_alert=True)
+        return
+    except TelegramForbiddenError as e:
+        await callback.answer(f"Xatolik: {e}", show_alert=True)
+        return
 
     await callback.answer()
 
