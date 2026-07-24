@@ -550,12 +550,42 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   border:0;
 }
 
-/* Paywall tariflar — foydalanuvchi tomonidan so'ralgan yangi format:
-     ✅ 1 oylik   39 900 so'm
+/* Premium xususiyatlar (features) ro'yxati — subtitle ostida, tariflar tepasida.
+   Kompakt vertikal ro'yxat, har bir qatorda ikon + qisqa matn. Chap tomonda
+   emojisi va matnlari markazlashgan (ro'yxatning butunligi container ichida
+   markazda) — foydalanuvchi so'ragan "ortada joylashsin" yondashuvi. */
+.paywall .pw-feats{
+  list-style:none;
+  margin:0 auto clamp(6px,1.4vh,10px);
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+  max-width:280px;
+}
+.paywall .pw-feats li{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+  line-height:1.35;
+}
+.paywall .pw-feats .pw-feat-ic{
+  font-size:15px;
+  flex:0 0 auto;
+  width:22px;
+  text-align:center;
+}
+
+/* Paywall tariflar — foydalanuvchi so'ragan MARKAZLASHGAN format:
+     ✅ 1 oy      39 900 so'm
      ⭐ 3 oy      79 900 so'm (33% tejaysiz)
-     💎 12 oy     179 900 so'm (≈ 14 990 so'm/oy)
-   Har bir tarif YAGONA QATORDA (mobil ekranda ham) — chap tomonda emoji+nom,
-   o'ng tomonda narx+tag. Bosiladigan (tap qilinganda checkoutga o'tadi). */
+     💎 12 oy    179 900 so'm (≈ 14 990 so'm/oy)
+   Har bir tarif matni EKRAN O'RTASIDA joylashadi (huddi "IntizomAi Premium"
+   sarlavhasi kabi). Bosiladigan (tap qilinganda checkoutga o'tadi). */
 .paywall .pw-plans{
   display:flex;
   flex-direction:column;
@@ -566,8 +596,9 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .paywall .pw-plan{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:10px;
+  justify-content:center;
+  gap:8px;
+  flex-wrap:wrap;
   background:var(--surface);
   border:1.5px solid var(--border);
   border-radius:14px;
@@ -578,7 +609,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   position:relative;
   overflow:hidden;
   width:100%;
-  text-align:left;
+  text-align:center;
   font:inherit;
   color:inherit;
 }
@@ -607,30 +638,31 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   pointer-events:none;
   opacity:.55;
 }
-/* Chap tomon: emoji + nom */
+/* Emoji + nom — markazda, narx bilan bir qatorda (flex-wrap bo'lsa
+   yangi qatorga tushishi mumkin, lekin har doim center-align). */
 .paywall .pw-plan-title{
   font-size:14.5px;
   font-weight:800;
   color:var(--text);
   line-height:1.2;
   letter-spacing:.1px;
-  display:flex;
+  display:inline-flex;
   align-items:center;
   gap:6px;
   flex:0 0 auto;
 }
 .paywall .pw-plan-title .pw-plan-emoji{font-size:16px;line-height:1}
-/* O'ng tomon: narx + qavsdagi teg — bir qatorda, o'ngga tekislangan */
+/* Narx + qavsdagi teg — nom yonida, markazlashgan */
 .paywall .pw-plan-price-line{
-  display:flex;
+  display:inline-flex;
   align-items:baseline;
   flex-wrap:wrap;
-  justify-content:flex-end;
+  justify-content:center;
   gap:5px;
   line-height:1.2;
-  flex:1 1 auto;
+  flex:0 0 auto;
   min-width:0;
-  text-align:right;
+  text-align:center;
 }
 .paywall .pw-plan-amount{
   font-size:15px;
