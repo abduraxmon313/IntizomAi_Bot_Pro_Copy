@@ -1625,6 +1625,13 @@ function renderDigestSettings(){
   // Vaqt selektorlari — hisobot va rejalar
   _fillDigestTimeOptions(document.getElementById('geDigestTime'), s.digest_time);
   _fillDigestTimeOptions(document.getElementById('gePlansTime'), s.plans_time||'07:00');
+  // Ma'lumot manbasi (plans/habits/both) — segmentli tugmalar
+  const currentSrc = (s.report_source || 'both').toLowerCase();
+  document.querySelectorAll('#geReportSourceSeg .src-opt').forEach(b=>{
+    const on = b.dataset.src === currentSrc;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
   // Kunlik REJA (plans) enable toggle
   const plansEnBtn=document.getElementById('gePlansEnable');
   if(plansEnBtn){
@@ -1706,6 +1713,37 @@ async function changePlansTime(){
   if(nv===(s.plans_time||'07:00'))return;
   await _digestSet({plans_time: nv}, 'planstime');
   toast('📋 Reja vaqti: '+nv);
+}
+
+// Ma'lumot manbasi tanlovi (plans/both/habits) — segmentli tugmalardan biri.
+// Optimistic UI: darhol active klass o'zgaradi; xato bo'lsa qaytariladi.
+async function selectReportSource(nextSrc){
+  const s=State.digest.settings;if(!s)return;
+  const valid = ['plans','both','habits'];
+  if(!valid.includes(nextSrc)) return;
+  const prev = (s.report_source || 'both').toLowerCase();
+  if(nextSrc===prev) return;
+  // Optimistic UI
+  const seg=document.getElementById('geReportSourceSeg');
+  if(seg){
+    seg.querySelectorAll('.src-opt').forEach(b=>{
+      const on = b.dataset.src === nextSrc;
+      b.classList.toggle('active', on);
+      b.classList.add('busy');
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+  try{
+    await _digestSet({report_source: nextSrc}, 'source');
+    const label = nextSrc==='plans' ? '📋 Faqat rejalar'
+                : nextSrc==='habits' ? '🔁 Faqat odatlar'
+                : '🔀 Ikkisi ham';
+    toast('Ma\'lumot manbasi: '+label);
+  }catch(_){
+    // _digestSet o'zi loadDigestSettings chaqiradi xato bo'lsa
+  }finally{
+    if(seg) seg.querySelectorAll('.src-opt').forEach(b=>b.classList.remove('busy'));
+  }
 }
 
 async function unlinkDigestChat(){
@@ -2114,6 +2152,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _plEn=document.getElementById('gePlansEnable');if(_plEn)_plEn.onclick=togglePlansEnable;
   const _plT=document.getElementById('gePlansTime');if(_plT)_plT.onchange=changePlansTime;
   const _plTest=document.getElementById('gePlansTest');if(_plTest)_plTest.onclick=sendPlansTest;
+  // Ma'lumot manbasi segmentli tugmalar (plans/both/habits)
+  document.querySelectorAll('#geReportSourceSeg .src-opt').forEach(b=>{
+    b.onclick=()=>selectReportSource(b.dataset.src);
+  });
   const _tpC=document.getElementById('tgPickerCancel');if(_tpC)_tpC.onclick=()=>document.getElementById('tgPickerBack').classList.remove('show');
   const _tpR=document.getElementById('tgPickerReload');if(_tpR)_tpR.onclick=openDigestPicker;
   const _tpB=document.getElementById('tgPickerBack');if(_tpB)_tpB.onclick=e=>{if(e.target.id==='tgPickerBack')_tpB.classList.remove('show');};

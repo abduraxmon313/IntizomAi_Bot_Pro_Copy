@@ -447,9 +447,11 @@ class TelegramSettingsUpdate(BaseModel):
     # ── Kunlik HISOBOT (report) sozlamalari
     digest_enabled: Optional[bool] = None
     digest_time: Optional[str] = None  # HH:MM Toshkent
-    # ── Kunlik REJA (plans) sozlamalari (yangi)
+    # ── Kunlik REJA (plans) sozlamalari
     plans_enabled: Optional[bool] = None
     plans_time: Optional[str] = None  # HH:MM Toshkent
+    # ── Ma'lumot manbasi (data source): "plans" | "habits" | "both"
+    report_source: Optional[str] = None
     # ── Backward compat — UI'da endi ko'rinmaydi (doim TRUE deb hisoblanadi)
     digest_show_zero: Optional[bool] = None
     digest_mention: Optional[bool] = None
@@ -527,6 +529,7 @@ async def telegram_settings_update(
             digest_time=body.digest_time,
             plans_enabled=body.plans_enabled,
             plans_time=body.plans_time,
+            report_source=body.report_source,
             digest_show_zero=body.digest_show_zero,
             digest_mention=body.digest_mention,
         )

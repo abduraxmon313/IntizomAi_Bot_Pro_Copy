@@ -900,6 +900,12 @@ async def ensure_can_manage(
 _ALLOWED_DIGEST_HOURS = tuple(f"{h:02d}:00" for h in range(6, 24))
 """Tayyor vaqt tanlovlari (06:00..23:00). Har soatda, 24 ta variant."""
 
+# `Group.report_source` uchun ruxsat etilgan qiymatlar:
+#   • "plans"  — Telegram xabarlarida faqat rejalar ishlatiladi
+#   • "habits" — faqat odatlar
+#   • "both"   — reja va odat ikkisi ham (default)
+ALLOWED_REPORT_SOURCES = ("plans", "habits", "both")
+
 
 def is_valid_digest_time(hhmm: str) -> bool:
     """
@@ -948,6 +954,9 @@ async def get_telegram_settings(
         "plans_time": getattr(g, "plans_time", None) or "07:00",
         "plans_last_sent_at": g.plans_last_sent_at.isoformat() if getattr(g, "plans_last_sent_at", None) else None,
         "plans_last_error": getattr(g, "plans_last_error", None),
+        # ── Ma'lumot manbasi: "plans" | "habits" | "both"
+        "report_source": getattr(g, "report_source", None) or "both",
+        "allowed_report_sources": list(ALLOWED_REPORT_SOURCES),
         # ── Backward compat (UI'da endi ko'rinmaydi)
         "digest_show_zero": bool(g.digest_show_zero),
         "digest_mention": bool(g.digest_mention),
@@ -964,6 +973,7 @@ async def update_telegram_settings(
     digest_time: Optional[str] = None,
     plans_enabled: Optional[bool] = None,
     plans_time: Optional[str] = None,
+    report_source: Optional[str] = None,
     # Backward compat — hozircha qabul qilinadi (frontend'da yo'q).
     digest_show_zero: Optional[bool] = None,
     digest_mention: Optional[bool] = None,
@@ -1009,6 +1019,15 @@ async def update_telegram_settings(
         if not is_valid_digest_time(plans_time):
             raise GroupError("Vaqt formati noto'g'ri (HH:MM).")
         g.plans_time = plans_time
+
+    # ── Ma'lumot manbasi (plans/habits/both)
+    if report_source is not None:
+        src = str(report_source).strip().lower()
+        if src not in ALLOWED_REPORT_SOURCES:
+            raise GroupError(
+                "Manba noto'g'ri (plans, habits yoki both bo'lishi kerak)."
+            )
+        g.report_source = src
 
     # Backward compat — endi UI'da ko'rinmaydi
     if digest_show_zero is not None:

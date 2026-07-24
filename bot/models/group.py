@@ -62,6 +62,15 @@ class Group(Base):
     plans_time = Column(String(5), default="07:00", nullable=False)
     plans_last_sent_at = Column(DateTime, nullable=True)
     plans_last_error = Column(String(300), nullable=True)
+    # ── Ma'lumot manbasi (data source) ──
+    # Kunlik plan/hisobot xabarlarida qaysi ma'lumot ishlatilishini belgilaydi:
+    #   • "plans"  — faqat rejalar (Plans jadvali)
+    #   • "habits" — faqat odatlar (Habits + HabitLog)
+    #   • "both"   — reja va odat ikkisi ham (default, avvalgi xatti-harakat)
+    # Guruh egasi Mini App'da Hisobot bo'limchasidan tanlaydi. Aggregate
+    # /hisobot digest, per-user auto plans va per-user auto report — barchasi
+    # shu qiymatga rioya qiladi.
+    report_source = Column(String(10), default="both", nullable=False)
 
     members = relationship(
         "GroupMember", back_populates="group", cascade="all, delete-orphan",
