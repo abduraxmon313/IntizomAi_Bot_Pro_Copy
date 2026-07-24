@@ -652,25 +652,11 @@ async def build_user_detail_html(
 ) -> str:
     """
     Manual `/hisobot@bot` tugmasidan a'zo tanlanganda ko'rinadigan tafsilot.
-    Auto per-user report bilan AYNAN bir xil format (foydalanuvchi so'ragan
-    yagona ko'rinish):
-
-        👤 Abduraxmon X 💎
-        📋 Jami 10 ta reja:
-        1) ✅ Uygonish
-        …
-        10) ❌ Uyquga yotish
-
-    Bugun umuman reja/odat yo'q bo'lsa fallback matn qaytadi.
+    Auto per-user report bilan AYNAN bir xil format \u2014 shu funksiya
+    bevosita `build_user_report_html`ga delegate qiladi (empty holat ham
+    o'sha yerda "📋 Rejasi yo'q ❌" bilan ishlanadi).
     """
-    html = await build_user_report_html(session, group, user)
-    if html is not None:
-        return html
-
-    # Fallback: bugun umuman reja/odat qo'shmagan
-    name = _escape(_display_name(user))
-    header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
-    return f"{header}\n\n😴 Bugun hali reja yoki odat qo'shmagan."
+    return await build_user_report_html(session, group, user)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -679,19 +665,25 @@ async def build_user_detail_html(
 # ─────────────────────────────────────────────────────────────
 async def build_user_plans_html(
     session: AsyncSession, group: Group, user: User,
-) -> Optional[str]:
+) -> str:
     """
     Bitta a'zoning bugungi REJA + ODAT ro'yxatini quradi (nima qilishi kerak).
-    Foydalanuvchi so'ragan format:
+    Yagona format (foydalanuvchi so'ragan):
 
-        👤 Marveljon 💎
-        📋 Jami N ta reja:
-        1) Sjsbbs
-        2) asdf
-        3) …
+        Item bor:
+            👤 Marveljon 💎
+            📋 Bugungi planlar:
+            1) Sjsbbs
+            2) asdf
+            …
 
-    Filter WebApp bilan bir xil (is_due_on + not is_finished). Agar user'da
-    bugun umuman reja/odat yo'q bo'lsa — None qaytadi (xabar yuborilmaydi).
+        Bo'sh bo'lsa:
+            👤 Marveljon 💎
+            📋 Rejasi yo'q ❌
+
+    Filter WebApp bilan bir xil (is_due_on + not is_finished).
+    HAR DOIM string qaytaradi — hech qachon None (a'zo bo'sh bo'lsa ham
+    guruhga "Rejasi yo'q" xabari yuboriladi).
     """
     plans, habits = await _get_user_today_items(session, user.id)
     items: list[str] = []
@@ -701,16 +693,16 @@ async def build_user_plans_html(
     for title, _done in habits:
         items.append(_escape(title))
 
-    if not items:
-        return None
-
     # Sarlavha: 👤 ism 💎 (agar premium)
     name = _escape(_display_name(user))
     header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
 
+    if not items:
+        return f"{header}\n📋 Rejasi yo'q ❌"
+
     lines: list[str] = [
         header,
-        f"📋 Jami {len(items)} ta reja:",
+        "📋 Bugungi planlar:",
     ]
     for i, it in enumerate(items, start=1):
         lines.append(f"{i}) {it}")
@@ -720,24 +712,26 @@ async def build_user_plans_html(
 
 async def build_user_report_html(
     session: AsyncSession, group: Group, user: User,
-) -> Optional[str]:
+) -> str:
     """
     Bitta a'zoning bugungi NATIJASINI quradi. Foydalanuvchi so'ragan yagona
     format (auto-report va manual /hisobot dan a'zo tanlanganda bir xil):
 
-        👤 Abduraxmon X 💎
-        📋 Jami 10 ta reja:
-        1) ✅ Uygonish
-        2) ✅ Suv ichish
-        …
-        7) ❌ Asr namozi
-        8) ❌ Shom namozi
-        …
+        Item bor:
+            👤 Abduraxmon X 💎
+            📋 Bugungi planlar:
+            1) ✅ Uygonish
+            2) ✅ Suv ichish
+            …
+            7) ❌ Asr namozi
+            …
 
-    Bajarilganlar (✅) avval, bajarilmaganlar (❌) keyin. Har item raqamlangan.
-    Sarlavhada faqat ism + Premium olmos (streak yoki N/M ko'rsatkichlar yo'q —
-    umumiy son "Jami N ta reja" da yoziladi). Filter webapp bilan mos.
-    Agar bugun umuman reja/odat yo'q bo'lsa None.
+        Bo'sh bo'lsa:
+            👤 Abduraxmon X 💎
+            📋 Rejasi yo'q ❌
+
+    Bajarilganlar (✅) avval, bajarilmaganlar (❌) keyin. Raqamlar 1..N ketma-ket.
+    HAR DOIM string qaytaradi — hech qachon None.
     """
     plans, habits = await _get_user_today_items(session, user.id)
 
@@ -749,16 +743,16 @@ async def build_user_report_html(
     for title, is_done in habits:
         (done_items if is_done else undone_items).append(_escape(title))
 
-    total = len(done_items) + len(undone_items)
-    if total == 0:
-        return None
-
     name = _escape(_display_name(user))
     header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
 
+    total = len(done_items) + len(undone_items)
+    if total == 0:
+        return f"{header}\n📋 Rejasi yo'q ❌"
+
     lines: list[str] = [
         header,
-        f"📋 Jami {total} ta reja:",
+        "📋 Bugungi planlar:",
     ]
     counter = 1
     for it in done_items:

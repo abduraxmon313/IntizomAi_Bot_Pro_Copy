@@ -515,10 +515,8 @@ function openPaywall(){
   const isPremium=!!(State.sub&&State.sub.is_premium);
   const h=ov.querySelector('h1');
   const cta=document.getElementById('pwCta');
-  // Sodda: har doim "IntizomAi Premium" sarlavhasi. Sub-title olib tashlangan
-  // (foydalanuvchi so'ragan: gap kerak emas, to'g'ridan-to'g'ri xususiyatlar).
-  // Premium bo'lsa CTA matni "Uzaytirish" bo'ladi.
-  if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
+  // Sarlavha: "IntizomAi Premium 💎" — 💎 sarlavha yonida, subtitle yo'q.
+  if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span> <span class="pw-title-gem" aria-hidden="true">💎</span>';
   if(cta)cta.textContent = isPremium ? '💳 Uzaytirish' : '💎 Tarifni tanlash';
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
   renderPaywallPlans(State.sub&&State.sub.plans);
