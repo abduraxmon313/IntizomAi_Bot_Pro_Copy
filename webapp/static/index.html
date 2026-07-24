@@ -288,80 +288,83 @@
   </div>
 </div>
 
-<!-- Friends: guruh sozlamalari (owner uchun rename / digest / delete) -->
+<!-- Friends: guruh sozlamalari (3 tab: Umumiy / Hisobot / A'zolar) -->
 <div class="modal-back" id="groupEditBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Guruh sozlamalari</h3>
-    <div class="fld"><label>Guruh nomi</label><input id="geName" maxlength="80"></div>
-    <div class="fld"><label>Tavsif</label><textarea id="geDesc" maxlength="300"></textarea></div>
-    <div class="row gap-12 mt-8">
-      <button class="btn btn-ghost" id="geCancel">Bekor</button>
-      <button class="btn" id="geSave">Saqlash</button>
+
+    <!-- Tab navigator (3 bo'lim) -->
+    <div class="ge-tabs" role="tablist">
+      <button class="ge-tab active" data-ge-tab="general" role="tab" aria-selected="true">Umumiy</button>
+      <button class="ge-tab" data-ge-tab="digest" role="tab" aria-selected="false">Hisobot</button>
+      <button class="ge-tab" data-ge-tab="members" role="tab" aria-selected="false">A'zolar</button>
     </div>
 
-    <!-- 📡 Telegram guruhga hisobot yuborish (faqat ega uchun) -->
-    <div id="geDigestWrap" style="margin-top:18px;display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-        <h3 style="font-size:14px;margin:0">📡 Telegram guruhga hisobot</h3>
-        <div class="toggle" id="geDigestEnable" role="switch" aria-label="Yoqish/o'chirish"><i></i></div>
+    <!-- ── Tab 1: Umumiy (nom, tavsif, o'chirish/chiqish) ──────────────── -->
+    <div class="ge-pane active" data-ge-pane="general">
+      <div class="fld"><label>Guruh nomi</label><input id="geName" maxlength="80"></div>
+      <div class="fld"><label>Tavsif</label><textarea id="geDesc" maxlength="300"></textarea></div>
+      <div class="row gap-12 mt-8">
+        <button class="btn btn-ghost" id="geCancel">Bekor</button>
+        <button class="btn" id="geSave">Saqlash</button>
       </div>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 10px;line-height:1.45">Belgilangan vaqtlarda WebApp guruhingizning har bir a'zosi uchun alohida xabar Telegram guruhga yuboriladi: ertalab reja ro'yxati, kechqurun bugungi natija.</p>
-
-      <!-- Bog'langan chat / tanlash -->
-      <div class="digest-row">
-        <div class="digest-label">Telegram guruh</div>
-        <div class="digest-value" id="geDigestChat">— tanlanmagan —</div>
-        <div class="digest-actions">
-          <button class="btn btn-ghost" id="geDigestPick" type="button">Tanlash</button>
-          <button class="btn btn-ghost" id="geDigestUnlink" type="button" style="display:none">Uzish</button>
-        </div>
-      </div>
-
-      <!-- ── Kunlik REJA (plans) yuborish vaqti + toggle -->
-      <div class="digest-row">
-        <div class="digest-label">Kunlik plan yuborish vaqti</div>
-        <div class="digest-value">
-          <select id="gePlansTime" class="digest-select"></select>
-          <span style="font-size:11px;color:var(--text-3);margin-left:6px">Toshkent</span>
-        </div>
-        <div class="digest-actions">
-          <div class="toggle" id="gePlansEnable" role="switch" aria-label="Kunlik reja yoqish/o'chirish"><i></i></div>
-        </div>
-      </div>
-
-      <!-- ── Kunlik HISOBOT (report) yuborish vaqti -->
-      <div class="digest-row">
-        <div class="digest-label">Kunlik hisobot yuborish vaqti</div>
-        <div class="digest-value">
-          <select id="geDigestTime" class="digest-select"></select>
-          <span style="font-size:11px;color:var(--text-3);margin-left:6px">Toshkent</span>
-        </div>
-      </div>
-
-      <div id="geDigestMeta" style="font-size:11.5px;color:var(--text-3);margin-top:8px;min-height:14px"></div>
-
-      <!-- Ikkita alohida test tugmasi (foydalanuvchi so'ragan). Bosilganda
-           xabar tarkibida "🧪 Test" yozuvi bo'lmaydi — real avtomatik yuborish
-           bilan aynan bir xil ko'rinishda test. -->
-      <button class="btn btn-ghost" id="gePlansTest" type="button" style="margin-top:8px;width:100%">📋 Kunlik planni test yuborish</button>
-      <button class="btn btn-ghost" id="geDigestTest" type="button" style="margin-top:6px;width:100%">📊 Kunlik hisobotni test yuborish</button>
-
-      <details style="margin-top:10px" id="geDigestHelp">
-        <summary style="font-size:12px;color:var(--text-2);cursor:pointer">❓ Ro'yxatda guruhim yo'qmi?</summary>
-        <div style="font-size:11.5px;color:var(--text-3);padding:6px 2px 2px;line-height:1.5">
-          Botni o'sha Telegram guruhga <b>siz qo'shishingiz</b> va o'sha guruhda kamida bir marta xabar yozishingiz kerak. Undan keyin ushbu ro'yxatga chiqadi. Guruh sozlamalarida "faqat adminlar yozadi" yoqilgan bo'lsa, botni admin qiling.
-        </div>
-      </details>
+      <button class="btn btn-danger" id="geDelete" style="margin-top:14px;width:100%">🗑 Guruhni o'chirish</button>
+      <button class="btn btn-ghost" id="geLeave" style="margin-top:6px;width:100%">🚪 Guruhdan chiqish</button>
     </div>
 
-    <div id="geMembersWrap" style="margin-top:16px;display:none">
-      <h3 style="font-size:14px;margin-bottom:2px">👥 A'zolar</h3>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">A'zoni guruhdan chiqarib yuborish.</p>
-      <div id="geMembers"></div>
+    <!-- ── Tab 2: Hisobot (Telegram digest sozlamalari) ────────────────── -->
+    <div class="ge-pane" data-ge-pane="digest">
+      <div id="geDigestWrap" style="display:none">
+        <h3 style="font-size:14px;margin:0 0 6px">📡 Telegram guruhga hisobot</h3>
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 10px;line-height:1.45">Belgilangan vaqtlarda WebApp guruhingizning har bir a'zosi uchun alohida xabar Telegram guruhga yuboriladi: ertalab reja ro'yxati, kechqurun bugungi natija.</p>
+
+        <!-- Bog'langan chat / tanlash -->
+        <div class="digest-row">
+          <div class="digest-label">Telegram guruh</div>
+          <div class="digest-value" id="geDigestChat">— tanlanmagan —</div>
+          <div class="digest-actions">
+            <button class="btn btn-ghost" id="geDigestPick" type="button">Tanlash</button>
+            <button class="btn btn-ghost" id="geDigestUnlink" type="button" style="display:none">Uzish</button>
+          </div>
+        </div>
+
+        <!-- ── Kunlik REJA (plans) qatori: vaqt + kichkina test tugma + toggle -->
+        <div class="digest-row">
+          <div class="digest-label">Kunlik plan yuborish vaqti</div>
+          <div class="digest-value">
+            <select id="gePlansTime" class="digest-select"></select>
+          </div>
+          <div class="digest-actions">
+            <button class="btn-icon" id="gePlansTest" type="button" title="Kunlik planni test yuborish" aria-label="Kunlik planni test yuborish">📋</button>
+            <div class="toggle" id="gePlansEnable" role="switch" aria-label="Kunlik reja yoqish/o'chirish"><i></i></div>
+          </div>
+        </div>
+
+        <!-- ── Kunlik HISOBOT (report) qatori: vaqt + kichkina test tugma + toggle -->
+        <div class="digest-row">
+          <div class="digest-label">Kunlik hisobot yuborish vaqti</div>
+          <div class="digest-value">
+            <select id="geDigestTime" class="digest-select"></select>
+          </div>
+          <div class="digest-actions">
+            <button class="btn-icon" id="geDigestTest" type="button" title="Kunlik hisobotni test yuborish" aria-label="Kunlik hisobotni test yuborish">📊</button>
+            <div class="toggle" id="geDigestEnable" role="switch" aria-label="Kunlik hisobot yoqish/o'chirish"><i></i></div>
+          </div>
+        </div>
+
+        <!-- Xato holati (agar bo'lsa) — muvaffaqiyatli yuborish vaqti ko'rsatilmaydi. -->
+        <div id="geDigestMeta" style="font-size:11.5px;color:var(--text-3);margin-top:8px;min-height:0"></div>
+      </div>
     </div>
-    <button class="btn btn-danger" id="geDelete" style="margin-top:14px;width:100%">🗑 Guruhni o'chirish</button>
-    <button class="btn btn-ghost" id="geLeave" style="margin-top:6px;width:100%">🚪 Guruhdan chiqish</button>
+
+    <!-- ── Tab 3: A'zolar (a'zoni chiqarib yuborish) ───────────────────── -->
+    <div class="ge-pane" data-ge-pane="members">
+      <div id="geMembersWrap" style="display:none">
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">A'zoni guruhdan chiqarib yuborish uchun tugmasini bosing.</p>
+        <div id="geMembers"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -371,7 +374,14 @@
     <div class="grab"></div>
     <h3>Telegram guruhni tanlang</h3>
     <p style="font-size:12px;color:var(--text-3);margin:0 0 10px">Bot va siz ikkalangiz ham a'zo bo'lgan guruhlar ko'rsatilgan.</p>
-    <div id="tgPickerList" style="max-height:60vh;overflow-y:auto"></div>
+    <div id="tgPickerList" style="max-height:56vh;overflow-y:auto"></div>
+    <!-- Help — ilgari sozlamalar oxirida bo'lgan, endi bu yerga ko'chirildi -->
+    <details style="margin-top:10px" id="tgPickerHelp">
+      <summary style="font-size:12px;color:var(--text-2);cursor:pointer">❓ Ro'yxatda guruhim yo'qmi?</summary>
+      <div style="font-size:11.5px;color:var(--text-3);padding:6px 2px 2px;line-height:1.5">
+        Botni o'sha Telegram guruhga <b>siz qo'shishingiz</b> va o'sha guruhda kamida bir marta xabar yozishingiz kerak. Undan keyin ushbu ro'yxatga chiqadi. Guruh sozlamalarida "faqat adminlar yozadi" yoqilgan bo'lsa, botni admin qiling.
+      </div>
+    </details>
     <div class="row gap-12 mt-8">
       <button class="btn btn-ghost" id="tgPickerCancel">Bekor</button>
       <button class="btn btn-ghost" id="tgPickerReload">🔄 Yangilash</button>
@@ -488,17 +498,17 @@
         [💎 Tarifni tanlash]
         [⬅️ Orqaga]
     -->
-    <div class="pw-crown">💎</div>
+    <!-- Foydalanuvchi so'ragan: 💎 katta olmos va gap-so'z olib tashlansin,
+         to'g'ridan-to'g'ri sarlavha va xususiyatlar ro'yxati chiqsin. -->
     <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span></h1>
-    <div class="pw-sub" id="pwSub">Premium bilan barcha imkoniyatlardan cheksiz foydalaning.</div>
-    <!-- Premium xususiyatlar ro'yxati — foydalanuvchi Premium bilan nimalarga
-         ega bo'lishini aniq ko'rsatadi (title/subtitle qisqa va bo'sh emas). -->
+    <!-- Premium xususiyatlar ro'yxati — animatsiya bilan navbatma-navbat chiqadi.
+         Nomlar foydalanuvchi so'ragan aynan matnda. -->
     <ul class="pw-feats" id="pwFeats">
       <li><span class="pw-feat-ic">✨</span><span>Cheksiz reja, maqsad va odat</span></li>
       <li><span class="pw-feat-ic">🤖</span><span>Cheksiz AI Coach suhbat</span></li>
-      <li><span class="pw-feat-ic">📊</span><span>Batafsil statistika va kalendar</span></li>
-      <li><span class="pw-feat-ic">🛡</span><span>Streak Freeze himoyasi</span></li>
-      <li><span class="pw-feat-ic">🎨</span><span>Premium temalar</span></li>
+      <li><span class="pw-feat-ic">📊</span><span>Batafsil statistika va Reyting jadvali</span></li>
+      <li><span class="pw-feat-ic">🤝</span><span>Jamoaviy ishlash imkoni</span></li>
+      <li><span class="pw-feat-ic">🎨</span><span>Premium dizaynlar</span></li>
     </ul>
     <div class="pw-divider"></div>
     <!-- Tariflar shu yerga JavaScript'dan render qilinadi -->

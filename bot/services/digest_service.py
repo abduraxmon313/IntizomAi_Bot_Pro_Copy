@@ -651,83 +651,26 @@ async def build_user_detail_html(
     session: AsyncSession, group: Group, user: User,
 ) -> str:
     """
-    Bitta a'zo uchun bugungi tafsilotni HTML shaklida qaytaradi:
+    Manual `/hisobot@bot` tugmasidan a'zo tanlanganda ko'rinadigan tafsilot.
+    Auto per-user report bilan AYNAN bir xil format (foydalanuvchi so'ragan
+    yagona ko'rinish):
 
-        👤 <name>  ·  🔥 5  ·  💎
+        👤 Abduraxmon X 💎
+        📋 Jami 10 ta reja:
+        1) ✅ Uygonish
+        …
+        10) ❌ Uyquga yotish
 
-        📊 Bugungi natija: 4/14
-
-        ✅ Bajarilgan (4)
-        🟢 Ingliz tili
-        🟢 Kitob o'qish
-        ...
-
-        ━━━━━━━━━━━━━━
-
-        ❌ Bajarilmagan (10)
-        🔴 Ertalab yugurish
-        ...
+    Bugun umuman reja/odat yo'q bo'lsa fallback matn qaytadi.
     """
-    plans, habits = await _get_user_today_items(session, user.id)
+    html = await build_user_report_html(session, group, user)
+    if html is not None:
+        return html
 
-    # Har bir item — (title, done). Rejalar va odatlarni birlashtirib, done/undone
-    # ro'yxatlarini quramiz. Rejalar oxiriga "(reja)" belgisi qo'shilmaydi —
-    # foydalanuvchi so'ragan sodda ko'rinish.
-    done_items: list[str] = []
-    undone_items: list[str] = []
-    for title, is_done in plans:
-        (done_items if is_done else undone_items).append(_escape(title))
-    for title, is_done in habits:
-        (done_items if is_done else undone_items).append(_escape(title))
-
-    total_done = len(done_items)
-    total_items = total_done + len(undone_items)
-
-    # Sarlavha: 👤 ism 💎 (agar premium). Streak (🔥) endi ko'rsatilmaydi —
-    # foydalanuvchi so'ragan: "ismni yonida olmos ozi yetadi".
+    # Fallback: bugun umuman reja/odat qo'shmagan
     name = _escape(_display_name(user))
-    if user_is_premium(user):
-        header = f"👤 <b>{name}</b> 💎"
-    else:
-        header = f"👤 <b>{name}</b>"
-
-    lines: list[str] = [
-        header,
-        "",
-        f"📊 Bugungi natija: <b>{total_done}/{total_items}</b>",
-        "",
-    ]
-
-    # ── Bajarilgan blok
-    lines.append(f"✅ <b>Bajarilgan ({total_done})</b>")
-    if done_items:
-        for it in done_items:
-            lines.append(f"🟢 {it}")
-    else:
-        lines.append("<i>— hech narsa yo'q</i>")
-
-    # Ajratuvchi chiziq
-    lines.append("")
-    lines.append("━━━━━━━━━━━━━━")
-    lines.append("")
-
-    # ── Bajarilmagan blok
-    lines.append(f"❌ <b>Bajarilmagan ({len(undone_items)})</b>")
-    if undone_items:
-        for it in undone_items:
-            lines.append(f"🔴 {it}")
-    else:
-        lines.append("<i>— barchasi bajarildi, zo'r! 🔥</i>")
-
-    if total_items == 0:
-        # Foydalanuvchi bugun umuman reja/odat qo'shmagan
-        lines = [
-            header,
-            "",
-            "😴 Bugun hali reja yoki odat qo'shmagan.",
-        ]
-
-    return "\n".join(lines)
+    header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
+    return f"{header}\n\n😴 Bugun hali reja yoki odat qo'shmagan."
 
 
 # ─────────────────────────────────────────────────────────────
@@ -779,21 +722,26 @@ async def build_user_report_html(
     session: AsyncSession, group: Group, user: User,
 ) -> Optional[str]:
     """
-    Bitta a'zoning bugungi NATIJASINI quradi (nechta bajarildi/qolgan).
-    Foydalanuvchi so'ragan format:
+    Bitta a'zoning bugungi NATIJASINI quradi. Foydalanuvchi so'ragan yagona
+    format (auto-report va manual /hisobot dan a'zo tanlanganda bir xil):
 
-        👤 Abduraxmon X 💎 — 4/10
-        1) 🟢 Uygonish
-        2) 🟢 Suv ichish
-        3) 🔴 Gusl
+        👤 Abduraxmon X 💎
+        📋 Jami 10 ta reja:
+        1) ✅ Uygonish
+        2) ✅ Suv ichish
+        …
+        7) ❌ Asr namozi
+        8) ❌ Shom namozi
         …
 
-    Bajarilganlar avval, bajarilmaganlar keyin. Har item raqamlangan.
-    Filter WebApp bilan mos. Agar bugun umuman reja/odat yo'q — None.
+    Bajarilganlar (✅) avval, bajarilmaganlar (❌) keyin. Har item raqamlangan.
+    Sarlavhada faqat ism + Premium olmos (streak yoki N/M ko'rsatkichlar yo'q —
+    umumiy son "Jami N ta reja" da yoziladi). Filter webapp bilan mos.
+    Agar bugun umuman reja/odat yo'q bo'lsa None.
     """
     plans, habits = await _get_user_today_items(session, user.id)
 
-    # Bajarilgan/bajarilmagan tartibi bilan yig'amiz
+    # Bajarilgan/bajarilmagan tartibi bilan yig'amiz (avval done, keyin undone).
     done_items: list[str] = []
     undone_items: list[str] = []
     for title, is_done in plans:
@@ -805,21 +753,19 @@ async def build_user_report_html(
     if total == 0:
         return None
 
-    done_count = len(done_items)
     name = _escape(_display_name(user))
-    header = (
-        f"👤 <b>{name}</b> 💎 — {done_count}/{total}"
-        if user_is_premium(user)
-        else f"👤 <b>{name}</b> — {done_count}/{total}"
-    )
+    header = f"👤 <b>{name}</b> 💎" if user_is_premium(user) else f"👤 <b>{name}</b>"
 
-    lines: list[str] = [header]
+    lines: list[str] = [
+        header,
+        f"📋 Jami {total} ta reja:",
+    ]
     counter = 1
     for it in done_items:
-        lines.append(f"{counter}) 🟢 {it}")
+        lines.append(f"{counter}) ✅ {it}")
         counter += 1
     for it in undone_items:
-        lines.append(f"{counter}) 🔴 {it}")
+        lines.append(f"{counter}) ❌ {it}")
         counter += 1
 
     return "\n".join(lines)

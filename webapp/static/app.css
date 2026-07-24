@@ -544,8 +544,11 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
 }
-.paywall.show{display:flex;animation:pwFade .35s ease}
-@keyframes pwFade{from{opacity:0}to{opacity:1}}
+.paywall.show{display:flex;animation:pwFade .4s cubic-bezier(.22,1,.36,1)}
+@keyframes pwFade{
+  from{opacity:0;transform:scale(.985)}
+  to{opacity:1;transform:scale(1)}
+}
 
 /* Container — mobile-first, aniq maksimal en (400px), o'rtaga tekislangan */
 .pw-inner{
@@ -559,38 +562,24 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   align-items:stretch;
 }
 
-/* Hero ikonasi — soft glassy doira, primary tinted glow. Sokin, statik animatsiya
-   (aylanmaydigan) — premium mahsulot uchun. */
-.pw-crown{
-  align-self:center;
-  width:76px;
-  height:76px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  font-size:38px;
-  background:var(--grad-soft);
-  border:1px solid var(--border);
-  box-shadow:
-    0 1px 2px rgba(0,0,0,.04),
-    0 12px 32px -8px var(--primary-soft),
-    inset 0 1px 0 rgba(255,255,255,.5);
-  margin:0 auto clamp(14px,2.5vh,20px);
-  animation:pwHalo 4s ease-in-out infinite;
-}
-@keyframes pwHalo{
-  0%,100%{box-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 32px -8px var(--primary-soft),inset 0 1px 0 rgba(255,255,255,.5)}
-  50%{box-shadow:0 1px 2px rgba(0,0,0,.04),0 18px 44px -6px var(--primary-soft),inset 0 1px 0 rgba(255,255,255,.5)}
-}
+/* Foydalanuvchi so'ragan: eng tepadagi katta 💎 (`.pw-crown`) OLIB TASHLANDI.
+   Endi sarlavha to'g'ridan-to'g'ri paywall boshida chiqadi. Animatsiyalar
+   xususiyatlar/tariflar/CTA'da ishtirok etadi. */
 
-/* Title — kattaroq, ixchamroq, kuchli visual hierarchy */
+/* Title — kattaroq, ixchamroq, kuchli visual hierarchy. Yangi: subtle fade-in
+   animatsiya + gradient shine. */
 .paywall h1{
   font-size:clamp(24px,6.5vw,28px);
   font-weight:800;
   text-align:center;
   letter-spacing:-.6px;
   line-height:1.15;
-  margin:0;
+  margin:clamp(6px,1.2vh,10px) 0 0;
+  animation:pwTitleIn .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes pwTitleIn{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
 }
 .pw-pro{
   background:var(--grad);
@@ -603,21 +592,15 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 }
 @keyframes pwProShine{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 
-/* Subtitle — muted, tor tipografiya rhythm */
-.paywall .pw-sub{
-  font-size:14px;
-  line-height:1.55;
-  text-align:center;
-  color:var(--text-2);
-  margin:10px auto clamp(20px,3vh,26px);
-  max-width:320px;
-  letter-spacing:.05px;
-}
+/* .pw-sub (subtitle) styles — OLIB TASHLANDI. Foydalanuvchi so'ragan:
+   "IntizomAi Premium tagidan 'Cheksiz reja...' deya boshlanib ketaversin gap
+   kerak emas". Endi title darhol xususiyatlar ro'yxatiga o'tadi. */
 
-/* Xususiyatlar ro'yxati — premium card-style qatorlar */
+/* Xususiyatlar ro'yxati — premium card-style qatorlar. Sarlavha ostidan
+   darhol keladi, har biri navbatma-navbat pastdan chiqadi. */
 .paywall .pw-feats{
   list-style:none;
-  margin:0 auto clamp(16px,2.4vh,22px);
+  margin:clamp(16px,2.6vh,22px) auto clamp(16px,2.4vh,22px);
   padding:0;
   display:flex;
   flex-direction:column;
@@ -668,7 +651,10 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   border:0;
 }
 
-/* Tariflar — premium kartochka, markazlashgan matn, elegant featured holat */
+/* Tariflar — premium kartochka, markazlashgan matn, elegant featured holat.
+   MUHIM: `flex-wrap:nowrap` va kichkina padding — foydalanuvchi so'ragan:
+   "12 oy 179 900 so'm (≈ 14 990 so'm/oy) yonida yozilsin, tagiga tushmasin".
+   Uzun matn bir qatorda sig'ishi uchun font-size va gap ixchamlashtirildi. */
 .paywall .pw-plans{
   display:flex;
   flex-direction:column;
@@ -680,12 +666,12 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:10px;
-  flex-wrap:wrap;
+  gap:8px;
+  flex-wrap:nowrap;
   background:var(--surface);
   border:1.5px solid var(--border);
   border-radius:16px;
-  padding:16px 18px;
+  padding:14px 14px;
   transition:transform .22s cubic-bezier(.22,1,.36,1),border-color .22s,box-shadow .22s;
   animation:pwSlide .5s cubic-bezier(.22,1,.36,1) both;
   cursor:pointer;
@@ -696,7 +682,7 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   font:inherit;
   color:inherit;
   box-shadow:0 1px 2px rgba(0,0,0,.04);
-  min-height:56px;
+  min-height:54px;
 }
 .paywall .pw-plan:nth-child(1){animation-delay:.30s}
 .paywall .pw-plan:nth-child(2){animation-delay:.36s}
@@ -736,34 +722,37 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
     0 20px 48px -12px var(--primary-soft);
 }
 
-/* Emoji + nom — markazda */
+/* Emoji + nom — markazda. Ixcham hajm ("12 oy" bilan narx bir qatorga sig'sin). */
 .paywall .pw-plan-title{
-  font-size:15px;
+  font-size:13.5px;
   font-weight:800;
   color:var(--text);
   line-height:1.2;
   letter-spacing:-.1px;
   display:inline-flex;
   align-items:center;
-  gap:8px;
+  gap:6px;
   flex:0 0 auto;
+  white-space:nowrap;
 }
-.paywall .pw-plan-title .pw-plan-emoji{font-size:18px;line-height:1}
+.paywall .pw-plan-title .pw-plan-emoji{font-size:16px;line-height:1}
 
-/* Narx + tag — nom yonida, markazlashgan */
+/* Narx + tag — nom yonida, YAGONA qatorda (nowrap). Uzun matn bo'lsa
+   `.pw-plan-tag` kichraytiriladi/qisqartiriladi. */
 .paywall .pw-plan-price-line{
   display:inline-flex;
   align-items:baseline;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   justify-content:center;
-  gap:6px;
+  gap:5px;
   line-height:1.2;
-  flex:0 0 auto;
+  flex:0 1 auto;
   min-width:0;
   text-align:center;
+  overflow:hidden;
 }
 .paywall .pw-plan-amount{
-  font-size:16px;
+  font-size:14px;
   font-weight:900;
   background:var(--grad);
   -webkit-background-clip:text;
@@ -771,13 +760,18 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   color:transparent;
   letter-spacing:-.3px;
   white-space:nowrap;
+  flex:0 0 auto;
 }
 .paywall .pw-plan-tag{
-  font-size:12px;
+  font-size:11px;
   font-weight:600;
   color:var(--text-2);
-  letter-spacing:.05px;
+  letter-spacing:0;
   white-space:nowrap;
+  flex:0 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .paywall .pw-plan.featured .pw-plan-tag{color:var(--primary);font-weight:700}
 
@@ -809,6 +803,66 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   display:grid;
   place-items:center;
 }
+
+/* ── Guruh sozlamalari: Tab navigator (Umumiy / Hisobot / A'zolar) ────
+   Sozlamalar modali endi 3 bo'limga bo'lingan. Tab tugmalari ustki qismda,
+   pastida faqat aktiv tab ko'rinadi. Aktiv tab primary rangda pastdan chiziq
+   bilan urg'ulanadi. */
+.ge-tabs{
+  display:flex;
+  gap:2px;
+  margin:8px -4px 14px;
+  padding:4px;
+  background:var(--surface-2);
+  border-radius:12px;
+  border:1px solid var(--border);
+}
+.ge-tab{
+  flex:1 1 0;
+  background:transparent;
+  border:none;
+  color:var(--text-2);
+  font-size:13px;
+  font-weight:700;
+  padding:9px 10px;
+  border-radius:9px;
+  cursor:pointer;
+  transition:background .18s,color .18s,transform .12s;
+  font-family:inherit;
+  letter-spacing:.1px;
+}
+.ge-tab:hover{color:var(--text)}
+.ge-tab:active{transform:scale(.97)}
+.ge-tab.active{
+  background:var(--surface);
+  color:var(--primary);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px -4px var(--primary-soft);
+}
+.ge-pane{display:none;animation:gePaneIn .25s cubic-bezier(.22,1,.36,1)}
+.ge-pane.active{display:block}
+@keyframes gePaneIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Kichkina icon-only tugma (test yuborish, badge, va h.k.) — digest actions
+   ichida ishlatiladi. Standart btn'dan kichikroq va faqat emoji. */
+.btn-icon{
+  display:inline-grid;
+  place-items:center;
+  width:32px;
+  height:32px;
+  padding:0;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:9px;
+  color:var(--text);
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
+  transition:transform .12s,border-color .18s,background .18s;
+  font-family:inherit;
+}
+.btn-icon:hover{border-color:var(--primary);background:var(--primary-soft)}
+.btn-icon:active{transform:scale(.92)}
+.btn-icon:disabled{opacity:.55;cursor:not-allowed}
 
 /* ── Guruh sozlamalari: Telegram digest bo'limi ─────────────────────────
    Har qator: chap tarafda yorliq, o'ng tarafda qiymat/tugma. Kichik ekran
@@ -897,14 +951,15 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   .ob .opt{padding:11px 14px}
   .ob .dots{margin-bottom:10px}
   /* Paywall — kompakt spacing */
-  .paywall .pw-crown{width:64px;height:64px;font-size:32px;margin-bottom:12px}
-  .paywall h1{font-size:22px}
-  .paywall .pw-sub{margin:8px auto 16px;font-size:13px}
-  .paywall .pw-feats{gap:6px;margin-bottom:14px}
+  .paywall h1{font-size:22px;margin-top:4px}
+  .paywall .pw-feats{gap:6px;margin:12px auto 12px}
   .paywall .pw-feats li{padding:9px 12px;font-size:13px}
   .paywall .pw-feats .pw-feat-ic{width:28px;height:28px;font-size:13.5px}
   .paywall .pw-plans{gap:9px}
-  .paywall .pw-plan{padding:13px 16px;min-height:50px}
+  .paywall .pw-plan{padding:12px 12px;min-height:48px}
+  .paywall .pw-plan-title{font-size:13px}
+  .paywall .pw-plan-amount{font-size:13.5px}
+  .paywall .pw-plan-tag{font-size:10.5px}
   .paywall .pw-info{margin-bottom:14px}
   .paywall .pw-cta{padding:13px;min-height:48px;font-size:14.5px}
   .paywall .pw-note{margin-bottom:8px}
@@ -915,11 +970,9 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
   .ob h1{font-size:19px;margin-bottom:5px}
   .ob p{font-size:12.5px;margin-bottom:8px;max-width:280px}
   .ob .opt{padding:9px 12px;font-size:13px}
-  .paywall .pw-crown{width:56px;height:56px;font-size:28px;margin-bottom:10px}
   .paywall h1{font-size:20px}
-  .paywall .pw-sub{margin:6px auto 12px}
-  .paywall .pw-feats{margin-bottom:10px}
-  .paywall .pw-feats li{padding:8px 11px}
+  .paywall .pw-feats{margin:10px auto 10px}
+  .paywall .pw-feats li{padding:8px 11px;font-size:12.5px}
   .paywall .pw-divider{margin:10px auto}
 }
 
