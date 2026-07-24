@@ -843,8 +843,13 @@ async def get_telegram_settings(
     session: AsyncSession, user: User, group_id: int,
 ) -> dict:
     """
-    Guruh egasi uchun joriy digest sozlamalari.
+    Guruh egasi uchun joriy Telegram sozlamalari:
+      • digest (kunlik HISOBOT) — enabled, time, last_sent, last_error
+      • plans  (kunlik REJA)   — enabled, time, last_sent, last_error
     A'zo ega bo'lmasa GroupForbidden.
+
+    Eslatma: eski `digest_show_zero` va `digest_mention` maydonlari endi UI'da
+    ko'rinmaydi (doim TRUE). Backward compat uchun API javobida hali qaytariladi.
     """
     g = await get_group(session, group_id)
     if g.owner_user_id != user.id:
@@ -853,12 +858,19 @@ async def get_telegram_settings(
         "group_id": g.id,
         "telegram_chat_id": g.telegram_chat_id,
         "telegram_chat_title": g.telegram_chat_title,
+        # ── Kunlik HISOBOT
         "digest_enabled": bool(g.digest_enabled),
         "digest_time": g.digest_time or "21:00",
-        "digest_show_zero": bool(g.digest_show_zero),
-        "digest_mention": bool(g.digest_mention),
         "digest_last_sent_at": g.digest_last_sent_at.isoformat() if g.digest_last_sent_at else None,
         "digest_last_error": g.digest_last_error,
+        # ── Kunlik REJA
+        "plans_enabled": bool(getattr(g, "plans_enabled", False)),
+        "plans_time": getattr(g, "plans_time", None) or "07:00",
+        "plans_last_sent_at": g.plans_last_sent_at.isoformat() if getattr(g, "plans_last_sent_at", None) else None,
+        "plans_last_error": getattr(g, "plans_last_error", None),
+        # ── Backward compat (UI'da endi ko'rinmaydi)
+        "digest_show_zero": bool(g.digest_show_zero),
+        "digest_mention": bool(g.digest_mention),
         "allowed_times": list(_ALLOWED_DIGEST_HOURS),
     }
 
@@ -870,11 +882,14 @@ async def update_telegram_settings(
     telegram_chat_title: Optional[str] = None,
     digest_enabled: Optional[bool] = None,
     digest_time: Optional[str] = None,
+    plans_enabled: Optional[bool] = None,
+    plans_time: Optional[str] = None,
+    # Backward compat — hozircha qabul qilinadi (frontend'da yo'q).
     digest_show_zero: Optional[bool] = None,
     digest_mention: Optional[bool] = None,
 ) -> dict:
     """
-    Guruh egasi digest sozlamalarini yangilaydi.
+    Guruh egasi digest/plans sozlamalarini yangilaydi.
     None qiymatli maydonlar tegilmaydi (partial update).
     """
     g = await get_group(session, group_id)
@@ -886,17 +901,14 @@ async def update_telegram_settings(
             g.telegram_chat_id = int(telegram_chat_id)
         except (TypeError, ValueError):
             raise GroupError("Noto'g'ri Telegram chat id.")
-        # Sarlavha ham berilgan bo'lsa yangilaymiz; aks holda bot_chats'dan
-        # qaytadan qidirilishi mumkin, hozir esa bo'sh qoldiramiz.
     if telegram_chat_title is not None:
         g.telegram_chat_title = (telegram_chat_title or "")[:200] or None
 
+    # ── Kunlik HISOBOT
     if digest_enabled is not None:
-        # digest_enabled=True bo'lsa telegram_chat_id ham majburiy.
         if bool(digest_enabled) and not g.telegram_chat_id:
             raise GroupError("Avval Telegram guruhni tanlang.")
         g.digest_enabled = bool(digest_enabled)
-        # Yoqilganda oxirgi xatoni tozalaymiz.
         if g.digest_enabled:
             g.digest_last_error = None
 
@@ -905,6 +917,20 @@ async def update_telegram_settings(
             raise GroupError("Vaqt formati noto'g'ri (HH:MM).")
         g.digest_time = digest_time
 
+    # ── Kunlik REJA
+    if plans_enabled is not None:
+        if bool(plans_enabled) and not g.telegram_chat_id:
+            raise GroupError("Avval Telegram guruhni tanlang.")
+        g.plans_enabled = bool(plans_enabled)
+        if g.plans_enabled:
+            g.plans_last_error = None
+
+    if plans_time is not None:
+        if not is_valid_digest_time(plans_time):
+            raise GroupError("Vaqt formati noto'g'ri (HH:MM).")
+        g.plans_time = plans_time
+
+    # Backward compat — endi UI'da ko'rinmaydi
     if digest_show_zero is not None:
         g.digest_show_zero = bool(digest_show_zero)
     if digest_mention is not None:
@@ -932,6 +958,8 @@ async def unlink_telegram(
     g.telegram_chat_title = None
     g.digest_enabled = False
     g.digest_last_error = None
+    g.plans_enabled = False
+    g.plans_last_error = None
     try:
         await session.commit()
     except Exception as e:

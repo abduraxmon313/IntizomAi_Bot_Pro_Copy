@@ -306,7 +306,7 @@
         <h3 style="font-size:14px;margin:0">📡 Telegram guruhga hisobot</h3>
         <div class="toggle" id="geDigestEnable" role="switch" aria-label="Yoqish/o'chirish"><i></i></div>
       </div>
-      <p style="font-size:12px;color:var(--text-3);margin:0 0 10px;line-height:1.45">Har kuni belgilangan vaqtda WebApp guruhingizning bugungi reja va odat hisoboti Telegram guruhga yuboriladi.</p>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 10px;line-height:1.45">Belgilangan vaqtlarda WebApp guruhingizning har bir a'zosi uchun alohida xabar Telegram guruhga yuboriladi: ertalab reja ro'yxati, kechqurun bugungi natija.</p>
 
       <!-- Bog'langan chat / tanlash -->
       <div class="digest-row">
@@ -318,34 +318,34 @@
         </div>
       </div>
 
-      <!-- Vaqt -->
+      <!-- ── Kunlik REJA (plans) yuborish vaqti + toggle -->
       <div class="digest-row">
-        <div class="digest-label">Yuborish vaqti</div>
+        <div class="digest-label">Kunlik plan yuborish vaqti</div>
+        <div class="digest-value">
+          <select id="gePlansTime" class="digest-select"></select>
+          <span style="font-size:11px;color:var(--text-3);margin-left:6px">Toshkent</span>
+        </div>
+        <div class="digest-actions">
+          <div class="toggle" id="gePlansEnable" role="switch" aria-label="Kunlik reja yoqish/o'chirish"><i></i></div>
+        </div>
+      </div>
+
+      <!-- ── Kunlik HISOBOT (report) yuborish vaqti -->
+      <div class="digest-row">
+        <div class="digest-label">Kunlik hisobot yuborish vaqti</div>
         <div class="digest-value">
           <select id="geDigestTime" class="digest-select"></select>
           <span style="font-size:11px;color:var(--text-3);margin-left:6px">Toshkent</span>
         </div>
       </div>
 
-      <!-- Bugun 0 qilganlarni ko'rsatish -->
-      <div class="digest-row">
-        <div class="digest-label">Bugun rejasiz a'zolar</div>
-        <div class="digest-actions">
-          <div class="toggle" id="geDigestShowZero" role="switch"><i></i></div>
-        </div>
-      </div>
-
-      <!-- @Mention -->
-      <div class="digest-row">
-        <div class="digest-label">Nomlarni @mention qilish</div>
-        <div class="digest-actions">
-          <div class="toggle" id="geDigestMention" role="switch"><i></i></div>
-        </div>
-      </div>
-
       <div id="geDigestMeta" style="font-size:11.5px;color:var(--text-3);margin-top:8px;min-height:14px"></div>
 
-      <button class="btn btn-ghost" id="geDigestTest" type="button" style="margin-top:8px;width:100%">🧪 Hoziroq test yuborish</button>
+      <!-- Ikkita alohida test tugmasi (foydalanuvchi so'ragan). Bosilganda
+           xabar tarkibida "🧪 Test" yozuvi bo'lmaydi — real avtomatik yuborish
+           bilan aynan bir xil ko'rinishda test. -->
+      <button class="btn btn-ghost" id="gePlansTest" type="button" style="margin-top:8px;width:100%">📋 Kunlik planni test yuborish</button>
+      <button class="btn btn-ghost" id="geDigestTest" type="button" style="margin-top:6px;width:100%">📊 Kunlik hisobotni test yuborish</button>
 
       <details style="margin-top:10px" id="geDigestHelp">
         <summary style="font-size:12px;color:var(--text-2);cursor:pointer">❓ Ro'yxatda guruhim yo'qmi?</summary>
