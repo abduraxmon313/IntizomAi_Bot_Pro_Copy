@@ -33,7 +33,7 @@ from aiogram.exceptions import (
     TelegramRetryAfter,
 )
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from sqlalchemy import and_, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import BOT_TOKEN, TIMEZONE
@@ -42,7 +42,7 @@ from bot.models.group import Group, GroupMember
 from bot.models.habit import Habit, HabitLog
 from bot.models.plan import Plan, PlanStatus
 from bot.models.user import User
-from bot.services.group_service import _bulk_today_summary
+from bot.services.habit_service import is_due_on, is_finished
 from bot.services.premium_service import user_is_premium
 from database.db import AsyncSessionLocal
 
@@ -180,6 +180,80 @@ async def list_telegram_candidates(
 # ─────────────────────────────────────────────────────────────
 
 
+async def _member_today_counts(
+    session: AsyncSession, user_ids: list[int], today: date,
+) -> dict[int, dict]:
+    """
+    Har bir a'zoning bugungi RAQAMLARI — WEBAPP `Friends → group → member`
+    ko'rinishi bilan MOS keladigan filtrlar:
+
+      • Plans: shu kunga rejalashtirilgan bo'lganlar (Plan.plan_date == today).
+      • Habits: arxivlanmagan VA `is_due_on(today)` — shu kunga rejalashtirilgan
+        (haftalik odat uchun weekday tekshiriladi) VA `not is_finished(today)`
+        — muddati tugamagan.
+      • Habit completion: HabitLog.log_date == today.
+
+    Bu foydalanuvchining talabiga muvofiq: "biror odat bugun uchun emas
+    bolsa ham bajarmadi deyadi" — ilgari barcha odatlar total'ga qo'shilar edi,
+    endi faqat bugun rejalashtirilganlar hisoblanadi (webapp bilan bir xil).
+
+    Qaytadi: {user_id: {plans_total, plans_done, habits_total, habits_done_today}}
+    """
+    out = {
+        uid: {
+            "plans_total": 0, "plans_done": 0,
+            "habits_total": 0, "habits_done_today": 0,
+        }
+        for uid in user_ids
+    }
+    if not user_ids:
+        return out
+
+    # ── Plans (bulk, GROUP BY)
+    done_case = func.sum(case((Plan.status == PlanStatus.done, 1), else_=0))
+    for uid, total, done in (await session.execute(
+        select(Plan.user_id, func.count(Plan.id), done_case)
+        .where(and_(Plan.user_id.in_(user_ids), Plan.plan_date == today))
+        .group_by(Plan.user_id)
+    )).all():
+        out[uid]["plans_total"] = int(total or 0)
+        out[uid]["plans_done"] = int(done or 0)
+
+    # ── Habits — arxivlanmaganlarni bulk olib, Python'da is_due_on/is_finished
+    #    filtrini qo'llaymiz. Habit modelining barcha maydonlari (frequency,
+    #    weekdays, start_date, target_days, duration_type) shu filter uchun
+    #    kerak, shuning uchun select(Habit) (butun obyekt) chaqiramiz.
+    all_habits = (await session.execute(
+        select(Habit).where(and_(
+            Habit.user_id.in_(user_ids),
+            Habit.archived == False,  # noqa: E712
+        ))
+    )).scalars().all()
+
+    due_ids_by_user: dict[int, set[int]] = {uid: set() for uid in user_ids}
+    for h in all_habits:
+        if is_due_on(h, today) and not is_finished(h, today):
+            due_ids_by_user.setdefault(int(h.user_id), set()).add(int(h.id))
+    for uid, hids in due_ids_by_user.items():
+        out[uid]["habits_total"] = len(hids)
+
+    # ── HabitLog — bugungi log yozuvlari (faqat filtrlangan habit_ids uchun)
+    all_due_ids: list[int] = [hid for hids in due_ids_by_user.values() for hid in hids]
+    if all_due_ids:
+        rows = (await session.execute(
+            select(HabitLog.user_id, HabitLog.habit_id).where(and_(
+                HabitLog.habit_id.in_(all_due_ids),
+                HabitLog.log_date == today,
+            ))
+        )).all()
+        for uid, hid in rows:
+            uid_i = int(uid)
+            if int(hid) in due_ids_by_user.get(uid_i, set()):
+                out[uid_i]["habits_done_today"] += 1
+
+    return out
+
+
 def _score_key(s: dict) -> float:
     """
     Bajarilish foizi (reja + odat).
@@ -263,21 +337,31 @@ async def build_digest_html(
     Berilgan WebApp guruh uchun bugungi digest HTML matnini quradi.
     None qaytarsa — a'zolar yo'q yoki chat bog'lanmagan; yuborilmaydi.
 
-    Yangi format (foydalanuvchi so'ragan tuzilma):
+    UCH BO'LIMLI format (foydalanuvchi so'ragan tuzilma):
         📊 IntizomAi — Bugungi hisobot
         📅 24-iyul (Juma)
         👥 Guruh: Sinov
 
-        ✅ Bajarganlar:
-        🟢 Abduraxmon — 4/14
+        🟢 To'liq bajarganlar:
+        1) Abduraxmon 💎 — 14/14
+        2) …
 
-        ❌ Umuman bajarmaganlar:
-        🔴 abdusattor — 0/1
-        🔴 asror — 0/2
+        🟡 Chala bajarganlar:
+        1) Ali — 3/8
+        2) …
+
+        🔴 Umuman bajarmaganlar:
+        1) abdusattor — 0/2
+        2) …
 
         ━━━━━━━━━━━━━━
-
         📈 Guruh faolligi: 9.5%
+
+    Bo'linish qoidasi (webapp bilan mos):
+      • full    — total > 0 va done == total     → 🟢 To'liq bajarganlar
+      • partial — total > 0 va 0 < done < total  → 🟡 Chala bajarganlar
+      • none    — total > 0 va done == 0         → 🔴 Umuman bajarmaganlar
+      • idle    — total == 0 (bugun umuman reja/odat yo'q) — ixtiyoriy
     """
     if not group.telegram_chat_id:
         return None
@@ -293,15 +377,19 @@ async def build_digest_html(
     if not rows:
         return None
 
+    today = datetime.now(TIMEZONE).date()
     user_ids = [u.id for _gm, u in rows]
-    summaries = await _bulk_today_summary(session, user_ids)
+    # WEBAPP bilan mos count: is_due_on + not is_finished filtrlari.
+    summaries = await _member_today_counts(session, user_ids, today)
 
-    # A'zolarni 3 guruhga ajratamiz:
-    #   • done_rows      — bugun kamida bitta narsa bajargan (done >= 1)
-    #   • undone_rows    — bugun rejalar/odatlar bor, lekin hech narsa qilmagan (done == 0, total > 0)
-    #   • idle_rows      — bugun umuman reja/odat qo'shmagan (total == 0)
-    done_rows: list[dict] = []
-    undone_rows: list[dict] = []
+    # A'zolarni 4 guruhga ajratamiz:
+    #   • full_rows    — bugun HAMMASINI bajardi
+    #   • partial_rows — bugun qisman bajardi (kamida 1 ta, lekin hammasi emas)
+    #   • none_rows    — bugun reja/odat bor, lekin hech narsa qilmadi
+    #   • idle_rows    — bugun umuman reja/odat yo'q
+    full_rows: list[dict] = []
+    partial_rows: list[dict] = []
+    none_rows: list[dict] = []
     idle_rows: list[dict] = []
     for _gm, u in rows:
         s = summaries.get(u.id) or {}
@@ -309,26 +397,30 @@ async def build_digest_html(
         entry = {"user": u, "summary": s, "done": d, "total": t, "pct": _score_key(s)}
         if t <= 0:
             idle_rows.append(entry)
+        elif d >= t:
+            full_rows.append(entry)
         elif d >= 1:
-            done_rows.append(entry)
+            partial_rows.append(entry)
         else:
-            undone_rows.append(entry)
+            none_rows.append(entry)
 
-    # Bajarganlar — done/total bo'yicha kamayish tartibida (yuqori foiz tepada).
-    done_rows.sort(key=lambda r: (-r["pct"], -(r["user"].streak or 0)))
-    # Bajarmaganlar — total (rejalar soni) bo'yicha kamayish tartibida.
-    undone_rows.sort(key=lambda r: (-r["total"], -(r["user"].streak or 0)))
+    # Har bo'lim ichida saralash:
+    #   full    — streak katta / total katta oldinda (motivatsion sarlavha)
+    #   partial — bajarilgan foiz kamayishi bo'yicha (yaxshiroq bajarganlar tepada)
+    #   none    — total (rejalar soni) kamayishi bo'yicha (ko'proq rejasi bo'lganlar tepada)
+    full_rows.sort(key=lambda r: (-(r["user"].streak or 0), -r["total"]))
+    partial_rows.sort(key=lambda r: (-r["pct"], -(r["user"].streak or 0)))
+    none_rows.sort(key=lambda r: (-r["total"], -(r["user"].streak or 0)))
 
     show_zero = bool(group.digest_show_zero)
     mention = bool(group.digest_mention)
-    today = datetime.now(TIMEZONE).date()
 
-    if not done_rows and not undone_rows and not show_zero:
+    if not full_rows and not partial_rows and not none_rows and not show_zero:
         # Hech kim hech narsa qilmagan/rejalashtirmagan va idle'larni ko'rsatish
         # o'chirilgan — spam bo'lmasligi uchun digest yubormaymiz.
         return None
 
-    # Sarlavha bloki (foydalanuvchi so'ragan aynan formatda).
+    # Sarlavha bloki
     lines: list[str] = [
         "📊 <b>IntizomAi — Bugungi hisobot</b>",
         f"📅 {_uz_date(today)}",
@@ -336,23 +428,21 @@ async def build_digest_html(
         "",
     ]
 
-    # ── Bajarganlar bloki (premium userlar yoniga 💎 qo'shiladi)
-    if done_rows:
-        lines.append("✅ <b>Bajarganlar:</b>")
-        for r in done_rows:
+    def _emit_bucket(header: str, bucket: list[dict]) -> None:
+        """Bir bo'limni raqamlangan ro'yxat sifatida `lines`ga qo'shadi."""
+        if not bucket:
+            return
+        lines.append(header)
+        for i, r in enumerate(bucket, start=1):
             u = r["user"]
             name = _name_html_with_premium(u, mention=mention)
-            lines.append(f"🟢 {name} — {r['done']}/{r['total']}")
+            lines.append(f"{i}) {name} — {r['done']}/{r['total']}")
         lines.append("")
 
-    # ── Umuman bajarmaganlar bloki (premium userlar yoniga 💎 qo'shiladi)
-    if undone_rows:
-        lines.append("❌ <b>Umuman bajarmaganlar:</b>")
-        for r in undone_rows:
-            u = r["user"]
-            name = _name_html_with_premium(u, mention=mention)
-            lines.append(f"🔴 {name} — {r['done']}/{r['total']}")
-        lines.append("")
+    # ── Uch bo'lim (bo'sh bo'lsa headerlar ko'rinmaydi)
+    _emit_bucket("🟢 <b>To'liq bajarganlar:</b>", full_rows)
+    _emit_bucket("🟡 <b>Chala bajarganlar:</b>", partial_rows)
+    _emit_bucket("🔴 <b>Umuman bajarmaganlar:</b>", none_rows)
 
     # ── Idle (bugun umuman reja/odat qo'shmagan) — faqat show_zero yoqilgan bo'lsa
     if idle_rows and show_zero:
@@ -364,11 +454,9 @@ async def build_digest_html(
         lines.append(f"😴 <b>Bugun rejasiz:</b> {', '.join(names)}{extra}")
         lines.append("")
 
-    # ── Faollik foizi (barcha a'zolar bo'yicha o'rtacha)
-    #   Idle a'zolar hisobga OLINMAYDI (ular bugun umuman qatnashmadi) — faqat
-    #   done_rows + undone_rows dagi haqiqiy qatnashuvchilar o'rtachasi.
+    # ── Faollik foizi (idle a'zolar hisobga OLINMAYDI)
     lines.append("━━━━━━━━━━━━━━")
-    active = done_rows + undone_rows
+    active = full_rows + partial_rows + none_rows
     if active:
         avg = sum(r["pct"] for r in active) / len(active)
         lines.append(f"📈 Guruh faolligi: <b>{avg:.1f}%</b>")
@@ -424,26 +512,33 @@ async def build_digest_keyboard(
     if not rows:
         return None
 
+    today = datetime.now(TIMEZONE).date()
     user_ids = [u.id for _gm, u in rows]
-    summaries = await _bulk_today_summary(session, user_ids)
+    # WEBAPP bilan mos count (is_due_on + not is_finished filtrlari bilan).
+    summaries = await _member_today_counts(session, user_ids, today)
 
-    # A'zolarni tartiblash: avval bajarganlar (done>=1), keyin bajarmaganlar,
-    # oxirida idle (total=0). Har bir kategoriya ichida done/total bo'yicha.
+    # A'zolarni bo'limlarga ajratib tartiblash — hisobotdagi tartib bilan bir xil:
+    #   0 → full (to'liq bajarganlar)
+    #   1 → partial (chala bajarganlar)
+    #   2 → none (umuman bajarmaganlar)
+    #   3 → idle (bugun umuman rejasi yo'q)
     def _sort_key(item):
         _gm, u = item
         s = summaries.get(u.id) or {}
         d, t = _totals(s)
         if t <= 0:
-            bucket = 2
-        elif d >= 1:
+            bucket = 3
+        elif d >= t:
             bucket = 0
-        else:
+        elif d >= 1:
             bucket = 1
+        else:
+            bucket = 2
         return (bucket, -_score_key(s), -(u.streak or 0))
 
     rows.sort(key=_sort_key)
 
-    # Har bir a'zo uchun tugma — matn: "👤 <name> · X/Y"
+    # Har bir a'zo uchun tugma — matn: "🟢/🟡/🔴/⚪️ <name> · X/Y"
     kb_rows: list[list[InlineKeyboardButton]] = []
     row_buf: list[InlineKeyboardButton] = []
     # Nom uzunligini cheklaymiz — Telegram tugma matnini juda uzun ko'rsata olmaydi.
@@ -457,7 +552,15 @@ async def build_digest_keyboard(
         name = _display_name(u)
         if len(name) > NAME_MAX:
             name = name[: NAME_MAX - 1] + "…"
-        emoji = "🟢" if (t > 0 and d >= 1) else ("🔴" if t > 0 else "⚪️")
+        # Uch rang: to'liq / chala / umuman qilmagan; idle uchun oq doira.
+        if t <= 0:
+            emoji = "⚪️"
+        elif d >= t:
+            emoji = "🟢"
+        elif d >= 1:
+            emoji = "🟡"
+        else:
+            emoji = "🔴"
         label = f"{emoji} {name} · {d}/{t}"
         cb = f"{DGST_USER_CB_PREFIX}:{group.id}:{u.id}"
         row_buf.append(InlineKeyboardButton(text=label, callback_data=cb))
@@ -482,9 +585,18 @@ async def _get_user_today_items(
     """
     Foydalanuvchining bugungi rejalar va odatlarini nom+bajarilish bilan qaytaradi.
     Qaytadi: (plans, habits) — har biri [(title, is_done), ...].
+
+    Filtrlash WEBAPP `Friends → group → member` ko'rinishi bilan MOS keladi:
+      • Plans: shu kunga rejalashtirilganlar (Plan.plan_date == today).
+      • Habits: arxivlanmagan + `is_due_on(today)` + `not is_finished(today)`.
+        (Ilgari BARCHA arxivlanmagan odatlar ko'rinar edi va foydalanuvchi
+        haqli ravishda bugun uchun bo'lmagan odatni "bajarmagan" deb ko'rish
+        noto'g'ri ekanligini aytdi.)
+      • Habit completion: HabitLog.log_date == today.
     """
     today = datetime.now(TIMEZONE).date()
 
+    # ── Plans (webapp bilan bir xil filter)
     plan_rows = (await session.execute(
         select(Plan.title, Plan.status)
         .where(and_(Plan.user_id == user_id, Plan.plan_date == today))
@@ -492,15 +604,32 @@ async def _get_user_today_items(
     )).all()
     plans = [(row[0] or "-", row[1] == PlanStatus.done) for row in plan_rows]
 
-    # Odatlar — arxivlanmaganlarni oldindan olib, bugungi HabitLog bilan JOIN.
-    habit_rows = (await session.execute(
-        select(Habit.id, Habit.title)
-        .where(and_(Habit.user_id == user_id, Habit.archived == False))  # noqa: E712
-        .order_by(Habit.sort_order, Habit.id)
-    )).all()
-    if habit_rows:
-        habit_ids = [row[0] for row in habit_rows]
-        done_ids = set()
+    # ── Habits — arxivlanmagan hammasini olib, Python'da is_due_on/is_finished
+    #    filterni qo'llaymiz (webapp bilan aynan bir xil).
+    all_habits = (await session.execute(
+        select(Habit).where(and_(
+            Habit.user_id == user_id,
+            Habit.archived == False,  # noqa: E712
+        ))
+    )).scalars().all()
+
+    # Faqat shu kunga rejalashtirilgan va muddati tugamagan odatlar.
+    filtered_habits = [
+        h for h in all_habits
+        if is_due_on(h, today) and not is_finished(h, today)
+    ]
+
+    # Saralash — webapp bilan bir xil: eslatma vaqti bor bo'lgan (ertaroq)
+    # oldindan, vaqtsizlar oxirda.
+    def _habit_sort_key(h: Habit):
+        rt = (h.reminder_time or "").strip()
+        return (0, rt) if rt else (1, "")
+
+    filtered_habits.sort(key=_habit_sort_key)
+
+    if filtered_habits:
+        habit_ids = [int(h.id) for h in filtered_habits]
+        done_ids: set[int] = set()
         for (hid,) in (await session.execute(
             select(HabitLog.habit_id).where(and_(
                 HabitLog.habit_id.in_(habit_ids),
@@ -508,7 +637,7 @@ async def _get_user_today_items(
             ))
         )).all():
             done_ids.add(int(hid))
-        habits = [(row[1] or "-", int(row[0]) in done_ids) for row in habit_rows]
+        habits = [(h.title or "-", int(h.id) in done_ids) for h in filtered_habits]
     else:
         habits = []
 
