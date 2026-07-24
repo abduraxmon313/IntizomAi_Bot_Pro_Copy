@@ -3,14 +3,6 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import (
-    BotCommand,
-    BotCommandScopeAllGroupChats,
-    BotCommandScopeAllPrivateChats,
-    BotCommandScopeDefault,
-    MenuButtonDefault,
-    MenuButtonCommands,
-)
 
 from bot.config import BOT_TOKEN
 from bot.handlers import start, plan, callback, report, admin, status, subscribe, chat_events
@@ -25,79 +17,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def set_commands(bot: Bot):
-    """
-    Telegram "menu" tugmasi buyruqlarini ro'yxatga oladi.
-
-    Alohida SCOPE'lar:
-      • PRIVATE chats — shaxsiy ishlash tugmalari (obuna, hisobot, bog'lanish).
-        Foydalanuvchi bot bilan shaxsiy chatda menu tugmasini bosganda shu
-        buyruqlar chiqadi.
-      • GROUP/SUPERGROUP chats — FAQAT 2 ta amal (Umumiy hisobot, Bog'lanish).
-        Guruh a'zolari menu tugmasini bosganda "mening statusim/rejalarim/reja
-        qo'shish/premium" kabi shaxsiy tugmalarni KO'RMAYDI. Bu Telegram
-        darajasidagi cheklov — reply keyboard va shaxsiy handlerlar allaqachon
-        ChatType.PRIVATE bilan filtrlangan.
-      • DEFAULT scope — minimal fallback (asosan hech qachon ishlatilmaydi,
-        chunki har ikki asosiy scope aniq ko'rsatilgan).
-    """
-    # Har safar set qilishdan oldin BARCHA scope'lardan eski buyruqlarni
-    # tozalaymiz — aks holda avvalgi deploy'larda ro'yxatga olingan (masalan
-    # /admin) buyruqlar qolib ketishi mumkin.
-    for scope in (
-        BotCommandScopeDefault(),
-        BotCommandScopeAllPrivateChats(),
-        BotCommandScopeAllGroupChats(),
-    ):
-        try:
-            await bot.delete_my_commands(scope=scope)
-        except Exception:
-            # Delete ba'zan ishlamasa ham set_my_commands almashtiradi — jim o'tamiz.
-            pass
-
-    # ── Shaxsiy chat (DM) uchun buyruqlar ──────────────────────
-    # `/admin` ATAYIN kiritilmagan — admin panelga oddiy foydalanuvchilar duch
-    # kelmasin. Adminlar buyruqni qo'lda yozib chaqira oladi (handler mavjud).
-    private_commands = [
-        BotCommand(command="start", description="Botni boshlash"),
-        BotCommand(command="premium", description="💎 Premium olish"),
-        BotCommand(command="hisobot", description="📈 Bugungi hisobot"),
-        BotCommand(command="contact", description="📞 Bog'lanish"),
-    ]
-    await bot.set_my_commands(
-        private_commands, scope=BotCommandScopeAllPrivateChats(),
-    )
-
-    # ── Guruh chatlari uchun buyruqlar (faqat 2 ta) ────────────
-    group_commands = [
-        BotCommand(command="hisobot", description="📊 Umumiy hisobot"),
-        BotCommand(command="contact", description="📞 Bog'lanish"),
-    ]
-    await bot.set_my_commands(
-        group_commands, scope=BotCommandScopeAllGroupChats(),
-    )
-
-    # ── Default scope — minimal (fallback) ─────────────────────
-    default_commands = [
-        BotCommand(command="start", description="Botni boshlash"),
-    ]
-    await bot.set_my_commands(
-        default_commands, scope=BotCommandScopeDefault(),
-    )
-
-    # ── Menu Button sozlamalari ─────────────────────────────────
-    # Private chatlar uchun — Menu tugmasini ko'rsatamiz (commands menyusi).
-    try:
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonCommands(),
-        )
-    except Exception:
-        pass
-
-    # Guruh chatlarida Menu Button ko'rsatilmasin — MenuButtonDefault (bo'sh)
-    # Telegram API scope bo'yicha chat_menu_button o'rnatishga ruxsat bermaydi,
-    # lekin buyruqlar ro'yxati guruh uchun alohida o'rnatilgan (yuqorida).
-    # Bu yetarli — guruh foydalanuvchilari faqat guruh buyruqlarini ko'radi.
+# ─────────────────────────────────────────────────────────────
+#  DIQQAT: Bot buyruqlari (commands) va Menu Button sozlamalari
+#  MANUAL, ya'ni BotFather orqali boshqariladi.
+#
+#  Ilgari bu yerda `set_commands(bot)` funksiyasi bor edi — u har safar bot
+#  ishga tushganda `bot.set_my_commands(...)` va `bot.set_chat_menu_button(...)`
+#  chaqirib, BotFather'da qo'lda sozlangan sozlamalarni O'ZI USTIDAN YOZIB
+#  QO'YARDI (natijada foydalanuvchining Telegram klaviaturasi yonidagi Menu
+#  tugmasi har server restart'da qayta paydo bo'lardi va /start /premium
+#  /hisobot /contact buyruqlarini ko'rsatardi).
+#
+#  Endi bot Telegram API orqali commands/menu button'ga TEGMAYDI. Buni
+#  sozlash butunlay BotFather orqali (yoki qo'lda API chaqiruvi bilan) amalga
+#  oshiriladi. Bot ichidagi 6 talik reply klaviatura (main_reply_keyboard)
+#  asosiy interfeys sifatida ishlatiladi.
+# ─────────────────────────────────────────────────────────────
 
 
 async def main():
@@ -162,8 +97,9 @@ async def main():
     # WebApp digest funksiyasi bu jadval ustida ishlaydi.
     dp.include_router(chat_events.router)
 
-    # Buyruqlarni sozlash
-    await set_commands(bot)
+    # Buyruqlar va Menu Button sozlamalari BOTGA TEGMAYMIZ —
+    # ular BotFather orqali qo'lda sozlanadi (foydalanuvchi qo'yiladigan
+    # sozlamalar ustidan yozib qo'yilmaydi).
 
     # Schedulerni ishga tushirish
     start_scheduler(bot)
