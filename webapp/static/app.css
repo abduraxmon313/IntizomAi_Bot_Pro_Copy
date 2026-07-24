@@ -567,7 +567,8 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
    xususiyatlar/tariflar/CTA'da ishtirok etadi. */
 
 /* Title — kattaroq, ixchamroq, kuchli visual hierarchy. Yangi: subtle fade-in
-   animatsiya + gradient shine. */
+   animatsiya + gradient shine. Sarlavha yonida kichkina 💎 (pw-title-gem)
+   nozik bo'yin bilan hover'da sekingina harakat qiladi. */
 .paywall h1{
   font-size:clamp(24px,6.5vw,28px);
   font-weight:800;
@@ -580,6 +581,19 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 @keyframes pwTitleIn{
   from{opacity:0;transform:translateY(-8px)}
   to{opacity:1;transform:translateY(0)}
+}
+/* Sarlavha yonidagi kichkina 💎 — matn balandligiga proporsional, nozik pulse. */
+.pw-title-gem{
+  display:inline-block;
+  font-size:.85em;
+  vertical-align:baseline;
+  margin-left:2px;
+  filter:drop-shadow(0 2px 6px var(--primary-soft));
+  animation:pwGemPulse 2.6s ease-in-out infinite;
+}
+@keyframes pwGemPulse{
+  0%,100%{transform:scale(1);filter:drop-shadow(0 2px 6px var(--primary-soft))}
+  50%{transform:scale(1.08);filter:drop-shadow(0 3px 10px var(--primary-soft))}
 }
 .pw-pro{
   background:var(--grad);
@@ -775,34 +789,9 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 }
 .paywall .pw-plan.featured .pw-plan-tag{color:var(--primary);font-weight:700}
 
-/* Trust info — muted rows, ikonlar yumshoq doiraviy fon bilan */
-.paywall .pw-info{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  width:100%;
-  margin:0 auto clamp(18px,2.8vh,22px);
-}
-.paywall .pw-info-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size:13px;
-  font-weight:500;
-  color:var(--text-2);
-  line-height:1.4;
-}
-.paywall .pw-info-row .pw-info-ic{
-  font-size:13px;
-  flex:0 0 auto;
-  width:26px;
-  height:26px;
-  border-radius:8px;
-  background:var(--grad-soft);
-  border:1px solid var(--border);
-  display:grid;
-  place-items:center;
-}
+/* Trust info (🔒 Xavfsiz to'lov / ⚡ To'lov tasdiqlangach ...) OLIB TASHLANDI
+   (foydalanuvchi so'ragan). Ilgari `.pw-info` va `.pw-info-row` stillari shu
+   yerda edi — endi kerak emas. Tariflar bloki'dan keyin darhol CTA keladi. */
 
 /* ── Guruh sozlamalari: Tab navigator (Umumiy / Hisobot / A'zolar) ────
    Sozlamalar modali endi 3 bo'limga bo'lingan. Tab tugmalari ustki qismda,
@@ -891,13 +880,14 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
 .paywall .pw-note code{background:var(--primary-soft);color:var(--primary);padding:2px 8px;border-radius:6px;font-weight:800}
 
 /* CTA — asosiy harakat tugmasi. Elegant qatlamli shadow, kuchli visual hierarchy.
-   Konstant animatsiyalar minimal (faqat nozik shine effect). */
+   Konstant animatsiyalar minimal (faqat nozik shine effect).
+   Trust info bloki olib tashlangach, CTA tariflardan bo'shroq oraliqda. */
 .paywall .pw-cta{
   position:relative;
   overflow:hidden;
   display:block;
   width:100%;
-  margin:0 auto;
+  margin:clamp(14px,2.2vh,18px) auto 0;
   background:var(--grad);
   color:#fff;
   text-align:center;

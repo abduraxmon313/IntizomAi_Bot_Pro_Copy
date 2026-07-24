@@ -486,26 +486,22 @@
 <div class="paywall" id="paywall" aria-hidden="true">
   <div class="pw-inner">
     <!--
-      Yangi sodda dizayn:
-        [💎]
-        IntizomAi Premium
-        Premium bilan barcha imkoniyatlardan cheksiz foydalaning.
+      Joriy dizayn:
+        IntizomAi Premium 💎     ← 💎 sarlavha yonida (kichkina, pulse)
+        [xususiyatlar ro'yxati — 4 ta qator]
         ──────────────
         [tariflar ro'yxati — bosiladigan qatorlar]
-        ──────────────
-        🔒 Xavfsiz to'lov
-        ⚡ To'lov tasdiqlangach Premium avtomatik faollashadi.
         [💎 Tarifni tanlash]
         [⬅️ Orqaga]
+      Eski katta 💎 crown, "Cheksiz..." tag-line va 🔒/⚡ trust info bloki
+      foydalanuvchi so'roviga muvofiq olib tashlandi.
     -->
-    <!-- Foydalanuvchi so'ragan: 💎 katta olmos va gap-so'z olib tashlansin,
-         to'g'ridan-to'g'ri sarlavha va xususiyatlar ro'yxati chiqsin. -->
-    <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span></h1>
-    <!-- Premium xususiyatlar ro'yxati — animatsiya bilan navbatma-navbat chiqadi.
-         Nomlar foydalanuvchi so'ragan aynan matnda. -->
+    <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span> <span class="pw-title-gem" aria-hidden="true">💎</span></h1>
+    <!-- Premium xususiyatlar ro'yxati (foydalanuvchi so'ragan yangi tarkib):
+         • birinchi ikkita xususiyat bittaga birlashtirildi
+         • 🔒/⚡ info bloki olib tashlandi (tariflar ostidagi) -->
     <ul class="pw-feats" id="pwFeats">
-      <li><span class="pw-feat-ic">✨</span><span>Cheksiz reja, maqsad va odat</span></li>
-      <li><span class="pw-feat-ic">🤖</span><span>Cheksiz AI Coach suhbat</span></li>
+      <li><span class="pw-feat-ic">✨</span><span>Cheksiz reja, maqsad, odat va AI Coach</span></li>
       <li><span class="pw-feat-ic">📊</span><span>Batafsil statistika va Reyting jadvali</span></li>
       <li><span class="pw-feat-ic">🤝</span><span>Jamoaviy ishlash imkoni</span></li>
       <li><span class="pw-feat-ic">🎨</span><span>Premium dizaynlar</span></li>
@@ -513,11 +509,6 @@
     <div class="pw-divider"></div>
     <!-- Tariflar shu yerga JavaScript'dan render qilinadi -->
     <div class="pw-plans" id="pwPlans"></div>
-    <div class="pw-divider"></div>
-    <div class="pw-info">
-      <div class="pw-info-row"><span class="pw-info-ic">🔒</span><span>Xavfsiz to'lov</span></div>
-      <div class="pw-info-row"><span class="pw-info-ic">⚡</span><span>To'lov tasdiqlangach Premium avtomatik faollashadi.</span></div>
-    </div>
     <div class="pw-note" id="pwNote" hidden></div>
     <button class="pw-cta" id="pwCta">💎 Tarifni tanlash</button>
     <button class="pw-back" id="pwBack">⬅️ Orqaga</button>
