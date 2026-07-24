@@ -514,20 +514,12 @@ function openPaywall(){
   if(!ov)return;
   const isPremium=!!(State.sub&&State.sub.is_premium);
   const h=ov.querySelector('h1');
-  const sb=ov.querySelector('.pw-sub');
   const cta=document.getElementById('pwCta');
-  // Yangi sodda dizayn: har doim "IntizomAi Premium" sarlavhasi va bitta
-  // qisqa tag-line. Premium bo'lsa CTA matni "uzaytirish" bo'ladi, aks holda
-  // "Tarifni tanlash".
-  if(isPremium){
-    if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
-    if(sb)sb.innerHTML='Obunani uzaytirish — yangi kunlar joriy tugash sanasi ustiga qo\'shiladi.';
-    if(cta)cta.textContent='💳 Uzaytirish';
-  }else{
-    if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
-    if(sb)sb.innerHTML='Premium bilan barcha imkoniyatlardan cheksiz foydalaning.';
-    if(cta)cta.textContent='💎 Tarifni tanlash';
-  }
+  // Sodda: har doim "IntizomAi Premium" sarlavhasi. Sub-title olib tashlangan
+  // (foydalanuvchi so'ragan: gap kerak emas, to'g'ridan-to'g'ri xususiyatlar).
+  // Premium bo'lsa CTA matni "Uzaytirish" bo'ladi.
+  if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
+  if(cta)cta.textContent = isPremium ? '💳 Uzaytirish' : '💎 Tarifni tanlash';
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
   renderPaywallPlans(State.sub&&State.sub.plans);
   ov.classList.add('show');
@@ -1536,7 +1528,21 @@ async function saveGroupCreate(){
   }catch(e){toast('Xato: '+e.message,true);}
 }
 
-// ── Guruh sozlamalari (rename/digest/delete/leave) ────────
+// ── Guruh sozlamalari (3 tab: Umumiy / Hisobot / A'zolar) ─────
+function selectGroupEditTab(name){
+  // Aktiv tab tugmasini va shu tabga tegishli panel'ni ko'rsatadi.
+  const validTabs = ['general', 'digest', 'members'];
+  if(!validTabs.includes(name)) name = 'general';
+  document.querySelectorAll('.ge-tab').forEach(btn=>{
+    const on = btn.dataset.geTab === name;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.ge-pane').forEach(p=>{
+    p.classList.toggle('active', p.dataset.gePane === name);
+  });
+}
+
 function openGroupEditModal(){
   const g=State.currentGroup;if(!g)return;
   document.getElementById('geName').value=g.name||'';
@@ -1547,10 +1553,19 @@ function openGroupEditModal(){
   document.getElementById('geName').disabled=!g.is_owner;
   document.getElementById('geDesc').disabled=!g.is_owner;
   renderGroupEditMembers();
+  // Hisobot va A'zolar tab'lari faqat guruh egasi uchun ko'rinadi.
+  document.querySelectorAll('.ge-tab').forEach(btn=>{
+    const t=btn.dataset.geTab;
+    if(t==='digest' || t==='members'){
+      btn.style.display = g.is_owner ? '' : 'none';
+    }
+  });
   // Telegram digest bo'limi faqat ega uchun ko'rinadi.
   const dw=document.getElementById('geDigestWrap');
   if(dw)dw.style.display=g.is_owner?'':'none';
   if(g.is_owner)loadDigestSettings();
+  // Har safar birinchi tab ("Umumiy") ochilishi uchun reset.
+  selectGroupEditTab('general');
   document.getElementById('groupEditBack').classList.add('show');
 }
 
@@ -1623,16 +1638,11 @@ function renderDigestSettings(){
       plansEnBtn.classList.remove('disabled');
     }
   }
-  // Meta (last sent / error) — hisobot va rejalar birgalikda ko'rsatiladi
+  // Meta — foydalanuvchi so'ragan: oxirgi muvaffaqiyatli yuborish vaqti
+  // KERAK EMAS. Faqat xato bo'lgan hollarda ogohlantirish ko'rinadi.
   const meta=document.getElementById('geDigestMeta');
   if(meta){
     const parts=[];
-    if(s.digest_last_sent_at){
-      try{const d=new Date(s.digest_last_sent_at);parts.push('📊 Oxirgi hisobot: '+d.toLocaleString('uz-UZ'));}catch(_){}
-    }
-    if(s.plans_last_sent_at){
-      try{const d=new Date(s.plans_last_sent_at);parts.push('📋 Oxirgi reja: '+d.toLocaleString('uz-UZ'));}catch(_){}
-    }
     if(s.digest_last_error){
       parts.push('⚠️ Hisobot xato: '+s.digest_last_error);
     }
@@ -1720,8 +1730,9 @@ async function _runTestSend(kind /* 'plans' | 'report' */){
   if(!s||!s.telegram_chat_id){toast('Avval Telegram guruhni tanlang',true);return;}
   const btnId = kind==='plans' ? 'gePlansTest' : 'geDigestTest';
   const btn=document.getElementById(btnId);
-  const origText = btn ? btn.textContent : null;
-  if(btn){btn.disabled=true;btn.textContent='⏳ Yuborilmoqda…';}
+  // Tugma icon-only bo'lgani uchun matnni almashtirmaymiz — faqat opacity va
+  // disabled bilan yuklanish holatini ko'rsatamiz.
+  if(btn){btn.disabled=true;btn.style.opacity='.55';}
   try{
     const r = kind==='plans'
       ? await apiPlansTest(g.id)
@@ -1734,7 +1745,7 @@ async function _runTestSend(kind /* 'plans' | 'report' */){
   }catch(e){
     toast('Xato: '+e.message,true);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent=origText;}
+    if(btn){btn.disabled=false;btn.style.opacity='';}
     // Xato bo'lgan bo'lsa auto-unlink bo'lishi mumkin — qayta yuklab olamiz.
     loadDigestSettings();
   }
@@ -2073,6 +2084,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _geB=document.getElementById('groupEditBack');if(_geB)_geB.onclick=e=>{if(e.target.id==='groupEditBack')_geB.classList.remove('show');};
   const _pC=document.getElementById('permsClose');if(_pC)_pC.onclick=()=>document.getElementById('permsBack').classList.remove('show');
   const _pB=document.getElementById('permsBack');if(_pB)_pB.onclick=e=>{if(e.target.id==='permsBack')_pB.classList.remove('show');};
+  // ── Group settings tab navigator ─────────────────────────────
+  document.querySelectorAll('.ge-tab').forEach(btn=>{
+    btn.onclick=()=>selectGroupEditTab(btn.dataset.geTab);
+  });
+
   // ── Telegram digest/plans wiring ─────────────────────────────
   const _dgEn=document.getElementById('geDigestEnable');if(_dgEn)_dgEn.onclick=toggleDigestEnable;
   const _dgT=document.getElementById('geDigestTime');if(_dgT)_dgT.onchange=changeDigestTime;
