@@ -69,7 +69,7 @@ async function api(path,opts={}){
       // Standart Premium dialog. Chaqiruvchi kod baribir throw ushlaydi.
       try{
         premiumRequiredDialog({
-          icon:'gem',
+          icon:'💎',
           title:'Faqat Premium foydalanuvchilar uchun',
           message:detail||'Bu amal Premium foydalanuvchilar uchun.',
         });
@@ -80,23 +80,17 @@ async function api(path,opts={}){
   return res.json();
 }
 
-async function loadPlansAPI(){const _sk=document.getElementById('plansList');if(_sk&&!_sk.children.length)_sk.innerHTML=skeletonRows(3);try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();loadHomeHabits();}catch(e){console.warn('plans',e);State.plans=[];renderError('plansList',loadPlansAPI);}}
+async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();loadHomeHabits();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
 // Tanlangan kun uchun rejalarni yuklash (bugun yoki o'tgan/kelajak kun)
 function isSameDay(ymdStr,dateObj){try{return ymdStr===ymd(dateObj||new Date());}catch(_){return false;}}
 async function loadPlansForSelectedDay(){
   const day=ymd(State.selectedDate||new Date());
-  const _sk=document.getElementById('plansList');
-  if(_sk)_sk.innerHTML=skeletonRows(3);
   try{
     const d=await api('/api/webapp/plans?date_from='+day+'&date_to='+day);
     State.plans=d.plans||[];
-  }catch(e){
-    console.warn('day plans',e);State.plans=[];
-    renderDayStrip();updateHomePlansTitle();
-    renderError('plansList',loadPlansForSelectedDay);
-    return;
-  }
+  }catch(e){console.warn('day plans',e);State.plans=[];}
+  setText('msPlans',State.plans.length);
   renderDayStrip();renderPlans();updateHomePlansTitle();
 }
 function updateHomePlansTitle(){
@@ -118,20 +112,13 @@ function renderDayStrip(){
   // Foydalanuvchi ertangi va undan keyingi kunlarni ham ko'ra oladi va
   // ular uchun reja yarata oladi (plan modali sana tanlashni beradi).
   let html='';
-  let _dsPrevMonth=null;
   for(let off=-14;off<=30;off++){
     const d=addDays(new Date(),off);
     const k=ymd(d);
     const isToday=k===todayStr;
     const isSel=k===sel;
     const dw=UZ_DOW_SHORT[(d.getDay()+6)%7];
-    // Oy nomi HAR chipda emas, faqat oy ALMASHGANDA (va eng birinchi chipda)
-    // ko'rsatiladi. Aks holda "Avg" 45 marta takrorlanib, vizual shovqin
-    // hosil qiladi va foydali ma'lumot bermaydi.
-    const mo=d.getMonth();
-    const showMonth=(_dsPrevMonth===null||mo!==_dsPrevMonth);
-    _dsPrevMonth=mo;
-    html+=`<div class="day-chip ${isSel?'active':''} ${isToday?'today':''}" data-day="${k}" role="button" tabindex="0"><div class="dw">${isToday?'Bugun':dw}</div><div class="dd">${d.getDate()}</div><div class="dm">${showMonth?UZ_MONTHS_SHORT[mo]:''}</div></div>`;
+    html+=`<div class="day-chip ${isSel?'active':''} ${isToday?'today':''}" data-day="${k}"><div class="dw">${isToday?'Bugun':dw}</div><div class="dd">${d.getDate()}</div><div class="dm">${UZ_MONTHS_SHORT[d.getMonth()]}</div></div>`;
   }
   strip.innerHTML=html;
   strip.querySelectorAll('.day-chip').forEach(c=>c.onclick=()=>{State.selectedDate=new Date(c.dataset.day+'T00:00:00');loadPlansForSelectedDay();});
@@ -140,7 +127,7 @@ function renderDayStrip(){
     const act=strip.querySelector('.day-chip.active')||strip.querySelector('.day-chip.today');
     if(act){const target=act.offsetLeft-(strip.clientWidth/2)+(act.offsetWidth/2);strip.scrollTo({left:Math.max(0,target),behavior:'auto'});}
   });
-}async function loadGoalsAPI(){try{State.goals=await api('/api/webapp/goals');}catch(e){console.warn('goals',e);State.goals=[];}setText('stGoals',State.goals.filter(g=>!g.completed).length);const done=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;setText('stDone',done);setText('pfDone',done);renderGoalsView();}
+}async function loadGoalsAPI(){try{State.goals=await api('/api/webapp/goals');}catch(e){console.warn('goals',e);State.goals=[];}setText('msGoals',State.goals.length);setText('stGoals',State.goals.filter(g=>!g.completed).length);const done=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;setText('stDone',done);setText('pfDone',done);renderGoalsView();}
 
 async function loadPlansRange(){try{const tod=new Date();const df=ymd(addDays(tod,-29));const dt=ymd(tod);const d=await api('/api/webapp/plans?date_from='+df+'&date_to='+dt);State.plansRange=d.plans||[];}catch(e){console.warn('range',e);State.plansRange=State.plans;}}
 
@@ -298,7 +285,7 @@ function habitMetaLabel(h){
   return {rep,dur};
 }
 
-async function loadHabitsAPI(){const _sk=document.getElementById('habitsList');if(_sk&&!_sk.children.length)_sk.innerHTML=skeletonRows(3);try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];renderError('habitsList',loadHabitsAPI);return;}renderHabitsPage();}
+async function loadHabitsAPI(){try{State.habits=await api('/api/webapp/habits');}catch(e){console.warn('habits',e);State.habits=[];}renderHabitsPage();}
 
 function renderHabitsPage(){
   const today=document.getElementById('habitToday');const trk=document.getElementById('habitTracker');
@@ -323,7 +310,7 @@ function renderTracker(){
   if(!State.trackerWeekStart)State.trackerWeekStart=startOfWeek(new Date());
   const s=State.trackerWeekStart;const e=addDays(s,6);
   setText('trkRange',formatRange(s,e));
-  if(!State.habits.length){wrap.innerHTML=emptyState('check-square','Hozircha odat yo\'q','Odat qo\'shsangiz, bu yerda tracker chiqadi');return;}
+  if(!State.habits.length){wrap.innerHTML=emptyState('✅','Hozircha odat yo\'q','Odat qo\'shsangiz, bu yerda tracker chiqadi');return;}
   const todayStr=ymd(new Date());
   const days=[];for(let i=0;i<7;i++)days.push(addDays(s,i));
   let head='<th class="tcorner">Odat</th>';
@@ -335,11 +322,11 @@ function renderTracker(){
     days.forEach(d=>{
       const ds=ymd(d);const done=logset.has(ds);const future=ds>todayStr;const due=habitDueOn(h,d);
       let cls='tcell';if(done)cls+=' done';else if(future)cls+=' future';else if(!due)cls+=' nodue';
-      const inner=done?icon('check',16):(due&&!future?esc(h.icon||''):'');
+      const inner=done?'✓':(due&&!future?esc(h.icon||''):'');
       const tappable=due&&!future;
       cells+=`<td><div class="${cls}" ${tappable?`data-hid="${h.id}" data-d="${ds}"`:''}>${inner}</div></td>`;
     });
-    rows+=`<tr><td class="tname">${esc(h.icon||'')} ${esc(h.title)}</td>${cells}</tr>`;
+    rows+=`<tr><td class="tname">${esc(h.icon||'✅')} ${esc(h.title)}</td>${cells}</tr>`;
   });
   wrap.innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.tcell[data-hid]').forEach(c=>c.onclick=async()=>{
@@ -357,23 +344,23 @@ function _habitSortKey(h){return (h.reminder_time && /^\d\d:\d\d/.test(h.reminde
 function _sortHabitsByTime(arr){return arr.slice().sort((a,b)=>_habitSortKey(a).localeCompare(_habitSortKey(b)));}
 function renderHabits(){
   const w=document.getElementById('habitsList');if(!w)return;
-  if(!State.habits.length){w.innerHTML=emptyState('check-square','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}
+  if(!State.habits.length){w.innerHTML=emptyState('✅','Hozircha odat yo\'q','Har kuni takrorlanadigan odat qo\'shing — streak yig\'ing');return;}
   const sorted=_sortHabitsByTime(State.habits);
   w.innerHTML=sorted.map((h,i)=>{
     const m=habitMetaLabel(h);
     const notDue=!h.due_today||h.finished;
-    const checkInner=h.finished?icon('flag',18):(h.done_today?icon('check',18):(esc(h.icon||'')||icon('check-square',18)));
+    const checkInner=h.finished?'🏁':(h.done_today?'✓':esc(h.icon||'✅'));
     // Meta chapdan: eslatma vaqti (bo'lsa), streak, takrorlanish, davomiylik.
-    const timeBadge=h.reminder_time?`<span class="hbadge">${icon('clock',14)} ${esc(h.reminder_time)}</span>`:'';
-    return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta">${timeBadge}<span class="hstreak">${icon('flame',14)} ${h.streak||0} kun</span><span class="hbadge">${icon('repeat',14)} ${esc(m.rep)}</span><span class="hbadge">${icon('hourglass',14)} ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" type="button" data-act="edit" aria-label="Tahrirlash">${icon('edit',16)}</button><button class="del" type="button" data-act="del" aria-label="O'chirish">${icon('trash',16)}</button></div></div>`;
+    const timeBadge=h.reminder_time?`<span class="hbadge">⏰ ${esc(h.reminder_time)}</span>`:'';
+    return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta">${timeBadge}<span class="hstreak">🔥 ${h.streak||0} kun</span><span class="hbadge">🔁 ${esc(m.rep)}</span><span class="hbadge">⏳ ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;
   }).join('');
   bindHabitActions();
 }
 
 function bindHabitActions(){document.querySelectorAll('#habitsList .habit').forEach(row=>{const id=+row.dataset.id;
-  row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;if(h.finished){toast('Bu odat muddati tugagan',true);return;}if(!h.due_today){toast('Bu odat bugun rejada yo\'q',true);return;}const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast((snap.streak||0)+' kun streak');}else{toast('Belgilash olindi');}}catch(err){toast('Saqlanmadi. Yana urinib ko\'ring.',true);}};
+  row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(!h)return;if(h.finished){toast('🏁 Bu odat muddati tugagan',true);return;}if(!h.due_today){toast('📅 Bu odat bugun rejada yo\'q',true);return;}const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderHabits();renderHabitSummary();if(next){confetti(28);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}}catch(err){toast('Xato!',true);}};
   row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const h=State.habits.find(x=>x.id===id);if(h)openHabitModal(h);};
-  row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Odatni o\'chirish',message:'Bu odat va uning tarixi o\'chiriladi. Davom etasizmi?'}))return;try{await apiHabitDelete(id);State.habits=State.habits.filter(x=>x.id!==id);renderHabits();renderHabitSummary();toast('O\'chirildi');}catch(_){toast('O\'chirib bo\'lmadi. Yana urinib ko\'ring.',true);}};});}
+  row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Odatni o\'chirish',message:'Bu odat va uning tarixi o\'chiriladi. Davom etasizmi?'}))return;try{await apiHabitDelete(id);State.habits=State.habits.filter(x=>x.id!==id);renderHabits();renderHabitSummary();toast('🗑 O\'chirildi');}catch(_){toast('Xato!',true);}};});}
 
 function renderHabitIconPick(){const el=document.getElementById('habitIconPick');if(!el)return;el.innerHTML=HABIT_ICONS.map(em=>`<div class="em ${em===State.habitIcon?'sel':''}" data-em="${em}">${em}</div>`).join('');el.querySelectorAll('.em').forEach(b=>b.onclick=()=>{State.habitIcon=b.dataset.em;el.querySelectorAll('.em').forEach(x=>x.classList.toggle('sel',x.dataset.em===State.habitIcon));});}
 
@@ -397,10 +384,10 @@ function closeHabitModal(){
 async function saveHabitModal(){const t=(document.getElementById('hTitle')?.value||'').trim();if(!t){toast('Sarlavha bo\'sh',true);return;}const desc=(document.getElementById('hDesc')?.value||'').trim();
   const freq=State.habitFreq||'daily';
   let weekdays=null;
-  if(freq==='weekly'){weekdays=(State.habitWeekdays||[]).slice().sort((a,b)=>a-b);if(!weekdays.length){toast('Kamida bitta kun tanlang',true);return;}}
+  if(freq==='weekly'){weekdays=(State.habitWeekdays||[]).slice().sort((a,b)=>a-b);if(!weekdays.length){toast('⏰ Kamida bitta kun tanlang',true);return;}}
   const dur=State.habitDur||'permanent';
   let targetDays=null;
-  if(dur==='days'){targetDays=parseInt(document.getElementById('hTargetDays')?.value||'0',10);if(!targetDays||targetDays<1){toast('Necha kun davom etishini kiriting',true);return;}}
+  if(dur==='days'){targetDays=parseInt(document.getElementById('hTargetDays')?.value||'0',10);if(!targetDays||targetDays<1){toast('⏰ Necha kun davom etishini kiriting',true);return;}}
   const remOn=State.habitRem==='on';
   let reminderTime=null;
   if(remOn){const rh=document.getElementById('hRemHour')?.value||'20';const rm=document.getElementById('hRemMin')?.value||'00';reminderTime=rh+':'+rm;}
@@ -412,22 +399,22 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
     try{await apiForMemberHabit(ctx.groupId, ctx.userId, body);}
     catch(e){
       const m=String(e&&e.message||'');
-      if(m.includes('402')){toast('A\'zoning bepul odat limiti tugagan',true);return;}
-      if(m.includes('403')){toast('A\'zo sizga ruxsat bermagan',true);return;}
-      toast('Bajarilmadi. Yana urinib ko\'ring.',true);return;
+      if(m.includes('402')){toast('⚠️ A\'zoning bepul odat limiti tugagan',true);return;}
+      if(m.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
+      toast('Xato: '+m,true);return;
     }
     State.forMemberContext=null;
     closeHabitModal();
-    toast(ctx.name+' uchun odat qo\'shildi');
+    toast('✨ '+ctx.name+' uchun odat qo\'shildi');
     try{await openMember(ctx.userId);}catch(_){}
     return;
   }
-  try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();return;/* Premium dialog global api() da avtomatik ochiladi */}toast('Bajarilmadi. Yana urinib ko\'ring.',true);}}
+  try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();return;/* Premium dialog global api() da avtomatik ochiladi */}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
 function closeNameModal(){const b=document.getElementById('nameModalBack');if(b)b.classList.remove('show');}
-async function saveNameModal(){const nm=(document.getElementById('nName')?.value||'').trim();if(!nm){toast('Ism bo\'sh',true);return;}try{const res=await apiProfileUpdate(nm);applyUserName(res.full_name||nm);closeNameModal();toast('Ism saqlandi');}catch(e){toast('Saqlanmadi. Yana urinib ko\'ring.',true);}}
+async function saveNameModal(){const nm=(document.getElementById('nName')?.value||'').trim();if(!nm){toast('Ism bo\'sh',true);return;}try{const res=await apiProfileUpdate(nm);applyUserName(res.full_name||nm);closeNameModal();toast('✓ Ism saqlandi');}catch(e){toast('Xato: '+String(e&&e.message||''),true);}}
 
 // Sarlavhadagi bosh emoji-ni olib tashlaydi (rankEmoji alohida ko'rsatilgani uchun
 // "🌱 🌱 Boshlovchi" kabi takror chiqmasligi uchun)
@@ -454,13 +441,15 @@ function renderHero(){
   countUp('streakCount',streak);
   setText('todayStat',tDone+'/'+tTot);
   const riskChip=document.getElementById('streakRiskChip');
-  if(riskChip){if(snap.streak_at_risk&&streak>=2){riskChip.classList.add('warn');riskChip.innerHTML=icon('alert',14)+' Streak xavf ostida';}else{riskChip.classList.remove('warn');riskChip.innerHTML=icon('list',14)+' '+tDone+'/'+tTot+' bugun';}}
+  if(riskChip){if(snap.streak_at_risk&&streak>=2){riskChip.classList.add('warn');riskChip.innerHTML='<span class="em">⚠️</span> Streak xavf ostida';}else{riskChip.classList.remove('warn');riskChip.innerHTML='<span class="em">📋</span> '+tDone+'/'+tTot+' bugun';}}
   setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const C=2*Math.PI*42;const ring=document.getElementById('dsRing');if(ring)ring.setAttribute('stroke-dashoffset',String(C*(1-ds/100)));countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');const dv=document.getElementById('dsValue');if(dv){dv.classList.remove('pop');void dv.offsetWidth;dv.classList.add('pop');}},120);
 }
 
-async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
+async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
 
-async function loadQuest(){try{const q=await api('/api/webapp/quest');const c=document.getElementById('questCard');if(!c)return;c.style.display='flex';c.classList.toggle('done',!!q.completed);setText('qIcon',q.icon||'🎯');setText('qTitle',q.title||'');setText('qSub',q.subtitle||'');const pct=q.target?Math.round((q.progress||0)*100/q.target):0;setTimeout(()=>{const qp=document.getElementById('qProg');if(qp)qp.style.width=pct+'%';},150);setText('qMetaProg',(q.progress||0)+'/'+(q.target||0));setText('qReward',q.reward_xp?('+'+q.reward_xp+' XP'):'Bajarildi');}catch(e){console.warn('quest',e);}}
+async function loadQuest(){try{const q=await api('/api/webapp/quest');const c=document.getElementById('questCard');if(!c)return;c.style.display='flex';c.classList.toggle('done',!!q.completed);setText('qIcon',q.icon||'🎯');setText('qTitle',q.title||'');setText('qSub',q.subtitle||'');const pct=q.target?Math.round((q.progress||0)*100/q.target):0;setTimeout(()=>{const qp=document.getElementById('qProg');if(qp)qp.style.width=pct+'%';},150);setText('qMetaProg',(q.progress||0)+'/'+(q.target||0));setText('qReward',q.reward_xp?('+'+q.reward_xp+' XP'):'✓');}catch(e){console.warn('quest',e);}}
+
+async function loadCoach(){try{const m=await api('/api/webapp/coach');setText('coachIco',m.icon||'✨');setText('coachMsg',m.text||'');setText('coachTag',(m.tone||'coach').toUpperCase());}catch(e){console.warn('coach',e);}}
 
 // Belgilash (toggle) tez-tez bosilganda /stats va /quest ni HAR bosishda emas,
 // coalesce qilib (bir necha bosishni bitta so'rovga birlashtirib) yangilaymiz.
@@ -479,8 +468,8 @@ function scheduleStatsRefresh(withQuest){
 // ── AI Chat (ephemeral — saqlanmaydi) ───────────────────────────────────
 function chatAppend(role,text){const log=document.getElementById('chatLog');if(!log)return null;const el=document.createElement('div');el.className='chat-msg '+(role==='user'?'user':role==='err'?'err':'bot');el.textContent=text;log.appendChild(el);log.scrollTop=log.scrollHeight;return el;}
 function chatTyping(on){const log=document.getElementById('chatLog');if(!log)return;let t=document.getElementById('chatTyping');if(on){if(!t){t=document.createElement('div');t.id='chatTyping';t.className='chat-typing';t.innerHTML='<i></i><i></i><i></i>';log.appendChild(t);}log.scrollTop=log.scrollHeight;}else if(t){t.remove();}}
-function chatSetLimit(s){const el=document.getElementById('chatLimit');if(!el)return;if(s&&s.is_premium){el.style.display='inline-block';el.textContent='Cheksiz';}else if(s&&typeof s.remaining==='number'&&s.limit>0){el.style.display='inline-block';el.textContent=s.remaining+'/'+s.limit;}else{el.style.display='none';}}
-function chatGreet(){if(State.chatGreeted)return;State.chatGreeted=true;const nm=State.user?.first_name||'do\'st';chatAppend('bot','Salom, '+nm+'! Men Intizom AI — sening shaxsiy murabbiyingman. Maqsad va rejalaringni ko\'rib turibman. Savolingni yoz — men sening rejalaring va kayfiyatingga qarab javob beraman.');}
+function chatSetLimit(s){const el=document.getElementById('chatLimit');if(!el)return;if(s&&s.is_premium){el.style.display='inline-block';el.textContent='💎 Cheksiz';}else if(s&&typeof s.remaining==='number'&&s.limit>0){el.style.display='inline-block';el.textContent='💬 '+s.remaining+'/'+s.limit;}else{el.style.display='none';}}
+function chatGreet(){if(State.chatGreeted)return;State.chatGreeted=true;const nm=State.user?.first_name||'do\'st';chatAppend('bot','Salom, '+nm+'! 🌱 Men Intizom AI — sening shaxsiy murabbiyingman. Maqsad va rejalaringni ko\'rib turibman. Savolingni yoz — men sening rejalaring va kayfiyatingga qarab javob beraman.');}
 
 async function chatSend(text){
   text=(text||'').trim();if(!text||State.chatBusy)return;
@@ -504,11 +493,11 @@ async function chatSend(text){
     if(msg.includes('402')){
       // Premium dialog global api() da avtomatik ochilgan — bu yerda faqat
       // chat log'ga qisqa xabar qoldiramiz.
-      chatAppend('err','AI Coach faqatgina Premium foydalanuvchilar uchun.');
+      chatAppend('err','💎 AI Coach faqatgina Premium foydalanuvchilar uchun.');
     }else if(msg.includes('404')){
       chatAppend('err','Avval botda /start bosing — keyin AI bilan suhbatlashasiz.');
     }else{
-      chatAppend('err','Bog\'lanishda nosozlik. Yana urinib ko\'ring.');
+      chatAppend('err','⚠️ Bog\'lanishda nosozlik. Yana urinib ko\'r.');
     }
   }finally{
     State.chatBusy=false;if(sendBtn)sendBtn.disabled=false;
@@ -527,8 +516,9 @@ function openPaywall(){
   const isPremium=!!(State.sub&&State.sub.is_premium);
   const h=ov.querySelector('h1');
   const cta=document.getElementById('pwCta');
-  if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span>';
-  if(cta)cta.textContent = isPremium ? 'Obunani uzaytirish' : 'Tarifni tanlash';
+  // Sarlavha: "IntizomAi Premium 💎" — 💎 sarlavha yonida, subtitle yo'q.
+  if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span> <span class="pw-title-gem" aria-hidden="true">💎</span>';
+  if(cta)cta.textContent = isPremium ? '💳 Uzaytirish' : '💎 Tarifni tanlash';
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
   renderPaywallPlans(State.sub&&State.sub.plans);
   ov.classList.add('show');
@@ -548,7 +538,7 @@ function maybePeakUpsell(snap){
     const key='iz_peak_ms_'+streak;
     if(localStorage.getItem(key))return;
     localStorage.setItem(key,'1');
-    setTimeout(()=>toast(streak+' kunlik streak — zo\'r ketyapsan!'),500);
+    setTimeout(()=>toast('🔥 '+streak+' kunlik streak — zo\'r ketyapsan!'),500);
     setTimeout(()=>{if(!(State.sub&&State.sub.is_premium))openPaywall();},1700);
   }catch(_){}
 }
@@ -595,7 +585,7 @@ async function startCheckout(planKey,btn){
   if(!planKey)return;
   try{tg?.HapticFeedback?.impactOccurred?.('medium');}catch(_){}
   const orig=btn?btn.innerHTML:null;
-  if(btn){btn.disabled=true;btn.classList.add('loading');btn.innerHTML='<span class="pn">Botga o\'tkazilmoqda…</span>';}
+  if(btn){btn.disabled=true;btn.classList.add('loading');btn.innerHTML='<span class="pn">⏳ Botga o\'tkazilmoqda…</span>';}
   try{
     const res=await api('/api/webapp/checkout',{method:'POST',body:JSON.stringify({plan:planKey})});
     // Yangi backend: `bot_url` — Telegram deep-link. Eski nomi `checkout_url`
@@ -613,7 +603,7 @@ async function startCheckout(planKey,btn){
     }catch(_){
       try{window.open(url,'_blank');}catch(__){}
     }
-    toast('Botga o\'tkazildik. To\'lovni bot ichida yakunlang.',false);
+    toast('Botga o\'tkazildik. To\'lovni bot ichida yakunlang 💳',false);
     // Mini App'ni yopamiz — foydalanuvchi endi bot chatida.
     try{setTimeout(()=>{try{tg?.close?.();}catch(_){}},400);}catch(_){}
   }catch(e){
@@ -623,7 +613,7 @@ async function startCheckout(planKey,btn){
     }else if(m.includes('400')){
       toast('Noma\'lum tarif.',true);
     }else{
-      toast('Botga o\'tishda muammo bo\'ldi. Botni qo\'lda oching va «Premium» tugmasini bosing.',true);
+      toast('Botga o\'tishda muammo bo\'ldi. Botni qo\'lda oching va «💎 Premium» tugmasini bosing.',true);
     }
   }finally{
     if(btn){btn.disabled=false;btn.classList.remove('loading');if(orig)btn.innerHTML=orig;}
@@ -652,7 +642,7 @@ function startCheckoutGeneric(){
     }else{
       window.open(url,'_blank');
     }
-    toast('Botga o\'tkazildik. Tarifni bot ichida tanlang.',false);
+    toast('Botga o\'tkazildik. Tarifni bot ichida tanlang 💎',false);
     // Mini App'ni yopamiz — foydalanuvchi endi bot chatida.
     setTimeout(()=>{try{tg?.close?.();}catch(_){}},400);
   }catch(_){
@@ -662,7 +652,7 @@ function startCheckoutGeneric(){
 
 function applyPremiumUI(s){
   const box=document.getElementById('subStatus');
-  const iconEl=document.getElementById('ssIcon');
+  const icon=document.getElementById('ssIcon');
   const title=document.getElementById('ssTitle');
   const sub=document.getElementById('ssSub');
   const cta=document.getElementById('ssCta');
@@ -670,7 +660,7 @@ function applyPremiumUI(s){
   if(!box)return;
   if(s&&s.is_premium){
     box.classList.add('premium');
-    if(iconEl)iconEl.innerHTML=icon('gem');
+    if(icon)icon.textContent='👑';
     if(title)title.textContent='Premium faol';
     let until='';
     if(s.premium_until){try{const d=new Date(s.premium_until);until=d.getDate()+' '+UZ_MONTHS_SHORT[d.getMonth()]+' '+d.getFullYear();}catch(_){}}
@@ -678,7 +668,7 @@ function applyPremiumUI(s){
     if(sub)sub.textContent=(s.plan_title?s.plan_title:'Obuna')+' · '+dl+' kun qoldi'+(until?' · '+until+' gacha':'');
     // Premium foydalanuvchi ham obunani UZAYTIRISH imkoniyatiga ega bo'lsin
     // (kunlar joriy tugash sanasi ustiga qo'shiladi).
-    if(cta){cta.style.display='';cta.textContent='Uzaytirish';}
+    if(cta){cta.style.display='';cta.textContent='💳 Uzaytirish';}
     // progress: qolgan kun / tarif umumiy kuni
     if(bar){
       // Tarif nomi admin tomonidan o'zgartirilishi mumkin — shuning uchun
@@ -695,10 +685,10 @@ function applyPremiumUI(s){
     }
   }else{
     box.classList.remove('premium');
-    if(iconEl)iconEl.innerHTML=icon('user');
+    if(icon)icon.textContent='🆓';
     if(title)title.textContent='Bepul rejim';
     if(sub)sub.textContent='Premium bilan barcha imkoniyatlar ochiladi.';
-    if(cta){cta.style.display='';cta.textContent='Premium olish';}
+    if(cta){cta.style.display='';cta.textContent='💎 Premium olish';}
     if(bar)bar.style.width='0%';
   }
 }
@@ -751,17 +741,17 @@ function renderInsights(){
   const streak=State.snap?.streak||0;
   const ds=State.snap?.discipline_score||50;
   const items=[];
-  if(streak>=7)items.push({ic:'flame',t:'Sen olov ustidasan',d:streak+' kunlik streak — top 5% foydalanuvchi.'});
-  if(ds>=75)items.push({ic:'gem',t:'Discipline elite zonada',d:'Sen endi qiluvchi emas — qiluvchi shaxssan.'});
-  if(rate>=80&&total7>=5)items.push({ic:'zap',t:'Hafta zo\'r ketdi',d:done7+'/'+total7+' reja bajarildi (yuqori darajada).'});
-  if(rate<40&&total7>=5)items.push({ic:'trending-up',t:'Bu hafta sustroq',d:'Bitta yengil reja qo\'shsang — momentum tiklanadi.'});
-  if(ds<40)items.push({ic:'target',t:'Discipline tushyapti',d:'Bugun bitta kichik narsani bajar — score yana ko\'tariladi.'});
-  if(streak===0&&PR.length>0)items.push({ic:'flag',t:'Yangi boshlanish',d:'Birinchi qadam — eng qiyini. Ammo eng muhimi.'});
-  if(!items.length)items.push({ic:'check-circle',t:'Hammasi joyida',d:'Davom et. Sen to\'g\'ri yo\'ldasan.'});
-  document.getElementById('insights').innerHTML=items.map(i=>`<div class="insight"><div class="ic">${icon(i.ic,18)}</div><div class="body"><div class="t">${esc(i.t)}</div><div class="d">${esc(i.d)}</div></div></div>`).join('');
+  if(streak>=7)items.push({ic:'🔥',t:'Sen olov ustidasan',d:streak+' kunlik streak — top 5% foydalanuvchi.'});
+  if(ds>=75)items.push({ic:'💎',t:'Discipline elite zonada',d:'Sen endi qiluvchi emas — qiluvchi shaxssan.'});
+  if(rate>=80&&total7>=5)items.push({ic:'⚡',t:'Hafta zo\'r ketdi',d:done7+'/'+total7+' reja bajarildi (yuqori darajada).'});
+  if(rate<40&&total7>=5)items.push({ic:'📈',t:'Bu hafta sustroq',d:'Bitta yengil reja qo\'shsang — momentum tiklanadi.'});
+  if(ds<40)items.push({ic:'🎯',t:'Discipline tushyapti',d:'Bugun bitta kichik narsani bajar — score yana ko\'tarilad.'});
+  if(streak===0&&PR.length>0)items.push({ic:'🌱',t:'Yangi boshlanish',d:'Birinchi qadam — eng qiyini. Ammo eng muhimi.'});
+  if(!items.length)items.push({ic:'✨',t:'Hammasi joyida',d:'Davom et. Sen to\'g\'ri yo\'ldasan.'});
+  document.getElementById('insights').innerHTML=items.map(i=>`<div class="insight"><div class="ic">${i.ic}</div><div class="body"><div class="t">${esc(i.t)}</div><div class="d">${esc(i.d)}</div></div></div>`).join('');
 }
 
-function showUnlock(a){const ov=document.getElementById('unlockOverlay');document.getElementById('unlockIcon').textContent=a.icon||'🏆';document.getElementById('unlockTitle').textContent=a.title||'';document.getElementById('unlockRarity').textContent=(a.rarity||'common').toUpperCase();ov.classList.add('show');confetti(14);try{tg?.HapticFeedback?.notificationOccurred('success');}catch(_){}}
+function showUnlock(a){const ov=document.getElementById('unlockOverlay');document.getElementById('unlockIcon').textContent=a.icon||'🏆';document.getElementById('unlockTitle').textContent=a.title||'';document.getElementById('unlockRarity').textContent=(a.rarity||'common').toUpperCase();ov.classList.add('show');confetti(50);try{tg?.HapticFeedback?.notificationOccurred('success');}catch(_){}}
 
 function confetti(n){const colors=['#14b8a6','#06b6d4','#f59e0b','#ec4899','#a855f7','#22c55e','#f43f5e','#3b82f6'];for(let i=0;i<n;i++){const p=document.createElement('div');p.className='confetti-piece';p.style.background=colors[i%colors.length];p.style.left=(50+(Math.random()-.5)*40)+'%';p.style.top='-20px';p.style.setProperty('--cx',((Math.random()-.5)*400)+'px');p.style.animationDuration=(1.5+Math.random()*1.5)+'s';p.style.animationDelay=(Math.random()*0.3)+'s';document.body.appendChild(p);setTimeout(()=>p.remove(),3500);}}
 
@@ -769,14 +759,14 @@ function xpPop(amount){const el=document.createElement('div');el.className='xp-p
 
 
 const HABIT_SCORE=5;
-function planRowHTML(p,i){return `<div class="plan ${p.status==='done'?'done':''}" data-id="${p.id}" style="animation-delay:${i*60}ms"><div class="cbx ${p.status==='done'?'done':''}" data-act="toggle" role="checkbox" aria-checked="${p.status==='done'}">${p.status==='done'?icon('check',14):''}</div><div class="body"><div class="ttl">${esc(p.title)}</div><div class="meta">${p.scheduled_time||'Vaqt yo\'q'}${p.description?' • '+esc(p.description):''}</div></div><div class="score">+${p.score_value||0}</div><div class="actions"><button class="edit" type="button" data-act="edit" aria-label="Tahrirlash">${icon('edit',16)}</button><button class="del" type="button" data-act="del" aria-label="O'chirish">${icon('trash',16)}</button></div></div>`;}
+function planRowHTML(p,i){return `<div class="plan ${p.status==='done'?'done':''}" data-id="${p.id}" style="animation-delay:${i*60}ms"><div class="cbx ${p.status==='done'?'done':''}" data-act="toggle">${p.status==='done'?'✓':''}</div><div class="body"><div class="ttl">${esc(p.title)}</div><div class="meta">${p.scheduled_time||'Vaqt yo\'q'}${p.description?' • '+esc(p.description):''}</div></div><div class="score">+${p.score_value||0}</div><div class="actions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;}
 function habitRowHTML(h,i){
   const done=h.done_today;
   // Eslatma vaqti bo'lsa ⏰ vaqt, bo'lmasa takrorlanish (🔁) ko'rsatiladi —
   // shunda vaqtsiz odatlar ham asosiy sahifada ma'noli ko'rinadi.
   const freqLabel=(h.frequency==='weekly')?'Haftalik':'Har kuni';
-  const timePart=h.reminder_time?(icon('clock',14)+' '+esc(h.reminder_time)):(icon('repeat',14)+' '+freqLabel);
-  return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}" style="animation-delay:${i*60}ms"><div class="cbx ${done?'done':''}" data-act="htoggle" role="checkbox" aria-checked="${done}">${done?icon('check',14):''}</div><div class="body"><div class="ttl">${esc(h.icon||'')} ${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">${timePart} · ${icon('flame',14)} ${h.streak||0} kun</div></div><div class="score">+${HABIT_SCORE}</div></div>`;
+  const timePart=h.reminder_time?('⏰ '+esc(h.reminder_time)):('🔁 '+freqLabel);
+  return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}" style="animation-delay:${i*60}ms"><div class="cbx ${done?'done':''}" data-act="htoggle">${done?'✓':''}</div><div class="body"><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">${timePart}  ·  🔥 ${h.streak||0} kun</div></div><div class="score">+${HABIT_SCORE}</div></div>`;
 }
 function renderPlans(){
   const w=document.getElementById('plansList');if(!w)return;
@@ -784,7 +774,7 @@ function renderPlans(){
   // Bugun uchun rejalar YONIDA odatlar ham ko'rsatiladi (faqat odatlar bo'limida
   // emas). Vaqtli/vaqtsiz — hammasi, agar bugun bajarilishi kerak bo'lsa.
   const habitItems=isToday?(State.habits||[]).filter(h=>h.due_today&&!h.finished):[];
-  if(!State.plans.length&&!habitItems.length){w.innerHTML=emptyState('list','Bu kun uchun reja yo\'q','Yuqoridagi «Reja qo\'shish» tugmasi orqali birinchi rejangizni qo\'shing');return;}
+  if(!State.plans.length&&!habitItems.length){w.innerHTML=emptyState('📋','Hozircha rejalar yo\'q','+ tugmasi orqali yangi reja yoki Odat bo\'limidan odat qo\'shing');return;}
   const items=[];
   State.plans.forEach(p=>items.push({t:p.scheduled_time||'99:99',kind:'plan',p}));
   habitItems.forEach(h=>items.push({t:h.reminder_time||'99:99',kind:'habit',h}));
@@ -792,7 +782,7 @@ function renderPlans(){
   w.innerHTML=items.map((it,i)=>it.kind==='plan'?planRowHTML(it.p,i):habitRowHTML(it.h,i)).join('');
   bindPlanActions();bindHomeHabitActions();
 }
-function bindHomeHabitActions(){document.querySelectorAll('#plansList .plan[data-hid]').forEach(row=>{const id=+row.dataset.hid;const cb=row.querySelector('[data-act="htoggle"]');if(!cb)return;cb.onclick=async e=>{e.stopPropagation();const h=(State.habits||[]).find(x=>x.id===id);if(!h)return;const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderPlans();if(next){xpPop(HABIT_SCORE);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast((snap.streak||0)+' kun streak');}else{toast('Belgilash olindi');}scheduleStatsRefresh(false);}catch(_){toast('Saqlanmadi. Yana urinib ko\'ring.',true);}};});}
+function bindHomeHabitActions(){document.querySelectorAll('#plansList .plan[data-hid]').forEach(row=>{const id=+row.dataset.hid;const cb=row.querySelector('[data-act="htoggle"]');if(!cb)return;cb.onclick=async e=>{e.stopPropagation();const h=(State.habits||[]).find(x=>x.id===id);if(!h)return;const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderPlans();if(next){xpPop(HABIT_SCORE);confetti(30);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}scheduleStatsRefresh(false);}catch(_){toast('Xato!',true);}};});}
 async function loadHomeHabits(){try{State.habits=await api('/api/webapp/habits');}catch(_){}renderPlans();}
 
 // ── Statistika: Mening / Reyting ────────────────────────────────────────
@@ -809,28 +799,28 @@ function habit30Rate(h){const logs=new Set(h.log_dates||[]);let due=0,done=0;con
 function renderHabitStats(){
   const grid=document.getElementById('habitStatGrid');const list=document.getElementById('habitStatList');
   const hs=State.habits||[];
-  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML=emptyState('check-square','Odat yo\'q','Odat bo\'limidan qo\'shing');return;}
+  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML=emptyState('✅','Odat yo\'q','Odat bo\'limidan qo\'shing');return;}
   const dueToday=hs.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;
   const best=hs.reduce((m,h)=>Math.max(m,h.streak||0),0);
   const totalDone=hs.reduce((s,h)=>s+(h.total_done||0),0);
-  if(grid)grid.innerHTML=`<div class="stat-card"><div class="ic-bg">${icon('check',16)}</div><div class="l">Bugun</div><div class="v">${doneToday}/${dueToday.length}</div><div class="ch">bajarildi</div></div><div class="stat-card"><div class="ic-bg">${icon('flame',16)}</div><div class="l">Eng uzun streak</div><div class="v">${best}</div><div class="ch">kun</div></div><div class="stat-card"><div class="ic-bg">${icon('layers',16)}</div><div class="l">Faol odatlar</div><div class="v">${hs.length}</div><div class="ch">ta</div></div><div class="stat-card"><div class="ic-bg">${icon('target',16)}</div><div class="l">Jami bajarilgan</div><div class="v">${totalDone}</div><div class="ch">marta</div></div>`;
-  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-3);font-weight:400;display:flex;align-items:center;gap:4px">${icon('flame',14)} ${h.streak||0} kun · 30 kun: ${r}%</div></div><div class="lb-val">${r}%</div></div>`;}).join('');
+  if(grid)grid.innerHTML=`<div class="stat-card"><div class="ic-bg">✅</div><div class="l">Bugun</div><div class="v">${doneToday}/${dueToday.length}</div><div class="ch">bajarildi</div></div><div class="stat-card"><div class="ic-bg">🔥</div><div class="l">Eng uzun streak</div><div class="v">${best}</div><div class="ch">kun</div></div><div class="stat-card"><div class="ic-bg">📦</div><div class="l">Faol odatlar</div><div class="v">${hs.length}</div><div class="ch">ta</div></div><div class="stat-card"><div class="ic-bg">🎯</div><div class="l">Jami bajarilgan</div><div class="v">${totalDone}</div><div class="ch">marta</div></div>`;
+  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun · 30 kun: ${r}%</div></div><div class="lb-val">${r}%</div></div>`;}).join('');
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
 function lbAvatar(r){if(r&&r.photo_url){const em=esc(r.emoji||'🌱');return `<div class="lb-av" data-em="${em}"><img src="${esc(r.photo_url)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=this.parentNode.dataset.em"></div>`;}return `<div class="lb-av">${esc((r&&r.emoji)||'🌱')}</div>`;}
 async function loadLeaderboard(){
   const meEl=document.getElementById('lbMe');const listEl=document.getElementById('lbList');
   document.querySelectorAll('#lbSeg .hvs').forEach(s=>s.classList.toggle('active',s.dataset.lb===State.lbPeriod));
-  if(listEl)listEl.innerHTML=skeletonRows(5);
+  if(listEl)listEl.innerHTML='<div class="empty-state"><p>Yuklanmoqda…</p></div>';
   if(meEl)meEl.innerHTML='';
-  let d;try{d=await api('/api/webapp/leaderboard?period='+State.lbPeriod);}catch(e){renderError('lbList',loadLeaderboard);return;}
+  let d;try{d=await api('/api/webapp/leaderboard?period='+State.lbPeriod);}catch(e){if(listEl)listEl.innerHTML=emptyState('🏆','Reyting yuklanmadi','Keyinroq urinib ko\'ring');return;}
   const unit=LB_UNIT[State.lbPeriod]||'ball';
   const top=d.top||[];
-  if(listEl)listEl.innerHTML=top.length?top.map(r=>{const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank;const cls=r.rank<=3?(' lb-'+r.rank):'';return `<div class="lb-row${cls} ${r.is_me?'me':''}"><div class="lb-rank ${r.rank<=3?'top':''}">${medal}</div>${lbAvatar(r)}<div class="lb-name">${esc(r.name)}${r.is_me?' (siz)':''}</div><div class="lb-val">${r.value} ${unit}</div></div>`;}).join(''):emptyState('award','Hali reyting yo\'q','Birinchi bo\'ling!');
+  if(listEl)listEl.innerHTML=top.length?top.map(r=>{const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank;const cls=r.rank<=3?(' lb-'+r.rank):'';return `<div class="lb-row${cls} ${r.is_me?'me':''}"><div class="lb-rank ${r.rank<=3?'top':''}">${medal}</div>${lbAvatar(r)}<div class="lb-name">${esc(r.name)}${r.is_me?' (siz)':''}</div><div class="lb-val">${r.value} ${unit}</div></div>`;}).join(''):emptyState('🏆','Hali reyting yo\'q','Birinchi bo\'ling!');
   if(meEl&&d.me&&!d.me.in_top){meEl.innerHTML=`<div style="text-align:center;font-size:11px;color:var(--text-3);margin:2px 0 8px">— sizning o'rningiz —</div><div class="lb-row me"><div class="lb-rank">${d.me.rank}</div>${lbAvatar(d.me)}<div class="lb-name">${esc(d.me.name)} (siz)</div><div class="lb-val">${d.me.value} ${unit}</div></div>`;}
 }
 
-function bindPlanActions(){document.querySelectorAll('#plansList .plan[data-id]').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(!p)return;const _r=planBlockReason(p);if(_r==='past'){toast('O\'tib ketgan kun rejasini o\'zgartirib bo\'lmaydi',true);return;}if(p.status!=='done'&&_r==='future'){toast('Bu rejaning vaqti hali kelmagan',true);return;}const ns=p.status==='done'?'pending':'done';try{const wasNotDone=p.status!=='done';const np=await apiPlanUpdate(id,{status:ns});Object.assign(p,np);renderPlans();renderHero();if(ns==='done'&&wasNotDone){const sv=p.score_value||5;xpPop(sv);}toast(ns==='done'?'Bajarildi':'Belgilash olindi');scheduleStatsRefresh(true);}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('Bu rejani hozir o\'zgartirib bo\'lmaydi',true);else toast('Saqlanmadi. Yana urinib ko\'ring.',true);}};row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p)openPlanModal(p);};row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p&&planBlockReason(p)==='past'){toast('O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);return;}if(!await confirmDialog({title:'Rejani o\'chirish',message:'Bu rejani o\'chirishni xohlaysizmi?'}))return;try{await apiPlanDelete(id);State.plans=State.plans.filter(x=>x.id!==id);renderPlans();renderHero();toast('O\'chirildi');}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);else toast('O\'chirib bo\'lmadi. Yana urinib ko\'ring.',true);}};});}
+function bindPlanActions(){document.querySelectorAll('#plansList .plan[data-id]').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(!p)return;const _r=planBlockReason(p);if(_r==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'zgartirib bo\'lmaydi',true);return;}if(p.status!=='done'&&_r==='future'){toast('⏰ Bu rejaning vaqti hali kelmagan',true);return;}const ns=p.status==='done'?'pending':'done';try{const wasNotDone=p.status!=='done';const np=await apiPlanUpdate(id,{status:ns});Object.assign(p,np);renderPlans();renderHero();if(ns==='done'&&wasNotDone){const sv=p.score_value||5;xpPop(sv);confetti(35);}toast(ns==='done'?'✓ Bajarildi':'Belgilash olindi');scheduleStatsRefresh(true);}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu rejani hozir o\'zgartirib bo\'lmaydi',true);else toast('Xato!',true);}};row.querySelector('[data-act="edit"]').onclick=e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p)openPlanModal(p);};row.querySelector('[data-act="del"]').onclick=async e=>{e.stopPropagation();const p=State.plans.find(x=>x.id===id);if(p&&planBlockReason(p)==='past'){toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);return;}if(!await confirmDialog({title:'Rejani o\'chirish',message:'Bu rejani o\'chirishni xohlaysizmi?'}))return;try{await apiPlanDelete(id);State.plans=State.plans.filter(x=>x.id!==id);renderPlans();renderHero();toast('🗑 O\'chirildi');}catch(err){const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ O\'tib ketgan kun rejasini o\'chirib bo\'lmaydi',true);else toast('Xato!',true);}};});}
 
 function renderGoalsView(){
   // Faqat Yillik va Oylik maqsadlar qoldi. Eski (yashirilgan) turlar yashamaydi.
@@ -862,9 +852,9 @@ function renderMonthlyList(){const k=State.selectedYear+'-'+pad(State.selectedMo
 
 
 
-function renderGoalList(list,emp){if(!list.length)return emptyState('target',emp||'Hech narsa yo\'q','Yuqoridagi «Maqsad qo\'shish» tugmasi orqali qo\'shing');return list.map((g,i)=>`<div class="goal ${g.completed?'done':''}" style="animation-delay:${i*50}ms" data-id="${g.id}"><div class="cbx ${g.completed?'done':''}" data-act="toggle" role="checkbox" aria-checked="${g.completed}">${g.completed?icon('check',14):''}</div><div class="body"><div class="ttl">${esc(g.title)}</div>${g.description?`<div class="desc">${esc(g.description)}</div>`:''}</div><button class="del" type="button" data-act="edit" aria-label="Tahrirlash">${icon('edit',16)}</button><button class="del" type="button" data-act="delete" aria-label="O'chirish">${icon('trash',16)}</button></div>`).join('');}
+function renderGoalList(list,emp){if(!list.length)return emptyState('🎯',emp||'Hech narsa yo\'q','+ tugma orqali yangi maqsad qo\'shing');return list.map((g,i)=>`<div class="goal ${g.completed?'done':''}" style="animation-delay:${i*50}ms" data-id="${g.id}"><div class="cbx ${g.completed?'done':''}" data-act="toggle">${g.completed?'✓':''}</div><div class="body"><div class="ttl">${esc(g.title)}</div>${g.description?`<div class="desc">${esc(g.description)}</div>`:''}</div><button class="del" data-act="edit" aria-label="Tahrirlash" style="color:var(--text-3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="delete" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div>`).join('');}
 
-function bindGoalActions(cid){const w=document.getElementById(cid);w.querySelectorAll('.goal').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(!g)return;const nv=!g.completed;if(nv&&isGoalPeriodFuture(g.goal_type,g.period)){toast('Bu maqsad davri hali boshlanmagan',true);return;}g.completed=nv;row.classList.toggle('done',nv);row.querySelector('.cbx').classList.toggle('done',nv);row.querySelector('.cbx').innerHTML=nv?icon('check',14):'';row.querySelector('.cbx').setAttribute('aria-checked',nv?'true':'false');if(nv){xpPop(5);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}}try{await apiGoalUpdate(id,{completed:nv});toast(nv?'Bajarildi':'Belgilash olindi');}catch(err){g.completed=!nv;row.classList.toggle('done',!nv);row.querySelector('.cbx').classList.toggle('done',!nv);row.querySelector('.cbx').innerHTML=!nv?icon('check',14):'';row.querySelector('.cbx').setAttribute('aria-checked',!nv?'true':'false');const m=String(err&&err.message||'');if(m.includes('409'))toast('Bu maqsad davri hali boshlanmagan',true);else toast('Saqlanmadi. Yana urinib ko\'ring.',true);}};const eb=row.querySelector('[data-act="edit"]');if(eb)eb.onclick=e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(g)openModal(g.goal_type,g.period,g);};row.querySelector('[data-act="delete"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Maqsadni o\'chirish',message:'Bu maqsadni o\'chirishni xohlaysizmi?'}))return;try{await apiGoalDelete(id);State.goals=State.goals.filter(x=>x.id!==id);renderGoalsView();toast('O\'chirildi');}catch(_){toast('O\'chirib bo\'lmadi. Yana urinib ko\'ring.',true);}};});}
+function bindGoalActions(cid){const w=document.getElementById(cid);w.querySelectorAll('.goal').forEach(row=>{const id=+row.dataset.id;row.querySelector('[data-act="toggle"]').onclick=async e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(!g)return;const nv=!g.completed;if(nv&&isGoalPeriodFuture(g.goal_type,g.period)){toast('⏰ Bu maqsad davri hali boshlanmagan',true);return;}g.completed=nv;row.classList.toggle('done',nv);row.querySelector('.cbx').classList.toggle('done',nv);row.querySelector('.cbx').textContent=nv?'✓':'';if(nv){xpPop(5);confetti(35);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}}try{await apiGoalUpdate(id,{completed:nv});toast(nv?'✓ Bajarildi':'Belgilash olindi');}catch(err){g.completed=!nv;row.classList.toggle('done',!nv);row.querySelector('.cbx').classList.toggle('done',!nv);row.querySelector('.cbx').textContent=!nv?'✓':'';const m=String(err&&err.message||'');if(m.includes('409'))toast('⏰ Bu maqsad davri hali boshlanmagan',true);else toast('Xato!',true);}};const eb=row.querySelector('[data-act="edit"]');if(eb)eb.onclick=e=>{e.stopPropagation();const g=State.goals.find(x=>x.id===id);if(g)openModal(g.goal_type,g.period,g);};row.querySelector('[data-act="delete"]').onclick=async e=>{e.stopPropagation();if(!await confirmDialog({title:'Maqsadni o\'chirish',message:'Bu maqsadni o\'chirishni xohlaysizmi?'}))return;try{await apiGoalDelete(id);State.goals=State.goals.filter(x=>x.id!==id);renderGoalsView();toast('🗑 O\'chirildi');}catch(_){toast('Xato!',true);}};});}
 
 // Maqsad davri o'tib ketganmi? (frontend tekshiruvi — backend bilan bir xil mantiq)
 function isGoalPeriodPast(goalType,period){try{const now=new Date();const p=String(period||'').trim();if(!p)return false;const gt=(goalType||'').toLowerCase();if(gt==='yearly')return parseInt(p,10)<now.getFullYear();if(gt==='monthly'){const[y,m]=p.split('-').map(n=>parseInt(n,10));return(y<now.getFullYear())||(y===now.getFullYear()&&m<(now.getMonth()+1));}return false;}catch(_){return false;}}
@@ -914,14 +904,14 @@ async function renderStats(){
   renderExtraStats(PR);
 }
 
-function renderExtraStats(PR){const el=document.getElementById('extraStats');if(!el)return;const tot=PR.length;const dn=PR.filter(p=>p.status==='done').length;const rate=tot?Math.round(dn*100/tot):0;const byDay={};PR.forEach(p=>{if(p.status==='done'){byDay[p.plan_date]=(byDay[p.plan_date]||0)+(p.score_value||0);}});const days=Object.keys(byDay);let best={d:'—',v:0};days.forEach(k=>{if(byDay[k]>best.v)best={d:k,v:byDay[k]};});const avg=days.length?Math.round(days.reduce((s,k)=>s+byDay[k],0)/days.length):0;const bestLabel=best.d!=='—'?new Date(best.d+'T00:00:00').getDate()+' '+UZ_MONTHS_SHORT[new Date(best.d+'T00:00:00').getMonth()]:'—';el.innerHTML=`<div class="stat-card"><div class="ic-bg">${icon('trending-up',16)}</div><div class="l">Bajarish %</div><div class="v">${rate}%</div><div class="ch">${dn}/${tot} reja (30 kun)</div></div><div class="stat-card"><div class="ic-bg">${icon('zap',16)}</div><div class="l">O'rtacha ball</div><div class="v">${avg}</div><div class="ch">Kuniga</div></div><div class="stat-card"><div class="ic-bg">${icon('award',16)}</div><div class="l">Eng yaxshi kun</div><div class="v" style="font-size:17px">${bestLabel}</div><div class="ch">+${best.v} ball</div></div><div class="stat-card"><div class="ic-bg">${icon('calendar',16)}</div><div class="l">Faol kunlar</div><div class="v">${days.length}</div><div class="ch">30 kun ichida</div></div>`;}
+function renderExtraStats(PR){const el=document.getElementById('extraStats');if(!el)return;const tot=PR.length;const dn=PR.filter(p=>p.status==='done').length;const rate=tot?Math.round(dn*100/tot):0;const byDay={};PR.forEach(p=>{if(p.status==='done'){byDay[p.plan_date]=(byDay[p.plan_date]||0)+(p.score_value||0);}});const days=Object.keys(byDay);let best={d:'—',v:0};days.forEach(k=>{if(byDay[k]>best.v)best={d:k,v:byDay[k]};});const avg=days.length?Math.round(days.reduce((s,k)=>s+byDay[k],0)/days.length):0;const bestLabel=best.d!=='—'?new Date(best.d+'T00:00:00').getDate()+' '+UZ_MONTHS_SHORT[new Date(best.d+'T00:00:00').getMonth()]:'—';el.innerHTML=`<div class="stat-card"><div class="ic-bg">📈</div><div class="l">Bajarish %</div><div class="v">${rate}%</div><div class="ch">${dn}/${tot} reja (30 kun)</div></div><div class="stat-card"><div class="ic-bg">⚡</div><div class="l">O'rtacha ball</div><div class="v">${avg}</div><div class="ch">Kuniga</div></div><div class="stat-card"><div class="ic-bg">🏅</div><div class="l">Eng yaxshi kun</div><div class="v" style="font-size:18px">${bestLabel}</div><div class="ch">+${best.v} ball</div></div><div class="stat-card"><div class="ic-bg">📅</div><div class="l">Faol kunlar</div><div class="v">${days.length}</div><div class="ch">30 kun ichida</div></div>`;}
 
 function renderTrend(days){const PR=State.plansRange.length?State.plansRange:State.plans;const HB=State.habits||[];const tod=new Date();const pts=[];for(let i=days-1;i>=0;i--){const d=addDays(tod,-i);const k=ymd(d);const planSc=PR.filter(p=>p.plan_date===k&&p.status==='done').reduce((s,p)=>s+(p.score_value||0),0);const habitSc=HB.reduce((s,h)=>s+(((h.log_dates||[]).indexOf(k)>=0)?HABIT_SCORE:0),0);pts.push(planSc+habitSc);}const W=320,H=160,P=8;const mx=Math.max(...pts,1);const step=(W-P*2)/(pts.length-1);const points=pts.map((v,i)=>[P+i*step,H-P-(v/mx)*(H-P*2)]);let line='M '+points[0][0].toFixed(1)+' '+points[0][1].toFixed(1);for(let i=1;i<points.length;i++){const x0=points[i-1][0],y0=points[i-1][1],x1=points[i][0],y1=points[i][1];const cx=(x0+x1)/2;line+=' C '+cx.toFixed(1)+' '+y0.toFixed(1)+', '+cx.toFixed(1)+' '+y1.toFixed(1)+', '+x1.toFixed(1)+' '+y1.toFixed(1);}const area=line+' L '+points[points.length-1][0].toFixed(1)+' '+H+' L '+points[0][0].toFixed(1)+' '+H+' Z';document.getElementById('trendG').innerHTML='<path class="area-path" d="'+area+'"/><path class="area-line" d="'+line+'"/>'+points.map((p,i)=>i%Math.ceil(points.length/6)===0||i===points.length-1?'<circle class="area-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3"/>':'').join('');}
 
 function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_score||0;const dn=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;const list=[{ic:'🔥',nm:'Olov',ds:'3 kun streak',un:st>=3},{ic:'⚡',nm:'Yashin',ds:'7 kun streak',un:st>=7},{ic:'💎',nm:'Olmos',ds:'30 kun streak',un:st>=30},{ic:'🎯',nm:'Aniq',ds:'10 maqsad',un:dn>=10},{ic:'🏆',nm:'Chempion',ds:'100 ball',un:sc>=100},{ic:'👑',nm:'Qirol',ds:'500 ball',un:sc>=500}];document.getElementById('achs').innerHTML=list.map(a=>`<div class="ach ${a.un?'':'locked'}"><div class="ic">${a.ic}</div><div class="nm">${a.nm}</div><div class="ds">${a.ds}</div></div>`).join('');}
 
 // Bajarilgan rejalar tarixi — har kun uchun to'ladigan chiziq + bajarilgan/jami
-async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('list','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
+async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('📋','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
 
 const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
 // Tema tanlash — faqat Premium foydalanuvchilar uchun.
@@ -932,85 +922,30 @@ function renderThemes(){
   const g=document.getElementById('themeGrid');
   if(!g)return;
   const isPremium=!!(State.sub&&State.sub.is_premium);
-  g.innerHTML=THEMES.map(t=>`<div class="theme-tile ${State.theme===t.k?'active':''}${isPremium?'':' locked'}" data-th="${t.k}"><div class="sw" style="background:${t.g}"></div><div class="nm">${t.n}${isPremium?'':' '+icon('lock',12)}</div></div>`).join('');
+  g.innerHTML=THEMES.map(t=>`<div class="theme-tile ${State.theme===t.k?'active':''}${isPremium?'':' locked'}" data-th="${t.k}"><div class="sw" style="background:${t.g}"></div><div class="nm">${t.n}${isPremium?'':' 🔒'}</div></div>`).join('');
   g.querySelectorAll('.theme-tile').forEach(t=>t.onclick=()=>{
     if(!(State.sub&&State.sub.is_premium)){
       // Premium yo'q — tema o'zgartirmaymiz. Faqat qisqa xabar ko'rsatamiz;
       // paywall'ga o'tkazMAYMIZ (foydalanuvchi tanlovi buzilmasin).
       try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
-      toast('Temani o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
+      toast('🎨 Temani o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
       return;
     }
     State.theme=t.dataset.th;
     document.documentElement.setAttribute('data-theme',State.theme);
     localStorage.setItem('iz_theme',State.theme);
     renderThemes();
-    toast('Tema o\'zgartirildi');
+    toast('🎨 Tema o\'zgartirildi');
     if(document.querySelector('.page[data-page="stats"]').classList.contains('active'))renderStats();
   });
 }
 
-function applyMode(){
-  document.documentElement.setAttribute('data-mode',State.mode);
-  const dt=document.getElementById('darkToggle');
-  if(dt){dt.classList.toggle('on',State.mode==='dark');dt.setAttribute('aria-checked',State.mode==='dark'?'true':'false');}
-  // Rejim tugmasi KEYINGI holatni ko'rsatadi: qorong'ida quyosh, yorug'da oy.
-  setHTML('modeIcon',icon(State.mode==='dark'?'sun':'moon'));
-}
+function applyMode(){document.documentElement.setAttribute('data-mode',State.mode);document.getElementById('darkToggle').classList.toggle('on',State.mode==='dark');document.getElementById('modeIcon').textContent=State.mode==='dark'?'🌙':'☀️';}
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
-const setHTML=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
-
-// ── Ikonka tizimi ────────────────────────────────────────────────────────
-// Interfeys ikonkalari index.html ichidagi SVG sprite'dan olinadi.
-//
-// QOIDA: interfeysda (tugma, sozlama, statistika kartochkasi, bo'sh holat,
-// belgi/badge) EMOJI ishlatilmaydi — faqat `icon()`. Emoji faqat FOYDALANUVCHI
-// mazmuni uchun qoladi: o'zi tanlagan odat belgisi, rank/yutuq nishoni,
-// kayfiyat tanlagichi. Sabab: emoji har platformada boshqacha chiziladi,
-// matn rangini olmaydi va norasmiy ("multfilm") ko'rinish beradi.
-const icon=(name,size)=>`<svg class="ic${size?' ic-'+size:''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-
-// ── Bo'sh holat ──────────────────────────────────────────────────────────
-// `ic` — sprite ikonka nomi (masalan 'inbox'). `action` — ixtiyoriy HTML
-// (odatda tugma), foydalanuvchi bu yerdan darhol harakat qilishi uchun.
-const emptyState=(ic,t,p,action)=>`<div class="empty-state"><div class="ico">${icon(ic,18)}</div><h4>${esc(t)}</h4><p>${esc(p)}</p>${action||''}</div>`;
-
-// ── Yuklanish skeletoni ──────────────────────────────────────────────────
-// Ma'lumot kelmaguncha bo'sh joy emas, kontent shakli ko'rsatiladi — shunda
-// layout "sakramaydi" va foydalanuvchi ilova ishlab turganini biladi.
-const skeletonRows=n=>'<div class="skeleton sk-row"></div>'.repeat(n||3);
-const skeletonCards=n=>'<div class="skeleton sk-card"></div>'.repeat(n||4);
-
-// ── Xato holati ──────────────────────────────────────────────────────────
-// Ilgari xato faqat `toast('Xato!')` bilan ko'rsatilardi: 2 sekunddan keyin
-// yo'qolib ketardi va foydalanuvchi nima qilishini bilmasdi. Endi xato
-// kontent joyida qoladi va "Yana urinish" tugmasi beriladi.
-function renderError(containerId,retryFn,msg){
-  const el=document.getElementById(containerId);
-  if(!el)return;
-  el.innerHTML=`<div class="empty-state"><div class="ico">${icon('alert',18)}</div>`+
-    `<h4>Yuklab bo'lmadi</h4>`+
-    `<p>${esc(msg||'Internet aloqasini tekshirib, yana urinib ko\'ring.')}</p>`+
-    (retryFn?`<button class="btn btn-ghost" type="button" data-retry>${icon('refresh',16)}Yana urinish</button>`:'')+
-    `</div>`;
-  const b=el.querySelector('[data-retry]');
-  if(b&&retryFn)b.onclick=retryFn;
-}
-
-// ── Toast ────────────────────────────────────────────────────────────────
-// Emoji prefikslar olib tashlandi (matn o'zi yetarli). Xato holati alohida
-// `.danger` sinfi bilan — inline style bilan emas.
-function toast(msg,danger){
-  const el=document.getElementById('toast');
-  if(!el)return;
-  el.textContent=msg;
-  el.classList.toggle('danger',!!danger);
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t=setTimeout(()=>el.classList.remove('show'),danger?3200:2000);
-}
+const emptyState=(ic,t,p)=>`<div class="empty-state"><div class="ico">${ic}</div><h4>${esc(t)}</h4><p>${esc(p)}</p></div>`;
+function toast(msg,danger){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.style.background=danger?'var(--danger)':'';el.style.color=danger?'#fff':'';el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2000);}
 
 // Maxsus tasdiqlash oynasi (domen nomli native confirm o'rniga).
 // Qo'llab-quvvatlanadigan `opts`:
@@ -1024,7 +959,7 @@ function confirmDialog(opts){
     const back=document.getElementById('confirmBack');
     if(!back){resolve(true);return;}
     const kind=opts.okKind||'danger';
-    setHTML('confirmIc',icon(opts.icon||'trash'));
+    setText('confirmIc',opts.icon||'🗑');
     setText('confirmTtl',opts.title||'O\'chirilsinmi?');
     setText('confirmMsg',opts.message||'Bu amalni qaytarib bo\'lmaydi.');
     const okBtn=document.getElementById('confirmOk');
@@ -1060,10 +995,10 @@ function confirmDialog(opts){
 async function premiumRequiredDialog(opts){
   opts=opts||{};
   const ok=await confirmDialog({
-    icon:opts.icon||'gem',
+    icon:opts.icon||'💎',
     title:opts.title||'Faqat Premium foydalanuvchilar uchun',
     message:opts.message||'Bu bo\'limdan foydalanish uchun Premium olishingiz kerak.',
-    okText:'Premium olish',
+    okText:'💎 Premium olish',
     cancelText:'Orqaga',
     okKind:'premium',
   });
@@ -1194,15 +1129,15 @@ async function saveModal(){
       const ng=await apiGoalUpdate(State.modal.id,{title:t,description:d||null});
       const idx=State.goals.findIndex(g=>g.id===State.modal.id);
       if(idx>=0)State.goals[idx]={...State.goals[idx],...ng};
-      toast('Yangilandi');
+      toast('✓ Yangilandi');
     }else{
       const pl={title:t,description:d||null,goal_type:State.modal.period,period:State.modal.periodKey};
       const ng=await apiGoalCreate(pl);
       State.goals.push(ng);
-      toast('Maqsad qo\'shildi');
+      toast('✨ Maqsad qo\'shildi');
     }
-    closeModal();renderGoalsView();
-  }catch(e){toast('Bajarilmadi. Yana urinib ko\'ring.',true);}
+    closeModal();renderGoalsView();setText('msGoals',State.goals.length);
+  }catch(e){toast('Xato: '+e.message,true);}
 }
 
 function fillTimeSelects(){
@@ -1253,7 +1188,7 @@ async function savePlanModal(){
   const hh=document.getElementById('pHour')?.value||'';
   const mm=document.getElementById('pMin')?.value||'00';
   if(!hh){
-    toast('Iltimos, eslatma vaqtini belgilang',true);
+    toast('⏰ Iltimos, eslatma vaqtini belgilang',true);
     const hSel=document.getElementById('pHour');
     if(hSel){hSel.classList.add('field-error');hSel.focus();try{hSel.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}setTimeout(()=>hSel.classList.remove('field-error'),1600);}
     return;
@@ -1262,7 +1197,7 @@ async function savePlanModal(){
   const dt=document.getElementById('pDate')?.value||ymd(State.selectedDate||new Date());
   const body={title:t,description:desc||null,scheduled_time:tm,plan_date:dt};
   const isEdit=!!State.planModal.id;
-  if(!isEdit && dt < ymd(new Date())){toast('O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
+  if(!isEdit && dt < ymd(new Date())){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
   // ── Boshqa a'zo uchun yaratish (Do'stlar guruhi) ──
   if(!isEdit && State.forMemberContext){
     const ctx=State.forMemberContext;
@@ -1270,14 +1205,14 @@ async function savePlanModal(){
       await apiForMemberPlan(ctx.groupId, ctx.userId, body);
     }catch(e){
       const msg=String(e&&e.message||'');
-      if(msg.includes('402')){toast('A\'zoning bepul kunlik limiti tugagan',true);return;}
-      if(msg.includes('403')){toast('A\'zo sizga ruxsat bermagan',true);return;}
-      if(msg.includes('409')){toast('O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
-      toast('Bajarilmadi. Yana urinib ko\'ring.',true);return;
+      if(msg.includes('402')){toast('⚠️ A\'zoning bepul kunlik limiti tugagan',true);return;}
+      if(msg.includes('403')){toast('🛡 A\'zo sizga ruxsat bermagan',true);return;}
+      if(msg.includes('409')){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
+      toast('Xato: '+msg,true);return;
     }
     State.forMemberContext=null;
     closePlanModal();
-    toast(ctx.name+' uchun reja qo\'shildi');
+    toast('✨ '+ctx.name+' uchun reja qo\'shildi');
     try{await openMember(ctx.userId);}catch(_){}
     return;
   }
@@ -1287,12 +1222,12 @@ async function savePlanModal(){
   }catch(e){
     const msg=String(e&&e.message||'');
     if(msg.includes('402')){closePlanModal();return;/* Premium dialog global api() da avtomatik ochiladi */}
-    if(msg.includes('409')){toast('O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
-    toast('Saqlanmadi. Yana urinib ko\'ring.',true);return;
+    if(msg.includes('409')){toast('⏰ O\'tib ketgan kun uchun reja qo\'shib bo\'lmaydi',true);return;}
+    toast('Xato: '+msg,true);return;
   }
   // Saqlash muvaffaqiyatli — endi UI ni yangilaymiz (bu yerdagi xato saqlashga ta'sir qilmaydi)
   closePlanModal();
-  toast(isEdit?'Yangilandi':'Reja qo\'shildi');
+  toast(isEdit?'✓ Yangilandi':'✨ Reja qo\'shildi');
   try{
     await loadPlansForSelectedDay();
     loadSnapshot();loadQuest();
@@ -1323,15 +1258,8 @@ function _showFriendsView(v){
 }
 
 async function loadGroupsAPI(){
-  const _sk=document.getElementById('friendsGroupsList');
-  if(_sk&&!_sk.children.length)_sk.innerHTML=skeletonRows(2);
   try{const d=await apiGroupsList();State.groups=d.groups||[];}
-  catch(e){
-    console.warn('groups',e);State.groups=[];
-    _showFriendsView('list');
-    renderError('friendsGroupsList',loadGroupsAPI);
-    return;
-  }
+  catch(e){console.warn('groups',e);State.groups=[];}
   renderGroupsList();
 }
 
@@ -1340,23 +1268,23 @@ function renderGroupsList(){
   const el=document.getElementById('friendsGroupsList');
   if(!el)return;
   if(!State.groups.length){
-    el.innerHTML=emptyState('users','Hozircha guruh yo\'q','Yangi guruh yarating va do\'stlaringizni taklif qiling');
+    el.innerHTML=emptyState('👥','Hozircha guruh yo\'q','Yangi guruh yarating va do\'stlaringizni taklif qiling');
     return;
   }
   el.innerHTML=State.groups.map(g=>`
     <div class="grp-card" data-gid="${g.id}">
-      <div class="ic">${icon('users',18)}</div>
+      <div class="ic">👥</div>
       <div class="body">
         <div class="nm">${esc(g.name)} ${g.is_owner?'<span class="badge-owner">EGA</span>':''}</div>
         <div class="sub">${g.member_count} a'zo${g.description?' · '+esc(g.description):''}</div>
       </div>
-      <span style="color:var(--text-3)">${icon('chevron-right',18)}</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`).join('');
   el.querySelectorAll('.grp-card').forEach(c=>c.onclick=()=>openGroup(+c.dataset.gid));
 }
 
 async function openGroup(gid){
-  let d;try{d=await apiGroupGet(gid);}catch(e){toast('Guruhni yuklab bo\'lmadi. Yana urinib ko\'ring.',true);return;}
+  let d;try{d=await apiGroupGet(gid);}catch(e){toast('Guruh yuklanmadi',true);return;}
   State.currentGroup=d;
   _showFriendsView('group');
   document.getElementById('friendsGroupName').textContent=d.name;
@@ -1373,8 +1301,8 @@ async function openGroup(gid){
 function _sumChips(s){
   // Guruh kontekstida faqat reja + odat ko'rinadi (maqsad olib tashlandi).
   const chips=[];
-  if(s.plans_total)chips.push(`<span class="chip ${s.plans_done>=s.plans_total?'ok':''}">${s.plans_done}/${s.plans_total} reja</span>`);
-  if(s.habits_total)chips.push(`<span class="chip ${s.habits_done_today>=s.habits_total?'ok':''}">${s.habits_done_today}/${s.habits_total} odat</span>`);
+  if(s.plans_total)chips.push(`<span class="chip ${s.plans_done>=s.plans_total?'ok':''}">📅 ${s.plans_done}/${s.plans_total}</span>`);
+  if(s.habits_total)chips.push(`<span class="chip ${s.habits_done_today>=s.habits_total?'ok':''}">🔁 ${s.habits_done_today}/${s.habits_total}</span>`);
   if(!chips.length)chips.push('<span class="chip">bugun bo\'sh</span>');
   return chips.join('');
 }
@@ -1389,8 +1317,8 @@ function renderGroupMembers(){
     // Yashirin a'zo (menga ochmagan) — summary chip'lari o'rniga qulf.
     const visible = m.is_me || m.visible!==false;
     const chips = visible
-      ? `${_sumChips(m.summary||{})} <span class="chip">${m.streak||0} kun</span>`
-      : `<span class="chip">yashirin</span> <span class="chip">${m.streak||0} kun</span>`;
+      ? `${_sumChips(m.summary||{})} <span class="chip">🔥 ${m.streak||0}</span>`
+      : `<span class="chip">🔒 yashirin</span> <span class="chip">🔥 ${m.streak||0}</span>`;
     // Chiqarib yuborish tugmasi kartada YO'Q — u guruh sozlamalari ichida
     // (faqat ega uchun). Bu yerda har doim chevron ko'rinadi.
     return `<div class="mem-card ${m.is_me?'me':''}" data-uid="${m.user_id}">
@@ -1399,7 +1327,7 @@ function renderGroupMembers(){
         <div class="nm">${esc(m.name)}${m.is_me?' (siz)':''}${role}</div>
         <div class="st">${chips}</div>
       </div>
-      <span style="color:var(--text-3)">${icon('chevron-right',18)}</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3)"><polyline points="9 6 15 12 9 18"/></svg>
     </div>`;
   }).join('');
   // A'zoni ochish
@@ -1410,13 +1338,13 @@ async function openMember(uid,dateStr){
   const g=State.currentGroup;if(!g)return;
   State.memberUid=uid;
   State.memberDate=dateStr||ymd(new Date());
-  let d;try{d=await apiMemberView(g.id,uid,State.memberDate);}catch(e){toast('A\'zo ma\'lumotini yuklab bo\'lmadi.',true);return;}
+  let d;try{d=await apiMemberView(g.id,uid,State.memberDate);}catch(e){toast('A\'zo yuklanmadi',true);return;}
   State.currentMember=d;
   // Server sana'ni normallashtirishi mumkin (kelajak → bugun); moslaymiz.
   if(d.date)State.memberDate=d.date;
   _showFriendsView('member');
   document.getElementById('friendsMemberName').textContent=(d.member.name||'—')+(d.member.is_me?' (siz)':'');
-  document.getElementById('friendsMemberSub').textContent=(d.member.streak||0)+' kun streak · '+(d.member.total_score||0)+' ball';
+  document.getElementById('friendsMemberSub').textContent='🔥 '+(d.member.streak||0)+' kun · ⭐ '+(d.member.total_score||0)+' ball';
   _updateMemberDateNav();
   renderMemberContent();
 }
@@ -1462,17 +1390,17 @@ function _shiftMemberMonth(deltaMonths){
   if(State.memberUid!=null)openMember(State.memberUid,ymd(nd));
 }
 // Goal davrini o'qish uchun qulay label.
-//   yearly "2026"      -> "2026-yil"
-//   monthly "2026-07"  -> "Iyul 2026"
+//   yearly "2026"      -> "📅 2026-yil"
+//   monthly "2026-07"  -> "🗓 Iyul 2026"
 function _formatGoalPeriod(gt, period){
   try{
     const p=String(period||'').trim();
     if(!p)return (gt==='monthly'?'oylik':'yillik');
-    if(gt==='yearly'){return p+'-yil';}
+    if(gt==='yearly'){return '📅 '+p+'-yil';}
     if(gt==='monthly'){
       const [y,m]=p.split('-').map(n=>parseInt(n,10));
-      if(!y||!m||m<1||m>12)return p;
-      return UZ_MONTHS[m-1]+' '+y;
+      if(!y||!m||m<1||m>12)return '🗓 '+p;
+      return '🗓 '+UZ_MONTHS[m-1]+' '+y;
     }
     return p;
   }catch(_){return String(period||'');}
@@ -1495,9 +1423,9 @@ function renderMemberContent(){
   if(d.visible===false){
     wrap.innerHTML=`
       <div style="margin-top:22px;padding:22px 16px;text-align:center;background:var(--surface);border:1px dashed var(--border);border-radius:16px">
-        <div style="margin:0 auto 10px;width:40px;height:40px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-3)">${icon('lock',18)}</div>
+        <div style="font-size:34px;line-height:1;margin-bottom:8px">🔒</div>
         <div style="font-size:14px;font-weight:700;margin-bottom:4px">Ma'lumotlari yashirin</div>
-        <div style="font-size:12px;color:var(--text-2);line-height:1.5">Bu a'zo o'zining reja, odat va maqsadlarini sizga ko'rsatmagan.<br>Ko'rish uchun undan Ruxsatlar bo'limida sizga ochishini so'rang.</div>
+        <div style="font-size:12px;color:var(--text-2);line-height:1.5">Bu a'zo o'zining reja, odat va maqsadlarini sizga ko'rsatmagan.<br>Ko'rish uchun undan Ruxsatlar (👁) da sizga ochishini so'rang.</div>
       </div>
     `;
     return;
@@ -1512,8 +1440,8 @@ function renderMemberContent(){
     return ta.localeCompare(tb);
   });
   const plansHtml=_sortedPlans.length?_sortedPlans.map(p=>{
-    const done=p.status==='done';const tag=p.scheduled_time?`<span class="meta">${esc(p.scheduled_time)}</span>`:'';
-    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?icon('check',12):''}</div><div class="ttl">${esc(p.title)}</div>${tag}</div>`;
+    const done=p.status==='done';const tag=p.scheduled_time?`<span class="meta">⏰ ${esc(p.scheduled_time)}</span>`:'';
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(p.title)}</div>${tag}</div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Reja yo\'q</div>';
 
   // Odatlar — eslatma vaqti bo'yicha saralanadi (backend allaqachon saralab
@@ -1525,10 +1453,10 @@ function renderMemberContent(){
   const habitsHtml=_sortedHabits.length?_sortedHabits.map(h=>{
     const done=h.done_today;
     // Meta chapdan o'ngga: ⏰ eslatma vaqti (bo'lsa) · takrorlanish turi.
-    const timePart=h.reminder_time?esc(h.reminder_time):'';
+    const timePart=h.reminder_time?`⏰ ${esc(h.reminder_time)}`:'';
     const freqPart=h.frequency==='weekly'?'haftalik':'har kuni';
     const meta=timePart?`${timePart} · ${freqPart}`:freqPart;
-    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?icon('check',12):''}</div><div class="ttl">${esc(h.icon||'')} ${esc(h.title)}</div><span class="meta">${meta}</span></div>`;
+    return `<div class="mem-item ${done?'done':''}"><div class="cbx ${done?'done':''}">${done?'✓':''}</div><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}</div><span class="meta">${meta}</span></div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Odat yo\'q</div>';
 
   // Yaratish tugmalari — endi faqat reja va odat (maqsad guruh kontekstida
@@ -1540,21 +1468,21 @@ function renderMemberContent(){
     </div>
     <p style="font-size:11.5px;color:var(--text-3);margin-top:8px;text-align:center">Bu a'zo sizga o'zi uchun reja va odat yaratishga ruxsat bergan.</p>`:'';
 
-  const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
+  const noPermHint=(!canManage&&!d.member.is_me)?`<p style="font-size:11.5px;color:var(--text-3);margin-top:12px;text-align:center;padding:10px;background:var(--surface);border:1px dashed var(--border);border-radius:12px">🛡 Bu a'zo sizga u uchun reja yaratishga ruxsat bermagan.</p>`:'';
 
-  const plansTitle=isToday?'Bugungi rejalar':(isFuture?'Kelajakdagi rejalar':'Rejalar');
+  const plansTitle=isToday?'📅 Bugungi rejalar':(isFuture?'📅 Kelajakdagi rejalar':'📅 Rejalar');
   let banner='';
   if(isPast){
-    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">O'tgan kun ko'rinishi</div>`;
+    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🕰 O'tgan kun ko'rinishi</div>`;
   }else if(isFuture){
-    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">Kelajakdagi kun ko'rinishi</div>`;
+    banner=`<div style="margin:12px 0 2px;padding:8px 12px;background:var(--primary-soft);border-radius:12px;font-size:12px;color:var(--primary);font-weight:600;text-align:center">🔮 Kelajakdagi kun ko'rinishi</div>`;
   }
   const pastBanner=banner;
   wrap.innerHTML=`
     ${pastBanner}
     <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">${plansTitle} (${plans.filter(p=>p.status==='done').length}/${plans.length})</h2></div>
     ${plansHtml}
-    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">Odatlar</h2></div>
+    <div class="section-title" style="margin-top:14px"><h2 style="font-size:14px">🔁 Odatlar</h2></div>
     ${habitsHtml}
     ${createBtns}
     ${noPermHint}
@@ -1594,9 +1522,9 @@ async function saveGroupCreate(){
   try{
     await apiGroupCreate(name,desc||null);
     document.getElementById('groupCreateBack').classList.remove('show');
-    toast('Guruh yaratildi');
+    toast('✨ Guruh yaratildi');
     await loadGroupsAPI();
-  }catch(e){toast('Guruh yaratilmadi. Yana urinib ko\'ring.',true);}
+  }catch(e){toast('Xato: '+e.message,true);}
 }
 
 // ── Guruh sozlamalari (3 tab: Umumiy / Hisobot / A'zolar) ─────
@@ -1722,10 +1650,10 @@ function renderDigestSettings(){
   if(meta){
     const parts=[];
     if(s.digest_last_error){
-      parts.push('Hisobot xatosi: '+s.digest_last_error);
+      parts.push('⚠️ Hisobot xato: '+s.digest_last_error);
     }
     if(s.plans_last_error){
-      parts.push('Reja xatosi: '+s.plans_last_error);
+      parts.push('⚠️ Reja xato: '+s.plans_last_error);
     }
     meta.innerHTML=parts.map(esc).join(' · ');
   }
@@ -1742,7 +1670,7 @@ async function _digestSet(patch, key){
   }catch(e){
     const m=String(e&&e.message||'');
     // Backend detail'ini o'qishga urinamiz
-    toast('Bajarilmadi. Yana urinib ko\'ring.',true);
+    toast('Xato: '+m,true);
     // Kelib chiqqan xato holatini qayta yuklaymiz (UI hozirgi haqiqiy holatga qaytadi)
     loadDigestSettings();
   }finally{
@@ -1758,7 +1686,7 @@ async function toggleDigestEnable(){
   }
   await _digestSet({digest_enabled: !s.digest_enabled}, 'enable');
   const nowOn=State.digest.settings && State.digest.settings.digest_enabled;
-  toast(nowOn?'Kunlik hisobot yoqildi':'Kunlik hisobot to\'xtatildi');
+  toast(nowOn?'✅ Kunlik hisobot yoqildi':'⏸ Kunlik hisobot to\'xtatildi');
 }
 async function togglePlansEnable(){
   const s=State.digest.settings;if(!s)return;
@@ -1768,7 +1696,7 @@ async function togglePlansEnable(){
   }
   await _digestSet({plans_enabled: !s.plans_enabled}, 'plansenable');
   const nowOn=State.digest.settings && State.digest.settings.plans_enabled;
-  toast(nowOn?'Kunlik reja yuborish yoqildi':'Kunlik reja yuborish to\'xtatildi');
+  toast(nowOn?'✅ Kunlik reja yuborish yoqildi':'⏸ Kunlik reja yuborish to\'xtatildi');
 }
 async function changeDigestTime(){
   const s=State.digest.settings;if(!s)return;
@@ -1777,7 +1705,7 @@ async function changeDigestTime(){
   const nv=sel.value;
   if(nv===s.digest_time)return;
   await _digestSet({digest_time: nv}, 'time');
-  toast('Hisobot vaqti: '+nv);
+  toast('📊 Hisobot vaqti: '+nv);
 }
 async function changePlansTime(){
   const s=State.digest.settings;if(!s)return;
@@ -1786,7 +1714,7 @@ async function changePlansTime(){
   const nv=sel.value;
   if(nv===(s.plans_time||'07:00'))return;
   await _digestSet({plans_time: nv}, 'planstime');
-  toast('Reja vaqti: '+nv);
+  toast('📋 Reja vaqti: '+nv);
 }
 
 // Ma'lumot manbasi tanlovi (plans/both/habits) — segmentli tugmalardan biri.
@@ -1809,9 +1737,9 @@ async function selectReportSource(nextSrc){
   }
   try{
     await _digestSet({report_source: nextSrc}, 'source');
-    const label = nextSrc==='plans' ? 'Faqat rejalar'
-                : nextSrc==='habits' ? 'Faqat odatlar'
-                : 'Rejalar va odatlar';
+    const label = nextSrc==='plans' ? '📋 Faqat rejalar'
+                : nextSrc==='habits' ? '🔁 Faqat odatlar'
+                : '🔀 Ikkisi ham';
     toast('Ma\'lumot manbasi: '+label);
   }catch(_){
     // _digestSet o'zi loadDigestSettings chaqiradi xato bo'lsa
@@ -1825,9 +1753,9 @@ async function unlinkDigestChat(){
   if(!await confirmDialog({title:'Bog\'lanishni uzish',message:'Telegram guruhga hisobot yuborish to\'xtatiladi. Bog\'lash saqlanmaydi. Davom etamizmi?'}))return;
   try{
     await apiDigestUnlink(g.id);
-    toast('Bog\'lanish uzildi');
+    toast('🔌 Bog\'lanish uzildi');
     await loadDigestSettings();
-  }catch(e){toast('Bajarilmadi. Yana urinib ko\'ring.',true);}
+  }catch(e){toast('Xato: '+e.message,true);}
 }
 
 // ── Yangi: ikkita alohida test yuborish funksiyasi (kunlik reja / kunlik hisobot)
@@ -1847,12 +1775,12 @@ async function _runTestSend(kind /* 'plans' | 'report' */){
       ? await apiPlansTest(g.id)
       : await apiReportTest(g.id);
     if(r&&r.ok){
-      toast(kind==='plans' ? 'Kunlik reja yuborildi' : 'Kunlik hisobot yuborildi');
+      toast(kind==='plans' ? '📨 Kunlik reja yuborildi' : '📨 Kunlik hisobot yuborildi');
     }else{
-      toast((r&&r.reason)||'Yuborib bo\'lmadi',true);
+      toast('⚠️ '+(r&&r.reason||'Yuborib bo\'lmadi'),true);
     }
   }catch(e){
-    toast('Bajarilmadi. Yana urinib ko\'ring.',true);
+    toast('Xato: '+e.message,true);
   }finally{
     if(btn){btn.disabled=false;btn.style.opacity='';}
     // Xato bo'lgan bo'lsa auto-unlink bo'lishi mumkin — qayta yuklab olamiz.
@@ -1875,7 +1803,7 @@ async function openDigestPicker(){
     State.digest.candidates=r&&r.candidates||[];
     renderDigestCandidates();
   }catch(e){
-    list.innerHTML='<div class="tgp-empty">Ro\'yxatni yuklab bo\'lmadi. Yana urinib ko\'ring.</div>';
+    list.innerHTML='<div class="tgp-empty">Xato: '+esc(e.message||'')+'</div>';
   }
 }
 
@@ -1893,7 +1821,7 @@ function renderDigestCandidates(){
   }
   list.innerHTML=arr.map(c=>{
     const initial=(c.chat_title||'?').trim().charAt(0).toUpperCase();
-    const warn=c.can_send?'':'<div class="tgp-warn">Bot xabar yubora olmaydi. Guruhda "faqat adminlar yozadi" yoqilgan bo\'lsa, botni admin qiling.</div>';
+    const warn=c.can_send?'':'<div class="tgp-warn">⚠️ Bot xabar yubora olmaydi. Guruhda "faqat adminlar yozadi" yoqilgan bo\'lsa, botni admin qiling.</div>';
     return `<div class="tgp-item ${c.is_selected?'selected':''}" data-cid="${c.chat_id}" data-title="${esc(c.chat_title||'')}">
       <div class="tgp-icon">${esc(initial)}</div>
       <div class="tgp-body">
@@ -1911,10 +1839,10 @@ function renderDigestCandidates(){
       try{
         await apiDigestLink(g.id, cid, title);
         document.getElementById('tgPickerBack').classList.remove('show');
-        toast('Guruh bog\'landi. Yoqing va vaqtni tanlang.');
+        toast('🔗 Guruh bog\'landi. Yoqing va vaqtni tanlang.');
         await loadDigestSettings();
       }catch(e){
-        toast('Bajarilmadi. Yana urinib ko\'ring.',true);
+        toast('Xato: '+e.message,true);
       }
     };
   });
@@ -1932,7 +1860,7 @@ function renderGroupEditMembers(){
   wrap.style.display='';
   // A'zolar ro'yxati — barcha a'zolar, jumladan guruh egasi (o'zi) ham.
   // Foydalanuvchi so'ragan: ega o'zining ma'lumotlarini yashira olishi kerak.
-  // Ega uchun chiqarish tugmasi ko'rsatilmaydi — u o'zini chiqara olmaydi.
+  // Ega uchun chiqarish (🗑) tugmasi ko'rsatilmaydi — u o'zini chiqara olmaydi.
   // Tartib: ega tepada, keyin qolganlar.
   const list = (g.members||[]).slice().sort((a,b)=>{
     if(a.is_me && !b.is_me) return -1;
@@ -1943,7 +1871,7 @@ function renderGroupEditMembers(){
     const active = m.is_active !== false;  // default TRUE (backward compat)
     const isMe = !!m.is_me;
     const nameTag = isMe ? ' <span class="ge-mem-tag">EGA</span>' : '';
-    const kickBtn = isMe ? '' : `<button class="btn-icon btn-icon-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" title="Guruhdan chiqarish" aria-label="Guruhdan chiqarish">${icon('trash',16)}</button>`;
+    const kickBtn = isMe ? '' : `<button class="btn-icon btn-icon-danger" data-kick="${m.user_id}" data-name="${esc(m.name)}" title="Guruhdan chiqarish" aria-label="Guruhdan chiqarish">🗑</button>`;
     return `
     <div class="perm-row ge-mem-row${active?'':' ge-mem-off'}${isMe?' ge-mem-me':''}">
       <div class="nm">${esc(m.name)}${nameTag}</div>
@@ -1966,7 +1894,7 @@ function renderGroupEditMembers(){
     if(row)row.classList.toggle('ge-mem-off', !nextActive);
     try{
       await apiSetMemberActive(g.id, uid, nextActive);
-      toast(nextActive ? 'A\'zo yoqildi' : 'A\'zo o\'chirildi (ma\'lumotlari yashirin)');
+      toast(nextActive ? '✅ A\'zo yoqildi' : '⏸ A\'zo o\'chirildi (ma\'lumotlari yashirin)');
       // State.currentGroup.members ichidagi is_active flag'ni yangilaymiz —
       // modal qayta ochilganda toggle to'g'ri holatda ko'rinsin (openGroup
       // chaqiruvi UI'ni orqada refresh qilmaydi).
@@ -1977,8 +1905,8 @@ function renderGroupEditMembers(){
       t.classList.toggle('on', !nextActive);
       if(row)row.classList.toggle('ge-mem-off', nextActive);
       const msg=String(err&&err.message||'');
-      if(msg.includes('403'))toast('Bu amal faqat guruh egasi uchun',true);
-      else toast('Bajarilmadi. Yana urinib ko\'ring.',true);
+      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
+      else toast('Xato: '+msg,true);
     }finally{
       t.classList.remove('busy');
     }
@@ -1991,13 +1919,13 @@ function renderGroupEditMembers(){
     if(!await confirmDialog({title:'Chiqarib yuborish', message:`«${name}» guruhdan chiqarilsinmi? Uning ushbu guruhga tegishli ruxsatlari ham tozalanadi.`}))return;
     try{
       await apiRemoveMember(g.id, uid);
-      toast('A\'zo chiqarildi');
+      toast('👋 A\'zo chiqarildi');
       await openGroup(g.id);          // guruh detali yangilanadi
       renderGroupEditMembers();       // modal ro'yxati ham yangilanadi
     }catch(err){
       const msg=String(err&&err.message||'');
-      if(msg.includes('403'))toast('Bu amal faqat guruh egasi uchun',true);
-      else toast('Bajarilmadi. Yana urinib ko\'ring.',true);
+      if(msg.includes('403'))toast('🛡 Faqat guruh egasi',true);
+      else toast('Xato: '+msg,true);
     }
   });
 }
@@ -2009,22 +1937,22 @@ async function saveGroupEdit(){
   try{
     await apiGroupPatch(g.id,{name,description:desc||null});
     document.getElementById('groupEditBack').classList.remove('show');
-    toast('Yangilandi');
+    toast('✓ Yangilandi');
     await loadGroupsAPI();
     await openGroup(g.id);
-  }catch(e){toast('Bajarilmadi. Yana urinib ko\'ring.',true);}
+  }catch(e){toast('Xato: '+e.message,true);}
 }
 async function deleteCurrentGroup(){
   const g=State.currentGroup;if(!g||!g.is_owner)return;
   if(!await confirmDialog({title:'Guruhni o\'chirish',message:'Barcha a\'zolar va ruxsatlar yo\'q qilinadi. Davom etamizmi?'}))return;
-  try{await apiGroupDelete(g.id);toast('Guruh o\'chirildi');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
-  catch(e){toast('Bajarilmadi. Yana urinib ko\'ring.',true);}
+  try{await apiGroupDelete(g.id);toast('🗑 O\'chirildi');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
+  catch(e){toast('Xato: '+e.message,true);}
 }
 async function leaveCurrentGroup(){
   const g=State.currentGroup;if(!g)return;
   if(!await confirmDialog({title:'Guruhdan chiqish',message:'Bu guruhni tark etasizmi?'}))return;
-  try{await apiGroupLeave(g.id);toast('Guruhdan chiqdingiz');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
-  catch(e){toast('Bajarilmadi. Yana urinib ko\'ring.',true);}
+  try{await apiGroupLeave(g.id);toast('👋 Chiqdingiz');document.getElementById('groupEditBack').classList.remove('show');State.currentGroup=null;await loadGroupsAPI();}
+  catch(e){toast('Xato: '+e.message,true);}
 }
 
 // ── Do'st taklif qilish (Telegram share) ─────────────────
@@ -2043,7 +1971,7 @@ async function inviteFriend(){
   const g=State.currentGroup;if(!g)return;
   const bot=await _resolveBotUsername();
   const link='https://t.me/'+encodeURIComponent(bot)+'?start=grp_'+encodeURIComponent(g.invite_code);
-  const text='«'+g.name+'» guruhiga taklif etilyapsiz! Intizom AI botiga qo\'shiling va birga intizomli bo\'ling.';
+  const text='👥 «'+g.name+'» guruhiga taklif etilyapsiz! Intizom AI botiga qo\'shiling va birga intizomli bo\'ling.';
   const shareUrl='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text);
   // Telegram Mini App'da native share sheet ochiladi (kontakt tanlash).
   try{if(tg&&tg.openTelegramLink){tg.openTelegramLink(shareUrl);return;}}catch(_){}
@@ -2063,7 +1991,7 @@ async function openPermsModal(){
   const members=d.grants_out||[];
   const empty='<div style="font-size:12px;color:var(--text-3);padding:6px">Guruhda boshqa a\'zo yo\'q</div>';
 
-  // Boshqarish toggle — kim men uchun yarata oladi
+  // ✍️ Boshqarish toggle — kim men uchun yarata oladi
   if(!members.length){
     manageEl.innerHTML=empty;
   }else{
@@ -2074,26 +2002,26 @@ async function openPermsModal(){
       </div>`).join('');
   }
 
-  // Menga berilganlar (info) — faqat can_manage huquqi berganlar.
+  // 📥 Menga berilganlar (info) — faqat can_manage huquqi berganlar.
   // `can_view` endi UI'da ma'nosiz (visibility har doim ochiq), shu sabab
   // e'tibordan chetlashtiriladi.
   const givenTo=(d.grants_in||[]).filter(m=>m.can_manage);
   inEl.innerHTML=givenTo.length?givenTo.map(m=>{
-    const chip='<span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:600;border-radius:999px">yarata oladi</span>';
+    const chip='<span class="chip mine" style="padding:2px 8px;font-size:10.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:999px">✍️ yarata oladi</span>';
     return `<div class="perm-row"><div class="nm">${esc(m.name)}</div>${chip}</div>`;
   }).join(''):'<div style="font-size:12px;color:var(--text-3);padding:6px">Hech kim sizga ruxsat bermagan</div>';
 
-  // Boshqarish toggle handler
+  // ✍️ Boshqarish toggle handler
   manageEl.querySelectorAll('.toggle').forEach(t=>t.onclick=async()=>{
     const uid=+t.dataset.manageUid;
     const nv=!t.classList.contains('on');
     t.classList.toggle('on',nv);
     try{
       await apiPermsSet(g.id,uid,{can_manage:nv});
-      toast(nv?'Yaratish huquqi berildi':'Yaratish huquqi olindi');
+      toast(nv?'✍️ Yaratish huquqi berildi':'Yaratish huquqi olindi');
     }catch(e){
       t.classList.toggle('on',!nv);
-      toast('Saqlanmadi. Yana urinib ko\'ring.',true);
+      toast('Xato: '+e.message,true);
     }
   });
 
@@ -2121,6 +2049,8 @@ function switchPage(n){
   if(navigator.vibrate)navigator.vibrate(10);
 }
 
+function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
+
 document.addEventListener('DOMContentLoaded',()=>{
   document.documentElement.setAttribute('data-theme',State.theme);applyMode();initUser();renderThemes();
   // Admin panelidan boshqariladigan global bayroqlarni fon rejimida yuklab
@@ -2134,22 +2064,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.nav-item, .nav-ai').forEach(n=>n.onclick=()=>{
     const target=n.dataset.nav;
     if(target==='friends'&&premiumGate({
-      icon:'users',
-      title:'Do\'stlar bo\'limi',
+      icon:'👥',
+      title:'Do\'stlar bo\'limi 👥',
       message:'Do\'stlar bo\'limi faqatgina Premium foydalanuvchilar uchun.',
     }))return;
     if(target==='ai'&&premiumGate({
-      icon:'sparkles',
-      title:'AI Coach',
+      icon:'✨',
+      title:'AI Coach ✨',
       message:'AI sizning barcha maqsad, reja va odatlaringizni ko\'rib turadi.\n\nUshbu bo\'lim faqatgina Premium foydalanuvchilar uchun.',
     }))return;
     switchPage(target);
   });
   // ── Reja qo'shish (Home) — bepul: bot orqali 5/kun, Mini App'da Premium kerak ──
   const _ap=document.getElementById('addPlanBtn');
-  if(_ap)_ap.onclick=()=>{
+  if(_ap)_ap.onclick=e=>{
+    ripple(e);
     if(premiumGate({
-      icon:'plus',
+      icon:'➕',
       title:'Reja qo\'shish',
       message:'Mini App orqali reja qo\'shish faqatgina Premium foydalanuvchilar uchun.\n\nBot orqali kuniga 5 tagacha bepul reja qo\'shishingiz mumkin.',
     }))return;
@@ -2157,10 +2088,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   // ── Maqsad qo'shish (Goals) — Premium talab qiladi ──
   document.querySelectorAll('.add-goal-trigger').forEach(b=>{
-    b.onclick=()=>{
+    b.onclick=e=>{
+      ripple(e);
       if(premiumGate({
-        icon:'target',
-        title:'Maqsad qo\'shish',
+        icon:'🎯',
+        title:'Maqsad qo\'shish 🎯',
         message:'Maqsad qo\'shish faqatgina Premium foydalanuvchilar uchun.',
       }))return;
       // Faqat yillik/oylik. Eski `weekly`/`daily` data-gp qiymatlari kelsa yillikga tushamiz.
@@ -2170,7 +2102,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       openModal(gp,pk);
     };
   });
-  document.getElementById('modeBtn').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'Tungi rejim':'Kunduzgi rejim');};
+  document.getElementById('modeBtn').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
   // Settings (sozlamalar) tugmasi va profil rasmi -> Profil sahifasi
   const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
   const _hdrAv=document.getElementById('hdrAv');if(_hdrAv)_hdrAv.onclick=()=>switchPage('profile');
@@ -2179,8 +2111,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _stBtn=document.getElementById('statsBtn');
   if(_stBtn)_stBtn.onclick=()=>{
     if(premiumGate({
-      icon:'bar-chart',
-      title:'Statistika',
+      icon:'📊',
+      title:'Statistika 📊',
       message:'Statistika bo\'limi faqatgina Premium foydalanuvchilar uchun.',
     }))return;
     switchPage('stats');
@@ -2233,10 +2165,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Odat (habit) wiring
   // Odat qo'shish (Habits) — Premium talab qiladi.
   const _ah=document.getElementById('addHabitBtn');
-  if(_ah)_ah.onclick=()=>{
+  if(_ah)_ah.onclick=e=>{
+    ripple(e);
     if(premiumGate({
-      icon:'check-square',
-      title:'Odat qo\'shish',
+      icon:'✅',
+      title:'Odat qo\'shish ✅',
       message:'Odat qo\'shish faqatgina Premium foydalanuvchilar uchun.',
     }))return;
     openHabitModal(null);
@@ -2264,7 +2197,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('modalBack').onclick=e=>{if(e.target.id==='modalBack')closeModal();};
   document.getElementById('pCancel').onclick=closePlanModal;document.getElementById('pSave').onclick=savePlanModal;
   document.getElementById('planModalBack').onclick=e=>{if(e.target.id==='planModalBack')closePlanModal();};
-  document.getElementById('darkToggle').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'Tungi rejim':'Kunduzgi rejim');};
+  document.getElementById('darkToggle').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
   // notifToggle va animToggle olib tashlandi — bildirishnomalar va animatsiyalar
   // doimo hamma foydalanuvchi uchun yoniq turadi (Settings sozlamasi yo'q).
   updateFabVisibility();
@@ -2310,7 +2243,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       const btn=_pwCta;
       const orig=btn.textContent;
       btn.disabled=true;
-      btn.textContent='Botga o\'tkazilmoqda…';
+      btn.textContent='⏳ Botga o\'tkazilmoqda…';
       setTimeout(()=>{btn.disabled=false;btn.textContent=orig;},2500);
     }catch(_){}
     startCheckoutGeneric();
@@ -2331,7 +2264,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     for(const h of chosen){try{const nh=await apiHabitCreate({title:h.title,icon:h.icon,frequency:'daily',duration_type:'permanent'});State.habits.push(nh);added++;}catch(_){}}
     localStorage.setItem('iz_onboarded_v2','1');
     document.getElementById('onboarding').classList.remove('show');
-    confetti(14);toast(added?(added+' ta odat qo\'shildi'):'Boshlandi');
+    confetti(60);toast(added?('🚀 '+added+' ta odat qo\'shildi!'):'🚀 Boshlandi!');
     try{renderHabits();renderHabitSummary();}catch(_){}
     if(fin)fin.disabled=false;
   };

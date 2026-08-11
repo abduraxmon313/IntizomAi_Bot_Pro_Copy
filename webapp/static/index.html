@@ -2,107 +2,36 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<!-- Zoom bloklanmaydi (user-scalable=no olib tashlandi) — bu foydalanish
-     imkoniyati (accessibility) talabi: ko'zi xira foydalanuvchi kattalashtira olsin. -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f6f7f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0d0f12" media="(prefers-color-scheme: dark)">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Intizom AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/static/app.css?v=4cae9e09">
 </head>
 <body>
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-     IKONKA SPRITE
-     ───────────────────────────────────────────────────────────────────────
-     Interfeys ikonkalari shu yerda bir marta e'lon qilinadi va
-     JS'dagi `icon('nom')` yordamchisi orqali ishlatiladi.
-
-     QOIDA: interfeys elementlarida (navigatsiya, tugma, sozlama, statistika
-     kartochkasi, bo'sh holat) EMOJI ishlatilmaydi — faqat shu ikonkalar.
-     Emoji faqat foydalanuvchi/domen mazmuni uchun qoladi: foydalanuvchi
-     tanlagan odat belgisi, rank va yutuq nishoni, kayfiyat tanlagichi.
-     Sabab: emoji har platformada boshqacha chiziladi, matn rangini olmaydi
-     va norasmiy ko'rinadi.
-     ═══════════════════════════════════════════════════════════════════════ -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
-  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.4 12 3.2l9 7.2"/><path d="M5.2 9.3V20a1 1 0 0 0 1 1h11.6a1 1 0 0 0 1-1V9.3"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
-  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
-  <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l1.5 4.1a2 2 0 0 0 1.2 1.2l4.1 1.5-4.1 1.5a2 2 0 0 0-1.2 1.2L12 17.1l-1.5-4.1a2 2 0 0 0-1.2-1.2L5.2 10.3l4.1-1.5a2 2 0 0 0 1.2-1.2z"/><path d="M18.5 16.5v3M17 18h3M5.5 4.5v2.4M4.3 5.7h2.4"/></symbol>
-  <symbol id="i-check-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12v7.3a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2V4.7a1.2 1.2 0 0 1 1.2-1.2h10.6"/><path d="M8.6 11.2 12 14.6l8.4-8.4"/></symbol>
-  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 20.5v-1.7a3.6 3.6 0 0 0-3.6-3.6H6.6A3.6 3.6 0 0 0 3 18.8v1.7"/><circle cx="9.2" cy="7.8" r="3.6"/><path d="M21 20.5v-1.7a3.6 3.6 0 0 0-2.7-3.5"/><path d="M15.2 4.3a3.6 3.6 0 0 1 0 7"/></symbol>
-  <symbol id="i-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20.2v-5.6M12 20.2V4.4M18 20.2v-9"/></symbol>
-  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.9"/><path d="M19.1 14.5a1.3 1.3 0 0 0 .26 1.43l.1.09a1.55 1.55 0 0 1-1.1 2.65 1.3 1.3 0 0 0-1.24.9 1.55 1.55 0 0 1-2.96 0 1.3 1.3 0 0 0-1.24-.9 1.3 1.3 0 0 0-.93.38l-.1.1a1.55 1.55 0 0 1-2.65-1.1 1.3 1.3 0 0 0-.9-1.24 1.55 1.55 0 0 1 0-2.96 1.3 1.3 0 0 0 .9-1.24 1.3 1.3 0 0 0-.38-.93l-.1-.1a1.55 1.55 0 0 1 1.1-2.65 1.3 1.3 0 0 0 1.24-.9 1.55 1.55 0 0 1 2.96 0 1.3 1.3 0 0 0 1.24.9 1.3 1.3 0 0 0 .93-.38l.1-.1a1.55 1.55 0 0 1 2.65 1.1 1.3 1.3 0 0 0 .9 1.24 1.55 1.55 0 0 1 0 2.96 1.3 1.3 0 0 0-.9 1.24z"/></symbol>
-  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2M12 19.4v2M4.4 12h-2M21.6 12h-2M6.3 6.3 4.9 4.9M19.1 19.1l-1.4-1.4M17.7 6.3l1.4-1.4M4.9 19.1l1.4-1.4"/></symbol>
-  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.8A8.6 8.6 0 0 1 9.2 3.5a8.6 8.6 0 1 0 11.3 11.3z"/></symbol>
-  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
-  <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 5.5 16 12l-6.5 6.5"/></symbol>
-  <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
-  <symbol id="i-more-vertical" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.2" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.8" r="1.6"/></symbol>
-  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 19.9H20"/><path d="M16.1 4.3a1.9 1.9 0 0 1 2.7 2.7L8.4 17.4 4.3 18.6l1.2-4.1z"/></symbol>
-  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.6h16"/><path d="M18.2 6.6 17 19.4a1.2 1.2 0 0 1-1.2 1.1H8.2A1.2 1.2 0 0 1 7 19.4L5.8 6.6"/><path d="M10 10.4v6M14 10.4v6"/><path d="M9.4 6.6V4.8a1.3 1.3 0 0 1 1.3-1.3h2.6a1.3 1.3 0 0 1 1.3 1.3v1.8"/></symbol>
-  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 3.2 10.5 13.5"/><path d="M20.8 3.2 14.4 20.8l-3.9-7.3-7.3-3.9z"/></symbol>
-  <symbol id="i-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.2v3.6a1 1 0 0 0 1 1h2.3l4.9 3.4a.8.8 0 0 0 1.3-.65V6.45a.8.8 0 0 0-1.3-.65L6.8 9.2H4.5a1 1 0 0 0-1 1z"/><path d="M17 8.6a5 5 0 0 1 0 6.8"/><path d="M19.6 6a8.6 8.6 0 0 1 0 12"/></symbol>
-  <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.6a7.6 7.6 0 0 1-8.2 7.55 8.6 8.6 0 0 1-2.5-.42L4.2 20.5l1.8-5.4a7.55 7.55 0 0 1-.9-3.5A7.6 7.6 0 0 1 12.9 4a7.6 7.6 0 0 1 7.6 7.6z"/></symbol>
-  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 20.5v-2a4 4 0 0 0-4-4h-7a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7.6" r="4.1"/></symbol>
-  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.2M12 8.1h.01"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 5 5.8v5.4c0 4.2 2.9 8.1 7 9.6 4.1-1.5 7-5.4 7-9.6V5.8z"/><path d="M9.4 12.2l1.9 1.9 3.4-3.7"/></symbol>
-  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l3-3a3.6 3.6 0 0 0-5.1-5.1l-1 1"/><path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-3 3a3.6 3.6 0 0 0 5.1 5.1l1-1"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.2 2"/></symbol>
-  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.6" width="14" height="9.9" rx="1.6"/><path d="M8.2 10.6V7.4a3.8 3.8 0 0 1 7.6 0v3.2"/></symbol>
-  <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c3.5 0 6-2.4 6-5.6 0-3.9-3.4-5.8-4.3-9.9-.1-.5-.7-.7-1.1-.4-2 1.6-2.5 3.7-2.2 5.6-.9-.3-1.6-1.2-1.9-2.2-.1-.5-.8-.6-1.1-.2A8.2 8.2 0 0 0 6 15.4C6 18.6 8.5 21 12 21z"/></symbol>
-  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.9l-5.25 2.8 1-5.85L3.5 9.75l5.9-.85z"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 12.5 9.6 17.3 19.2 6.7"/></symbol>
-  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="m8.3 12.2 2.6 2.6 5-5.2"/></symbol>
-  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.6" y="5.4" width="16.8" height="15" rx="1.6"/><path d="M3.6 10.2h16.8M8.4 3.6v3.6M15.6 3.6v3.6"/></symbol>
-  <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 3.6l3 3-3 3"/><path d="M3 12.2v-1.6a4 4 0 0 1 4-4h14"/><path d="M6 20.4l-3-3 3-3"/><path d="M21 11.8v1.6a4 4 0 0 1-4 4H3"/></symbol>
-  <symbol id="i-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.2l-7.6 7.6-4-4L3 18.4"/><path d="M15.4 7.2H21v5.6"/></symbol>
-  <symbol id="i-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9.4" r="5.8"/><path d="M8.6 14.5 7.4 21.2l4.6-2.6 4.6 2.6-1.2-6.7"/></symbol>
-  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.2 8.4 4.4-8.4 4.4L3.6 7.6z"/><path d="m3.6 12.4 8.4 4.4 8.4-4.4"/><path d="m3.6 16.8 8.4 4.4 8.4-4.4"/></symbol>
-  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2.6 4.6 13.6h6L10 21.4l9-11.2h-6.2z"/></symbol>
-  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.6h11M9 12h11M9 17.4h11"/><path d="M4.6 6.6h.01M4.6 12h.01M4.6 17.4h.01"/></symbol>
-  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.8v4.6M12 16.1h.01"/></symbol>
-  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 11.4a8.4 8.4 0 0 1-14.3 5.5L3.6 14.6"/><path d="M3.6 12.6a8.4 8.4 0 0 1 14.3-5.5l2.5 2.3"/><path d="M20.4 4.8v4.6h-4.6M3.6 19.2v-4.6h4.6"/></symbol>
-  <symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7.4 3.6h9.2l3.8 5.2L12 20.4 3.6 8.8z"/><path d="M3.6 8.8h16.8M9.2 3.6 12 20.4l2.8-16.8"/></symbol>
-  <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4a8.4 8.4 0 1 1 8.4-8.4c0 2.2-1.8 3.2-3.4 3.2h-1.6a2 2 0 0 0-1.4 3.4 1.6 1.6 0 0 1-2 1.8z"/><circle cx="8.4" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="7.4" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.6" cy="10" r="1.1" fill="currentColor" stroke="none"/></symbol>
-  <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 11.4h15.6v8.2a1 1 0 0 1-1 1H5.2a1 1 0 0 1-1-1z"/><rect x="3" y="7.4" width="18" height="4" rx="1"/><path d="M12 7.4v13.2"/><path d="M12 7.4 9.8 5.2a2.2 2.2 0 1 0-3.1 3.1zM12 7.4l2.2-2.2a2.2 2.2 0 1 1 3.1 3.1z"/></symbol>
-  <symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 3.6h10.8M6.6 20.4h10.8"/><path d="M7.8 3.6v3.2c0 1 .4 1.9 1.1 2.6L12 12l-3.1 2.6a3.6 3.6 0 0 0-1.1 2.6v3.2M16.2 3.6v3.2c0 1-.4 1.9-1.1 2.6L12 12l3.1 2.6a3.6 3.6 0 0 1 1.1 2.6v3.2"/></symbol>
-  <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 20.4V4.2"/><path d="M5.4 5h9.4l-.9 3 .9 3H5.4z"/></symbol>
-  <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4.4" y="7.4" width="15.2" height="11.4" rx="3.2"/><path d="M12 3.4v4M2.6 11.6v3.2M21.4 11.6v3.2"/><circle cx="9.2" cy="12.4" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.8" cy="12.4" r="1.15" fill="currentColor" stroke="none"/><path d="M9.8 15.9h4.4"/></symbol>
-</svg>
-
 <div class="app">
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-     ASOSIY (HOME)
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page active" data-page="home" aria-label="Asosiy">
-<header class="hdr">
+<section class="page active" data-page="home">
+<div class="hdr">
   <div class="hdr-user" id="hdrUser">
-    <div class="hdr-av" id="hdrAv" role="button" tabindex="0" aria-label="Profil">A</div>
+    <div class="hdr-av" id="hdrAv">A</div>
     <div class="hdr-greet"><h1 id="userName">Foydalanuvchi</h1><p id="todayDate">Bugun</p></div>
   </div>
   <div class="hdr-actions">
-    <button class="mode-btn" id="modeBtn" type="button" aria-label="Yorug'/qorong'i rejim"><span class="ic" id="modeIcon"><svg class="ic"><use href="#i-sun"/></svg></span></button>
-    <button class="mode-btn" id="statsBtn" type="button" aria-label="Statistika"><svg class="ic"><use href="#i-bar-chart"/></svg></button>
-    <button class="mode-btn" id="settingsBtn" type="button" aria-label="Profil va sozlamalar"><svg class="ic"><use href="#i-settings"/></svg></button>
+    <button class="mode-btn" id="modeBtn" aria-label="Rejim"><span class="ic" id="modeIcon">☀️</span></button>
+    <button class="mode-btn" id="statsBtn" aria-label="Statistika"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></button>
+    <button class="mode-btn" id="settingsBtn" aria-label="Sozlamalar"><svg width="23" height="23" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
   </div>
-</header>
+</div>
 
-<!-- Discipline Score — ilovadagi yagona to'q/gradientli sirt.
-     Shuning uchun ko'z birinchi shu yerga tushadi: bu asosiy ko'rsatkich. -->
 <div class="hero-v2" id="heroV2">
   <div class="top">
     <div class="ds-ring">
-      <svg viewBox="0 0 100 100" aria-hidden="true">
+      <svg viewBox="0 0 100 100">
         <circle class="bgc" cx="50" cy="50" r="42"/>
         <circle class="fgc" id="dsRing" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
       </svg>
@@ -116,8 +45,8 @@
     </div>
   </div>
   <div class="bottom">
-    <div class="chip"><svg class="ic ic-14"><use href="#i-flame"/></svg> <span id="streakCount">0</span> kun streak</div>
-    <div class="chip" id="streakRiskChip"><svg class="ic ic-14"><use href="#i-list"/></svg> <span id="todayStat">0/0</span> bugun</div>
+    <div class="chip"><span class="em">🔥</span> <span id="streakCount">0</span> kun streak</div>
+    <div class="chip" id="streakRiskChip"><span class="em">📋</span> <span id="todayStat">0/0</span> bugun</div>
   </div>
 </div>
 
@@ -131,31 +60,25 @@
   </div>
 </div>
 
-<!-- Kun tanlagich SARLAVHADAN OLDIN: u sarlavha matnini boshqaradi
-     ("Bugungi rejalar" / "Ertangi rejalar" / "14 avg rejalari"). Boshqaruv
-     element o'zi ta'sir qiladigan sarlavhadan keyin turishi mantiqsiz edi. -->
-<div class="day-strip" id="dayStrip" role="group" aria-label="Kun tanlash"></div>
 <div class="section-title"><h2 id="homePlansTitle">Bugungi rejalar</h2></div>
-<button class="add-btn" id="addPlanBtn" type="button"><svg class="ic ic-18"><use href="#i-plus"/></svg><span>Reja qo'shish</span></button>
+<div class="day-strip" id="dayStrip"></div>
+<button class="add-btn ripple" id="addPlanBtn" type="button" aria-label="Reja qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Reja qo'shish</span></button>
 <div id="plansList"></div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     MAQSADLAR
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="goals" aria-label="Maqsadlar">
-<header class="hdr"><div class="hdr-greet"><h1>Maqsadlar</h1><p>Yo'lingni rejalashtir</p></div></header>
-<div class="seg" id="goalSeg" role="tablist"><div class="seg-indicator" id="goalSegInd"></div><div class="seg-item active" data-gp="yearly" role="tab">Yillik</div><div class="seg-item" data-gp="monthly" role="tab">Oylik</div></div>
+<section class="page" data-page="goals">
+<div class="hdr"><div class="hdr-greet"><h1>Maqsadlar 🎯</h1><p>Yo'lingni rejalashtir</p></div></div>
+<div class="seg" id="goalSeg"><div class="seg-indicator" id="goalSegInd"></div><div class="seg-item active" data-gp="yearly">Yillik</div><div class="seg-item" data-gp="monthly">Oylik</div></div>
 
 <div class="goal-view" id="gvYearly">
   <div class="year-chips" id="yearChips"></div>
-  <button class="add-btn add-goal-trigger" data-gp="yearly" type="button"><svg class="ic ic-18"><use href="#i-plus"/></svg><span>Maqsad qo'shish</span></button>
+  <button class="add-btn ripple add-goal-trigger" data-gp="yearly" type="button" aria-label="Maqsad qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Maqsad qo'shish</span></button>
   <div id="yearlyList" class="mt-16"></div>
 </div>
 
 <div class="goal-view hidden" id="gvMonthly">
   <div class="months-grid" id="monthsGrid"></div>
-  <button class="add-btn add-goal-trigger" data-gp="monthly" type="button" style="margin-top:12px"><svg class="ic ic-18"><use href="#i-plus"/></svg><span>Maqsad qo'shish</span></button>
+  <button class="add-btn ripple add-goal-trigger" data-gp="monthly" type="button" style="margin-top:12px" aria-label="Maqsad qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Maqsad qo'shish</span></button>
   <div id="monthlyList" class="mt-16"></div>
 </div>
 
@@ -166,246 +89,237 @@
 -->
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     AI COACH
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="ai" aria-label="AI Coach">
-<header class="hdr"><div class="hdr-greet"><h1>AI Coach</h1><p>Sening shaxsiy mentoring</p></div></header>
+<section class="page" data-page="ai">
+<div class="hdr"><div class="hdr-greet"><h1>AI Coach ✨</h1><p>Sening shaxsiy mentoring</p></div></div>
 
 <div class="chat-card" id="chatCard">
   <div class="chat-head">
-    <div class="av"><svg class="ic ic-22"><use href="#i-bot"/></svg></div>
+    <div class="av"><svg class="ai-bot" viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true"><path d="M12 2.6v2.4" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="2" r="1.15" fill="#fff"/><rect x="4" y="5" width="16" height="12.6" rx="4.2" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7"/><rect x="2.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><rect x="20.1" y="9.4" width="1.8" height="4" rx="0.9" fill="#fff"/><circle class="eye" cx="9" cy="11.2" r="1.7" fill="#fff"/><circle class="eye" cx="15" cy="11.2" r="1.7" fill="#fff"/><path d="M9.3 14.7h5.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div>
     <div class="ti">
       <div class="nm">Intizom AI</div>
       <div class="st"><span class="dot"></span> Sening maqsadlaringni ko'rib turibdi</div>
     </div>
     <div class="lim" id="chatLimit" style="display:none"></div>
   </div>
-  <div class="chat-log" id="chatLog" role="log" aria-live="polite"></div>
+  <div class="chat-log" id="chatLog"></div>
   <div class="chat-sugg" id="chatSugg">
     <div class="s" data-q="Bugun nimadan boshlasam yaxshi bo'ladi?">Bugun nimadan boshlay?</div>
     <div class="s" data-q="Maqsadlarimga qanday erishaman?">Maqsadlarim bo'yicha</div>
     <div class="s" data-q="Motivatsiya bermaysanmi?">Menga turtki ber</div>
   </div>
   <div class="chat-bar">
-    <textarea id="chatInput" rows="1" placeholder="Intizom AI ga yoz… (maqsad, reja, motivatsiya)" aria-label="Xabar"></textarea>
-    <button class="chat-send" id="chatSend" type="button" aria-label="Yuborish"><svg class="ic ic-18"><use href="#i-send"/></svg></button>
+    <textarea id="chatInput" rows="1" placeholder="Intizom AI ga yoz… (maqsad, reja, motivatsiya)"></textarea>
+    <button class="chat-send" id="chatSend" aria-label="Yuborish">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
   </div>
 </div>
 
 <div class="section-title"><h2>Bugungi kayfiyat</h2></div>
-<div class="mood-row" id="moodRow" role="radiogroup" aria-label="Kayfiyat">
-  <div class="mood-pill" data-mood="🔥" role="radio" aria-label="Olovli" title="Olovli">🔥</div>
-  <div class="mood-pill" data-mood="💪" role="radio" aria-label="Kuchli" title="Kuchli">💪</div>
-  <div class="mood-pill" data-mood="😐" role="radio" aria-label="Oddiy" title="Oddiy">😐</div>
-  <div class="mood-pill" data-mood="😴" role="radio" aria-label="Charchagan" title="Charchagan">😴</div>
-  <div class="mood-pill" data-mood="😞" role="radio" aria-label="Past" title="Past">😞</div>
+<div class="mood-row" id="moodRow">
+  <div class="mood-pill" data-mood="🔥" title="Olovli">🔥</div>
+  <div class="mood-pill" data-mood="💪" title="Kuchli">💪</div>
+  <div class="mood-pill" data-mood="😐" title="Oddiy">😐</div>
+  <div class="mood-pill" data-mood="😴" title="Charchagan">😴</div>
+  <div class="mood-pill" data-mood="😞" title="Past">😞</div>
 </div>
 
 <div class="section-title"><h2>Energiya darajasi</h2></div>
-<div class="energy-row" id="energyRow" role="radiogroup" aria-label="Energiya darajasi">
-  <div class="energy-cell" data-en="1" role="radio">1</div>
-  <div class="energy-cell" data-en="2" role="radio">2</div>
-  <div class="energy-cell" data-en="3" role="radio">3</div>
-  <div class="energy-cell" data-en="4" role="radio">4</div>
-  <div class="energy-cell" data-en="5" role="radio">5</div>
+<div class="energy-row" id="energyRow">
+  <div class="energy-cell" data-en="1">1</div>
+  <div class="energy-cell" data-en="2">2</div>
+  <div class="energy-cell" data-en="3">3</div>
+  <div class="energy-cell" data-en="4">4</div>
+  <div class="energy-cell" data-en="5">5</div>
 </div>
 
-<div class="section-title"><h2>Tahlil</h2></div>
+<div class="section-title"><h2>Smart insights 🧠</h2></div>
 <div id="insights"></div>
 
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     STATISTIKA
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="stats" aria-label="Statistika">
-<header class="hdr"><div class="hdr-greet"><h1>Statistika</h1><p>Sening progressing</p></div></header>
-<div class="habit-view-seg" id="statsSeg" role="tablist">
-  <div class="hvs active" data-sv="mine" role="tab"><svg class="ic ic-14"><use href="#i-bar-chart"/></svg>Mening</div>
-  <div class="hvs" data-sv="rating" role="tab"><svg class="ic ic-14"><use href="#i-award"/></svg>Reyting</div>
-</div>
+<section class="page" data-page="stats">
+<div class="hdr"><div class="hdr-greet"><h1>Statistika 📊</h1><p>Sening progressing</p></div></div>
+<div class="habit-view-seg" id="statsSeg"><div class="hvs active" data-sv="mine">📊 Mening</div><div class="hvs" data-sv="rating">🏆 Reyting</div></div>
 <div id="statsMine">
 <div class="stat-grid">
-<div class="stat-card"><div class="ic-bg"><svg class="ic ic-16"><use href="#i-flame"/></svg></div><div class="l">Joriy streak</div><div class="v" id="stStreak">0</div><div class="ch">+<span id="stStreakDelta">0</span> bu hafta</div></div>
-<div class="stat-card"><div class="ic-bg"><svg class="ic ic-16"><use href="#i-star"/></svg></div><div class="l">Jami ball</div><div class="v" id="stTotal">0</div><div class="ch">+<span id="stTotalDelta">0</span> bu hafta</div></div>
-<div class="stat-card"><div class="ic-bg"><svg class="ic ic-16"><use href="#i-check"/></svg></div><div class="l">Bajarilgan</div><div class="v" id="stDone">0</div><div class="ch">Bu oy</div></div>
-<div class="stat-card"><div class="ic-bg"><svg class="ic ic-16"><use href="#i-target"/></svg></div><div class="l">Maqsadlar</div><div class="v" id="stGoals">0</div><div class="ch">Faol</div></div>
+<div class="stat-card"><div class="ic-bg">🔥</div><div class="l">Joriy streak</div><div class="v" id="stStreak">0</div><div class="ch">+<span id="stStreakDelta">0</span> bu hafta</div></div>
+<div class="stat-card"><div class="ic-bg">⭐</div><div class="l">Jami ball</div><div class="v" id="stTotal">0</div><div class="ch">+<span id="stTotalDelta">0</span> bu hafta</div></div>
+<div class="stat-card"><div class="ic-bg">✓</div><div class="l">Bajarilgan</div><div class="v" id="stDone">0</div><div class="ch">Bu oy</div></div>
+<div class="stat-card"><div class="ic-bg">🎯</div><div class="l">Maqsadlar</div><div class="v" id="stGoals">0</div><div class="ch">Faol</div></div>
 </div>
 <div class="section-title"><h2>30 kunlik tahlil</h2></div>
 <div class="stat-grid" id="extraStats"></div>
-<div class="section-title"><h2>Odatlar statistikasi</h2></div>
+<div class="section-title"><h2>✅ Odatlar statistikasi</h2></div>
 <div class="stat-grid" id="habitStatGrid"></div>
 <div id="habitStatList" style="margin-bottom:6px"></div>
 <div class="chart-card"><div class="chart-head"><h3>Haftalik faollik</h3><span class="pill">Oxirgi 7 kun</span></div><div class="bars" id="weekBars"></div></div>
-<div class="chart-card"><div class="chart-head"><h3>Discipline Score trendi</h3><span class="pill" id="dstPill">30 kun</span></div><div class="area-wrap"><svg id="trendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity=".22"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs><g id="trendG"></g></svg></div></div>
+<div class="chart-card"><div class="chart-head"><h3>Discipline Score Trend</h3><span class="pill" id="dstPill">30 kun</span></div><div class="area-wrap"><svg id="trendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity=".5"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs><g id="trendG"></g></svg></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Faollik xaritasi</h3><span class="pill">14 hafta</span></div><div class="heat-grid" id="heatGrid"></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Maqsadlar bajarilishi</h3><span class="pill" id="goalDonutPill">0%</span></div>
-<div style="display:flex;align-items:center;gap:20px"><svg width="102" height="102" viewBox="0 0 110 110" style="flex-shrink:0"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-3)" stroke-width="9"/><circle id="donut" cx="55" cy="55" r="46" fill="none" stroke="var(--primary)" stroke-width="9" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 900ms cubic-bezier(.2,.7,.3,1)"/></svg>
-<div style="flex:1"><div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Tip bo'yicha taqsimot</div><div id="goalBreakdown" style="display:flex;flex-direction:column;gap:8px"></div></div></div></div>
-<div class="section-title"><h2>Bajarilgan rejalar</h2></div>
+<div style="display:flex;align-items:center;gap:20px"><svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--border)" stroke-width="10"/><circle id="donut" cx="55" cy="55" r="46" fill="none" stroke="url(#donutGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1)"/><defs><linearGradient id="donutGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="var(--primary-2)"/></linearGradient></defs></svg>
+<div style="flex:1"><div style="font-size:13px;color:var(--text-2);margin-bottom:8px">Tip bo'yicha taqsimot</div><div id="goalBreakdown" style="display:flex;flex-direction:column;gap:6px"></div></div></div></div>
+<div class="section-title"><h2>📋 Bajarilgan rejalar ro'yxati</h2></div>
 <div class="chart-card"><div class="hist-list" id="histList"></div></div>
 </div>
 <div id="statsRating" class="hidden">
-<div class="habit-view-seg" id="lbSeg" role="tablist"><div class="hvs active" data-lb="all" role="tab">Umumiy</div><div class="hvs" data-lb="week" role="tab">Haftalik</div><div class="hvs" data-lb="streak" role="tab">Streak</div></div>
+<div class="habit-view-seg" id="lbSeg"><div class="hvs active" data-lb="all">Umumiy</div><div class="hvs" data-lb="week">Haftalik</div><div class="hvs" data-lb="streak">Streak</div></div>
 <div id="lbMe"></div>
 <div id="lbList"></div>
 </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     ODATLAR
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="habits" aria-label="Odatlar">
-<header class="hdr"><div class="hdr-greet"><h1>Odatlar</h1><p>Har kuni takrorla, streak yig'</p></div></header>
-<div class="habit-view-seg" id="habitViewSeg" role="tablist">
-  <div class="hvs active" data-hv="today" role="tab"><svg class="ic ic-14"><use href="#i-list"/></svg>Bugun</div>
-  <div class="hvs" data-hv="tracker" role="tab"><svg class="ic ic-14"><use href="#i-calendar"/></svg>Tracker</div>
-</div>
+<section class="page" data-page="habits">
+<div class="hdr"><div class="hdr-greet"><h1>Odatlar ✅</h1><p>Har kuni takrorla, streak yig'</p></div></div>
+<div class="habit-view-seg" id="habitViewSeg"><div class="hvs active" data-hv="today">📋 Bugun</div><div class="hvs" data-hv="tracker">🗓️ Tracker</div></div>
 <div id="habitToday">
 <div class="habit-summary" id="habitSummary"></div>
-<button class="add-btn" id="addHabitBtn" type="button"><svg class="ic ic-18"><use href="#i-plus"/></svg><span>Odat qo'shish</span></button>
+<button class="add-btn ripple" id="addHabitBtn" type="button" aria-label="Odat qo'shish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Odat qo'shish</span></button>
 <div id="habitsList"></div>
 </div>
 <div id="habitTracker" class="hidden">
-<div class="tracker-head"><button class="nav-btn" id="trkPrev" type="button" aria-label="Oldingi hafta"><svg class="ic ic-16"><use href="#i-chevron-left"/></svg></button><h3 id="trkRange">—</h3><button class="nav-btn" id="trkNext" type="button" aria-label="Keyingi hafta"><svg class="ic ic-16"><use href="#i-chevron-right"/></svg></button></div>
+<div class="tracker-head"><button class="nav-btn" id="trkPrev">‹</button><h3 id="trkRange">—</h3><button class="nav-btn" id="trkNext">›</button></div>
 <div class="tracker" id="trackerWrap"></div>
 </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     PROFIL
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="profile" aria-label="Profil">
-<header class="hdr"><div class="hdr-greet"><h1>Profil</h1><p>Hisob va sozlamalar</p></div></header>
+<section class="page" data-page="profile">
+<div class="hdr"><div class="hdr-greet"><h1>Profil 👤</h1><p>Sozlamalar</p></div></div>
 <div class="prof-hero"><div class="av" id="profAv">A</div><div class="nm" id="profName">Foydalanuvchi</div><div class="un" id="profUn">@username</div><div class="stx"><div class="it"><div class="v" id="pfStreak">0</div><div class="l">Streak</div></div><div class="it"><div class="v" id="pfScore">0</div><div class="l">Ball</div></div><div class="it"><div class="v" id="pfDone">0</div><div class="l">Bajarilgan</div></div></div></div>
 
 <div class="sub-status" id="subStatus">
   <div class="ss-row">
-    <div class="ss-ic" id="ssIcon"><svg class="ic"><use href="#i-gem"/></svg></div>
+    <div class="ss-ic" id="ssIcon">💎</div>
     <div class="ss-body">
       <div class="ss-ttl"><span id="ssTitle">Obuna holati</span><span class="ss-live"></span></div>
       <div class="ss-sub" id="ssSub">Yuklanmoqda…</div>
     </div>
-    <button class="ss-cta" id="ssCta" type="button" style="display:none">Premium olish</button>
+    <button class="ss-cta" id="ssCta" style="display:none">Premium olish</button>
   </div>
   <div class="ss-bar"><i id="ssBar"></i></div>
 </div>
-<div class="section-title"><h2>Yutuqlar</h2></div>
+<div class="section-title"><h2>Yutuqlar 🏆</h2></div>
 <div class="achs" id="achs"></div>
-<div class="section-title"><h2>Ko'rinish</h2></div>
+<div class="section-title"><h2>🎨 Tema</h2></div>
 <div class="theme-grid" id="themeGrid"></div>
-<div class="section-title"><h2>Do'stlarni taklif qilish</h2></div>
-<div class="share-card" id="shareCard" role="button" tabindex="0"><div class="ic"><svg class="ic ic-18"><use href="#i-gift"/></svg></div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Do'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do'stga 7 kun</div></div><svg class="ic ic-18" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
-<div class="setting" id="channelBtn" role="button" tabindex="0"><div class="ic"><svg class="ic ic-18"><use href="#i-megaphone"/></svg></div><div class="body"><div class="ttl">Telegram kanal</div><div class="dsc">Yangiliklar va maslahatlar</div></div><svg class="ic ic-18" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
-<div class="setting" id="adminBtn" role="button" tabindex="0"><div class="ic"><svg class="ic ic-18"><use href="#i-message"/></svg></div><div class="body"><div class="ttl">Admin bilan bog'lanish</div><div class="dsc">Savol, taklif va yordam</div></div><svg class="ic ic-18" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+<div class="section-title"><h2>Do'stlarni taklif qil 🎁</h2></div>
+<div class="share-card" id="shareCard"><div class="ic">🎁</div><div class="body"><div class="t">Do'stni taklif qil</div><div class="d" id="shareDesc">Do'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do'stga 7 kun</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+<div class="setting" id="channelBtn"><div class="ic">📢</div><div class="body"><div class="ttl">Telegram kanal</div><div class="dsc">Yangiliklar va maslahatlar</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
+<div class="setting" id="adminBtn"><div class="ic">💬</div><div class="body"><div class="ttl">Admin bilan bog'lanish</div><div class="dsc">Savol, taklif va yordam</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Hisob</h2></div>
-<div class="setting" id="editNameSetting" role="button" tabindex="0"><div class="ic"><svg class="ic ic-18"><use href="#i-user"/></svg></div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg class="ic ic-18" style="color:var(--text-3)"><use href="#i-chevron-right"/></svg></div>
+<div class="setting" id="editNameSetting"><div class="ic">✏️</div><div class="body"><div class="ttl">Ismni tahrirlash</div><div class="dsc" id="editNameDsc">Ismingizni o'zgartiring</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></div>
 <div class="section-title"><h2>Rejim</h2></div>
-<div class="setting"><div class="ic"><svg class="ic ic-18"><use href="#i-moon"/></svg></div><div class="body"><div class="ttl">Tungi rejim</div><div class="dsc">Yorug' / qorong'i</div></div><div class="toggle" id="darkToggle" role="switch" tabindex="0" aria-label="Tungi rejim"><i></i></div></div>
-<!-- Bildirishnomalar va animatsiyalar sozlamalari olib tashlangan:
+<div class="setting"><div class="ic">🌓</div><div class="body"><div class="ttl">Tungi rejim</div><div class="dsc">Yorug' / qorong'i</div></div><div class="toggle" id="darkToggle"><i></i></div></div>
+<!-- Bildirishnomalar va animatsiyalar sozlamalari olib tashlandi:
      ular doimo hamma foydalanuvchi uchun yoniq turadi. -->
 <div class="section-title"><h2>Ma'lumot</h2></div>
-<div class="setting"><div class="ic"><svg class="ic ic-18"><use href="#i-info"/></svg></div><div class="body"><div class="ttl">Versiya</div><div class="dsc">Intizom AI v2.1 Pro</div></div></div>
+<div class="setting"><div class="ic">ℹ️</div><div class="body"><div class="ttl">Versiya</div><div class="dsc">Intizom AI v2.1 Pro</div></div></div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════════════
-     DO'STLAR (Friends / Groups)
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section class="page" data-page="friends" aria-label="Do'stlar">
-  <!-- Guruhlar ro'yxati -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- DO'STLAR (Friends / Groups)                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section class="page" data-page="friends">
+  <!-- Groups list view -->
   <div id="friendsListView">
-    <header class="hdr"><div class="hdr-greet"><h1>Do'stlar</h1><p>Jamoa bo'lib intizom yig'ing</p></div></header>
+    <div class="hdr"><div class="hdr-greet"><h1>Do'stlar 👥</h1><p>Jamoa bo'lib intizom yig'ing</p></div></div>
     <div id="friendsGroupsList"></div>
-    <button class="add-btn" id="friendsCreateBtn" type="button" style="margin-top:12px">
-      <svg class="ic ic-18"><use href="#i-plus"/></svg><span>Yangi guruh</span>
+    <button class="add-btn ripple" id="friendsCreateBtn" type="button" style="margin-top:14px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Yangi guruh</span>
     </button>
   </div>
 
-  <!-- Guruh sahifasi -->
+  <!-- Group detail view -->
   <div id="friendsGroupView" class="hidden">
-    <header class="hdr">
-      <button class="mode-btn friends-back" id="friendsGroupBack" type="button" aria-label="Orqaga"><svg class="ic"><use href="#i-chevron-left"/></svg></button>
-      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsGroupName">—</h1><p id="friendsGroupSub">a'zolar</p></div>
-      <button class="mode-btn" id="friendsGroupSettings" type="button" aria-label="Guruh sozlamalari"><svg class="ic"><use href="#i-more-vertical"/></svg></button>
-    </header>
+    <div class="hdr">
+      <button class="mode-btn friends-back" id="friendsGroupBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsGroupName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsGroupSub">a'zolar</p></div>
+      <button class="mode-btn" id="friendsGroupSettings" aria-label="Sozlamalar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+    </div>
     <div class="friends-actions">
-      <button class="btn friends-invite" id="friendsInviteBtn" type="button"><svg class="ic ic-16"><use href="#i-link"/></svg>Taklif qilish</button>
-      <button class="btn btn-ghost friends-perms" id="friendsPermsBtn" type="button"><svg class="ic ic-16"><use href="#i-shield"/></svg>Ruxsatlar</button>
+      <button class="btn friends-invite" id="friendsInviteBtn" type="button">🔗 Do'st taklif qilish</button>
+      <button class="btn btn-ghost friends-perms" id="friendsPermsBtn" type="button">🛡 Ruxsatlar</button>
     </div>
     <div id="friendsMembersList" style="margin-top:14px"></div>
   </div>
 
-  <!-- A'zo sahifasi -->
+  <!-- Member detail view -->
   <div id="friendsMemberView" class="hidden">
-    <header class="hdr">
-      <button class="mode-btn friends-back" id="friendsMemberBack" type="button" aria-label="Orqaga"><svg class="ic"><use href="#i-chevron-left"/></svg></button>
-      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsMemberName">—</h1><p id="friendsMemberSub">bugungi holat</p></div>
-    </header>
+    <div class="hdr">
+      <button class="mode-btn friends-back" id="friendsMemberBack" aria-label="Orqaga"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="hdr-greet" style="flex:1;min-width:0"><h1 id="friendsMemberName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</h1><p id="friendsMemberSub">bugungi holat</p></div>
+    </div>
     <!-- Sana navigatsiyasi — o'tgan/kelajak davrni ko'rish uchun.
          «/» = oy oldinga/keyinga (maqsadlar boshqa oyga sakraydi).
          ‹/› = kun oldinga/keyinga. Yorliqni bosish "Bugun"ga qaytaradi. -->
     <div class="mem-datenav">
-      <button class="nav-btn" id="memMonthPrev" type="button" aria-label="Oldingi oy" title="Oldingi oy">«</button>
-      <button class="nav-btn" id="memDatePrev" type="button" aria-label="Oldingi kun" title="Oldingi kun"><svg class="ic ic-16"><use href="#i-chevron-left"/></svg></button>
-      <div class="mem-datelabel" id="memDateLabel" role="button" tabindex="0">Bugun</div>
-      <button class="nav-btn" id="memDateNext" type="button" aria-label="Keyingi kun" title="Keyingi kun"><svg class="ic ic-16"><use href="#i-chevron-right"/></svg></button>
-      <button class="nav-btn" id="memMonthNext" type="button" aria-label="Keyingi oy" title="Keyingi oy">»</button>
+      <button class="nav-btn" id="memMonthPrev" aria-label="Oldingi oy" title="Oldingi oy">«</button>
+      <button class="nav-btn" id="memDatePrev" aria-label="Oldingi kun" title="Oldingi kun">‹</button>
+      <div class="mem-datelabel" id="memDateLabel">Bugun</div>
+      <button class="nav-btn" id="memDateNext" aria-label="Keyingi kun" title="Keyingi kun">›</button>
+      <button class="nav-btn" id="memMonthNext" aria-label="Keyingi oy" title="Keyingi oy">»</button>
     </div>
     <div id="friendsMemberContent"></div>
   </div>
 </section>
 
 </div>
-<!-- ═══════════════════════════════════════════════════════════════════════
-     Do'stlar modallari — .app CONTAINERIDAN TASHQARIDA joylashadi.
-     Sabab: modallar body darajasida bo'lsa, pastki navigatsiya (.nav,
-     z-index:100) ustida to'g'ri ko'rinadi.
-     ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════
+     Do'stlar modallari — .app CONTAINERINDAN TASHQARIDA joylashadi.
+     Sabab: .app { z-index: 1 } stacking konteksti yaratadi va uning
+     ichidagi z-index:200 modal-back .nav (z-index:100, body darajasi)
+     tagida qoladi — natijada modal tugmalari nav ostida yashirinadi.
+     Modallar body darajasida joylashsa (boshqa modallar kabi), .nav
+     ustida to'g'ri ko'rinadi. Modallarni bu yerda saqlaymiz.
+═══════════════════════════════════════════════════════════════ -->
 
 <!-- Friends: yangi guruh yaratish -->
-<div class="modal-back" id="groupCreateBack" role="dialog" aria-modal="true">
+<div class="modal-back" id="groupCreateBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Yangi guruh</h3>
-    <div class="fld"><label for="gcName">Guruh nomi</label><input id="gcName" placeholder="Masalan: Oila / Ish jamoasi" maxlength="80"></div>
-    <div class="fld"><label for="gcDesc">Tavsif (ixtiyoriy)</label><textarea id="gcDesc" maxlength="300" placeholder="Guruh haqida bir necha so'z"></textarea></div>
+    <div class="fld"><label>Guruh nomi</label><input id="gcName" placeholder="Masalan: Oila / Ish jamoasi" maxlength="80"></div>
+    <div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="gcDesc" maxlength="300" placeholder="Guruh haqida bir necha so'z"></textarea></div>
     <div class="row gap-12 mt-8">
-      <button class="btn btn-ghost" id="gcCancel" type="button">Bekor</button>
-      <button class="btn" id="gcSave" type="button">Yaratish</button>
+      <button class="btn btn-ghost" id="gcCancel">Bekor</button>
+      <button class="btn" id="gcSave">Yaratish</button>
     </div>
   </div>
 </div>
 
 <!-- Friends: guruh sozlamalari (3 tab: Umumiy / Hisobot / A'zolar) -->
-<div class="modal-back" id="groupEditBack" role="dialog" aria-modal="true">
+<div class="modal-back" id="groupEditBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Guruh sozlamalari</h3>
 
+    <!-- Tab navigator (3 bo'lim) -->
     <div class="ge-tabs" role="tablist">
-      <button class="ge-tab active" data-ge-tab="general" type="button" role="tab" aria-selected="true">Umumiy</button>
-      <button class="ge-tab" data-ge-tab="digest" type="button" role="tab" aria-selected="false">Hisobot</button>
-      <button class="ge-tab" data-ge-tab="members" type="button" role="tab" aria-selected="false">A'zolar</button>
+      <button class="ge-tab active" data-ge-tab="general" role="tab" aria-selected="true">Umumiy</button>
+      <button class="ge-tab" data-ge-tab="digest" role="tab" aria-selected="false">Hisobot</button>
+      <button class="ge-tab" data-ge-tab="members" role="tab" aria-selected="false">A'zolar</button>
     </div>
 
     <!-- ── Tab 1: Umumiy (nom, tavsif, o'chirish/chiqish) ──────────────── -->
     <div class="ge-pane active" data-ge-pane="general">
-      <div class="fld"><label for="geName">Guruh nomi</label><input id="geName" maxlength="80"></div>
-      <div class="fld"><label for="geDesc">Tavsif</label><textarea id="geDesc" maxlength="300"></textarea></div>
-      <button class="btn btn-danger" id="geDelete" type="button" style="width:100%;margin-top:6px">Guruhni o'chirish</button>
-      <button class="btn btn-ghost" id="geLeave" type="button" style="width:100%;margin-top:6px">Guruhdan chiqish</button>
+      <div class="fld"><label>Guruh nomi</label><input id="geName" maxlength="80"></div>
+      <div class="fld"><label>Tavsif</label><textarea id="geDesc" maxlength="300"></textarea></div>
       <div class="row gap-12 mt-8">
-        <button class="btn btn-ghost" id="geCancel" type="button">Bekor</button>
-        <button class="btn" id="geSave" type="button">Saqlash</button>
+        <button class="btn btn-ghost" id="geCancel">Bekor</button>
+        <button class="btn" id="geSave">Saqlash</button>
       </div>
+      <button class="btn btn-danger" id="geDelete" style="margin-top:14px;width:100%">🗑 Guruhni o'chirish</button>
+      <button class="btn btn-ghost" id="geLeave" style="margin-top:6px;width:100%">🚪 Guruhdan chiqish</button>
     </div>
 
     <!-- ── Tab 2: Hisobot (Telegram digest sozlamalari) ────────────────── -->
     <div class="ge-pane" data-ge-pane="digest">
       <div id="geDigestWrap" style="display:none">
-        <p style="margin-bottom:14px">Belgilangan vaqtlarda WebApp guruhingizning har bir a'zosi uchun alohida xabar Telegram guruhga yuboriladi: ertalab reja ro'yxati, kechqurun bugungi natija.</p>
+        <h3 style="font-size:14px;margin:0 0 6px">📡 Telegram guruhga hisobot</h3>
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 10px;line-height:1.45">Belgilangan vaqtlarda WebApp guruhingizning har bir a'zosi uchun alohida xabar Telegram guruhga yuboriladi: ertalab reja ro'yxati, kechqurun bugungi natija.</p>
 
+        <!-- Bog'langan chat / tanlash -->
         <div class="digest-row">
           <div class="digest-label">Telegram guruh</div>
           <div class="digest-value" id="geDigestChat">— tanlanmagan —</div>
@@ -415,50 +329,54 @@
           </div>
         </div>
 
-        <!-- Ma'lumot manbasi: plans / habits / both. Bu tanlov barcha Telegram
-             xabarlariga (kunlik reja, kunlik hisobot, aggregate digest) ta'sir qiladi. -->
-        <div class="digest-row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <!-- ── Ma'lumot manbasi (nima yuborilsin): plans / habits / both.
+             Uchta segmentli tugma — birini tanlash mumkin. Bu tanlov barcha
+             Telegram xabarlariga (kunlik reja, kunlik hisobot, aggregate
+             /hisobot digest) ta'sir qiladi. -->
+        <div class="digest-row">
           <div class="digest-label">Nima yuborilsin</div>
-          <div class="ge-src-seg" id="geReportSourceSeg" role="radiogroup" aria-label="Ma'lumot manbasi">
-            <button type="button" class="src-opt" data-src="plans" role="radio" aria-checked="false">Rejalar</button>
-            <button type="button" class="src-opt active" data-src="both" role="radio" aria-checked="true">Ikkisi ham</button>
-            <button type="button" class="src-opt" data-src="habits" role="radio" aria-checked="false">Odatlar</button>
+          <div class="digest-value">
+            <div class="ge-src-seg" id="geReportSourceSeg" role="radiogroup" aria-label="Ma'lumot manbasi">
+              <button type="button" class="src-opt" data-src="plans" role="radio" aria-checked="false">📋 Rejalar</button>
+              <button type="button" class="src-opt active" data-src="both" role="radio" aria-checked="true">🔀 Ikkisi ham</button>
+              <button type="button" class="src-opt" data-src="habits" role="radio" aria-checked="false">🔁 Odatlar</button>
+            </div>
           </div>
         </div>
 
-        <!-- Kunlik REJA (plans): vaqt + test yuborish + toggle -->
+        <!-- ── Kunlik REJA (plans) qatori: vaqt + kichkina test tugma + toggle -->
         <div class="digest-row">
-          <div class="digest-label">Kunlik reja vaqti</div>
+          <div class="digest-label">Kunlik plan yuborish vaqti</div>
           <div class="digest-value">
-            <select id="gePlansTime" class="digest-select" aria-label="Kunlik reja yuborish vaqti"></select>
+            <select id="gePlansTime" class="digest-select"></select>
           </div>
           <div class="digest-actions">
-            <button class="btn-icon" id="gePlansTest" type="button" title="Kunlik rejani test yuborish" aria-label="Kunlik rejani test yuborish"><svg class="ic ic-16"><use href="#i-send"/></svg></button>
-            <div class="toggle" id="gePlansEnable" role="switch" tabindex="0" aria-label="Kunlik reja yoqish/o'chirish"><i></i></div>
+            <button class="btn-icon" id="gePlansTest" type="button" title="Kunlik planni test yuborish" aria-label="Kunlik planni test yuborish">📋</button>
+            <div class="toggle" id="gePlansEnable" role="switch" aria-label="Kunlik reja yoqish/o'chirish"><i></i></div>
           </div>
         </div>
 
-        <!-- Kunlik HISOBOT (report): vaqt + test yuborish + toggle -->
+        <!-- ── Kunlik HISOBOT (report) qatori: vaqt + kichkina test tugma + toggle -->
         <div class="digest-row">
-          <div class="digest-label">Kunlik hisobot vaqti</div>
+          <div class="digest-label">Kunlik hisobot yuborish vaqti</div>
           <div class="digest-value">
-            <select id="geDigestTime" class="digest-select" aria-label="Kunlik hisobot yuborish vaqti"></select>
+            <select id="geDigestTime" class="digest-select"></select>
           </div>
           <div class="digest-actions">
-            <button class="btn-icon" id="geDigestTest" type="button" title="Kunlik hisobotni test yuborish" aria-label="Kunlik hisobotni test yuborish"><svg class="ic ic-16"><use href="#i-send"/></svg></button>
-            <div class="toggle" id="geDigestEnable" role="switch" tabindex="0" aria-label="Kunlik hisobot yoqish/o'chirish"><i></i></div>
+            <button class="btn-icon" id="geDigestTest" type="button" title="Kunlik hisobotni test yuborish" aria-label="Kunlik hisobotni test yuborish">📊</button>
+            <div class="toggle" id="geDigestEnable" role="switch" aria-label="Kunlik hisobot yoqish/o'chirish"><i></i></div>
           </div>
         </div>
 
-        <!-- Xato holati (agar bo'lsa) -->
-        <div id="geDigestMeta" style="font-size:11.5px;color:var(--text-3);margin-top:10px"></div>
+        <!-- Xato holati (agar bo'lsa) — muvaffaqiyatli yuborish vaqti ko'rsatilmaydi. -->
+        <div id="geDigestMeta" style="font-size:11.5px;color:var(--text-3);margin-top:8px;min-height:0"></div>
       </div>
     </div>
 
     <!-- ── Tab 3: A'zolar (a'zoni chiqarib yuborish) ───────────────────── -->
     <div class="ge-pane" data-ge-pane="members">
       <div id="geMembersWrap" style="display:none">
-        <p style="margin-bottom:12px">A'zoni guruhdan chiqarib yuborish uchun tugmasini bosing.</p>
+        <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">A'zoni guruhdan chiqarib yuborish uchun tugmasini bosing.</p>
         <div id="geMembers"></div>
       </div>
     </div>
@@ -466,189 +384,209 @@
 </div>
 
 <!-- Telegram chat picker (owner) — bot bilan birga bo'lgan guruhlar ro'yxati -->
-<div class="modal-back" id="tgPickerBack" role="dialog" aria-modal="true">
+<div class="modal-back" id="tgPickerBack">
   <div class="modal">
     <div class="grab"></div>
     <h3>Telegram guruhni tanlang</h3>
-    <p style="margin-bottom:14px">Bot va siz ikkalangiz ham a'zo bo'lgan guruhlar ko'rsatilgan.</p>
-    <div id="tgPickerList" style="max-height:52vh;overflow-y:auto"></div>
-    <details style="margin-top:12px" id="tgPickerHelp">
-      <summary style="font-size:12.5px;color:var(--text-2);cursor:pointer">Ro'yxatda guruhim yo'qmi?</summary>
-      <div style="font-size:12px;color:var(--text-3);padding:8px 2px 2px;line-height:1.55">
+    <p style="font-size:12px;color:var(--text-3);margin:0 0 10px">Bot va siz ikkalangiz ham a'zo bo'lgan guruhlar ko'rsatilgan.</p>
+    <div id="tgPickerList" style="max-height:56vh;overflow-y:auto"></div>
+    <!-- Help — ilgari sozlamalar oxirida bo'lgan, endi bu yerga ko'chirildi -->
+    <details style="margin-top:10px" id="tgPickerHelp">
+      <summary style="font-size:12px;color:var(--text-2);cursor:pointer">❓ Ro'yxatda guruhim yo'qmi?</summary>
+      <div style="font-size:11.5px;color:var(--text-3);padding:6px 2px 2px;line-height:1.5">
         Botni o'sha Telegram guruhga <b>siz qo'shishingiz</b> va o'sha guruhda kamida bir marta xabar yozishingiz kerak. Undan keyin ushbu ro'yxatga chiqadi. Guruh sozlamalarida "faqat adminlar yozadi" yoqilgan bo'lsa, botni admin qiling.
       </div>
     </details>
     <div class="row gap-12 mt-8">
-      <button class="btn btn-ghost" id="tgPickerCancel" type="button">Bekor</button>
-      <button class="btn btn-ghost" id="tgPickerReload" type="button"><svg class="ic ic-16"><use href="#i-refresh"/></svg>Yangilash</button>
+      <button class="btn btn-ghost" id="tgPickerCancel">Bekor</button>
+      <button class="btn btn-ghost" id="tgPickerReload">🔄 Yangilash</button>
     </div>
   </div>
 </div>
 
 <!-- Friends: ruxsatlar (2 seksiya)
-     • Kim men uchun yarata oladi — reja/odat yaratish huquqini berish
-     • Menga ruxsat berganlar — kimlar menga huquq berganini ko'rish
-     Eslatma: "Kim meni ko'radi" bo'limi olib tashlandi — hamma bir-birining
-     reja/odatlarini ko'radi; visibility guruh egasi tomonidan A'zolar
-     bo'limidagi on/off toggle bilan boshqariladi. -->
-<div class="modal-back" id="permsBack" role="dialog" aria-modal="true">
+     • ✍️ Kim men uchun yarata oladi — reja/odat yaratish huquqini berish
+     • 📥 Menga ruxsat berganlar — kimlar menga huquq berganini ko'rish
+     Eslatma: ilgari "👁 Kim meni ko'radi" bo'limi ham bor edi — foydalanuvchi
+     so'roviga muvofiq olib tashlandi. Hamma bir-birining reja/odatlarini har
+     doim ko'radi; visibility guruh egasi tomonidan A'zolar bo'limidagi
+     on/off toggle bilan boshqariladi. -->
+<div class="modal-back" id="permsBack">
   <div class="modal">
     <div class="grab"></div>
-    <h3>Ruxsatlar</h3>
+    <h3>Ruxsatlar 🛡</h3>
 
-    <div>
-      <div class="section-title" style="margin-top:0"><h2>Kim men uchun yarata oladi</h2></div>
-      <p style="margin-bottom:10px">Reja va odatlarni men uchun qo'shish huquqi.</p>
+    <!-- Boshqarish (kim men uchun yarata oladi) -->
+    <div style="margin-top:8px">
+      <h3 style="font-size:14px;margin-bottom:2px">✍️ Kim men uchun yarata oladi</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Reja va odatlarni men uchun qo'shish huquqi.</p>
       <div id="permsGrantsOut"></div>
     </div>
 
-    <div>
-      <div class="section-title"><h2>Menga ruxsat berganlar</h2></div>
-      <p style="margin-bottom:10px">Bu odamlar sizga ular uchun reja/odat yaratishga ruxsat berdi.</p>
+    <!-- Menga berilgan huquqlar (info) -->
+    <div style="margin-top:14px">
+      <h3 style="font-size:14px;margin-bottom:2px">📥 Menga ruxsat berganlar</h3>
+      <p style="font-size:12px;color:var(--text-3);margin:0 0 8px">Bu odamlar sizga ular uchun reja/odat yaratishga ruxsat berdi.</p>
       <div id="permsGrantsIn"></div>
     </div>
 
     <div class="row gap-12 mt-8">
-      <button class="btn" id="permsClose" type="button">Yopish</button>
+      <button class="btn" id="permsClose">Yopish</button>
     </div>
   </div>
 </div>
 
-<!-- Yutuq oynasi -->
-<div class="unlock-overlay" id="unlockOverlay" role="dialog" aria-modal="true">
+<!-- Eski "A'zo uchun yangi" (forMemberBack) modal olib tashlandi — o'rniga
+     plan/habit/goal uchun asosiy modallar (planModalBack / habitModalBack /
+     modalBack) qayta ishlatiladi. Barcha maydonlar (vaqt, sana, belgi,
+     takrorlash, davomiylik, eslatma) o'z-o'zi uchun bo'lgani kabi ko'rinadi. -->
+
+<!-- Achievement unlock modal -->
+<div class="unlock-overlay" id="unlockOverlay">
   <div class="unlock-card">
     <div class="badge" id="unlockIcon">🏆</div>
     <div class="lbl">Yangi yutuq</div>
     <div class="ttl" id="unlockTitle">—</div>
     <div class="rar" id="unlockRarity">COMMON</div>
-    <button class="ok" id="unlockOk" type="button">Davom etish</button>
+    <button class="ok" id="unlockOk">A'lo!</button>
   </div>
 </div>
 
-<!-- Birinchi ishga tushirish (onboarding) -->
+<!-- First-run onboarding -->
 <div class="ob" id="onboarding">
   <div class="step active" data-step="0">
-    <div class="em"><svg class="ic ic-24"><use href="#i-target"/></svg></div>
+    <div class="em">🎯</div>
     <h1>Salom!<br>Men Intizom AI</h1>
-    <p>Sening shaxsiy intizom tizimingman. Maqsadlaringni rejaga aylantiraman va streakingni saqlayman.</p>
+    <p>Sening shaxsiy intizom OS'ing. Maqsadlaringni rejaga aylantiraman, streakingni saqlayman.</p>
     <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="nav"><button class="next" data-go="1" type="button">Davom etish</button></div>
+    <div class="nav"><button class="next" data-go="1">Davom etish ›</button></div>
   </div>
   <div class="step" data-step="1">
-    <div class="em"><svg class="ic ic-24"><use href="#i-user"/></svg></div>
+    <div class="em">🧭</div>
     <h1>Sen kimsan?</h1>
     <p>Bu senga mos odatlarni taklif qilishimga yordam beradi.</p>
     <div class="opts" id="personaOpts">
-      <div class="opt" data-p="student"><span class="em">📚</span><div><div>Talaba</div><div style="font-size:11.5px;color:var(--text-3);font-weight:400">Imtihon, dars, tartib</div></div></div>
-      <div class="opt" data-p="pro"><span class="em">💼</span><div><div>Mutaxassis</div><div style="font-size:11.5px;color:var(--text-3);font-weight:400">Ish, loyiha, o'sish</div></div></div>
-      <div class="opt" data-p="self"><span class="em">🌱</span><div><div>O'zimni rivojlantirish</div><div style="font-size:11.5px;color:var(--text-3);font-weight:400">Sport, kitob, odat</div></div></div>
-      <div class="opt" data-p="mixed"><span class="em">⚡</span><div><div>Hammasi</div><div style="font-size:11.5px;color:var(--text-3);font-weight:400">Maksimal samaradorlik</div></div></div>
+      <div class="opt" data-p="student"><span class="em">📚</span><div><div>Talaba</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Imtihon, dars, tartib</div></div></div>
+      <div class="opt" data-p="pro"><span class="em">💼</span><div><div>Mutaxassis</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Ish, loyiha, o'sish</div></div></div>
+      <div class="opt" data-p="self"><span class="em">🌱</span><div><div>O'zimni rivojlantirish</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Sport, kitob, odat</div></div></div>
+      <div class="opt" data-p="mixed"><span class="em">⚡</span><div><div>Hammasi</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Maksimal samaradorlik</div></div></div>
     </div>
     <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="nav"><button class="next" data-go="2" type="button">Keyingi</button></div>
+    <div class="nav"><button class="next" data-go="2">Keyingi ›</button></div>
   </div>
   <div class="step" data-step="2">
-    <div class="em"><svg class="ic ic-24"><use href="#i-flame"/></svg></div>
+    <div class="em">🔥</div>
     <h1>Va'da</h1>
-    <p>Har kuni kamida bitta ish bajarish — o'zingga va kelajagingga berilgan va'da.</p>
+    <p>Har kuni kamida 1 ta narsa bajarish — sen va sening kelajagingga aytilgan va'da.</p>
     <div class="opts">
-      <div class="opt" id="commitOpt"><span class="em">✋</span><div><div>Men o'zimga va'da beraman</div><div style="font-size:11.5px;color:var(--text-3);font-weight:400">Streak boshlash uchun bos</div></div></div>
+      <div class="opt" id="commitOpt"><span class="em">✋</span><div><div>Men o'zimga va'da beraman</div><div style="font-size:11.5px;opacity:.7;font-weight:600">Streak boshlash uchun bos</div></div></div>
     </div>
     <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
-    <div class="nav"><button class="next" data-go="3" type="button">Keyingi</button></div>
+    <div class="nav"><button class="next" data-go="3">Keyingi ›</button></div>
   </div>
   <div class="step" data-step="3">
-    <div class="em"><svg class="ic ic-24"><use href="#i-check-square"/></svg></div>
+    <div class="em">✅</div>
     <h1>Birinchi odatlaring</h1>
     <p>Bittasini tanla — bir tap bilan boshlaymiz. Keyin xohlagancha o'zgartirasan.</p>
     <div class="opts" id="obHabitOpts"></div>
     <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
-    <div class="nav"><button class="next" id="obFinish" type="button">Boshlash</button></div>
+    <div class="nav"><button class="next" id="obFinish">Boshlash 🚀</button></div>
   </div>
 </div>
 
-<!-- Premium paywall -->
-<div class="paywall" id="paywall" aria-hidden="true" role="dialog" aria-modal="true">
+<!-- Premium paywall — Mini App ichidan direct checkout.
+     Vizual shovqinni kamaytirish uchun eski `.pw-orbs` (blurred decorative
+     blobs) olib tashlandi — endi toza, sokin premium ko'rinish. -->
+<div class="paywall" id="paywall" aria-hidden="true">
   <div class="pw-inner">
-    <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span></h1>
+    <!--
+      Joriy dizayn:
+        IntizomAi Premium 💎     ← 💎 sarlavha yonida (kichkina, pulse)
+        [xususiyatlar ro'yxati — 4 ta qator]
+        ──────────────
+        [tariflar ro'yxati — bosiladigan qatorlar]
+        [💎 Tarifni tanlash]
+        [⬅️ Orqaga]
+      Eski katta 💎 crown, "Cheksiz..." tag-line va 🔒/⚡ trust info bloki
+      foydalanuvchi so'roviga muvofiq olib tashlandi.
+    -->
+    <h1 id="pwTitle">IntizomAi <span class="pw-pro">Premium</span> <span class="pw-title-gem" aria-hidden="true">💎</span></h1>
+    <!-- Premium xususiyatlar ro'yxati (foydalanuvchi so'ragan yangi tarkib):
+         • birinchi ikkita xususiyat bittaga birlashtirildi
+         • 🔒/⚡ info bloki olib tashlandi (tariflar ostidagi) -->
     <ul class="pw-feats" id="pwFeats">
-      <li><span class="pw-feat-ic"><svg class="ic ic-16"><use href="#i-sparkles"/></svg></span><span>Cheksiz reja, maqsad, odat va AI Coach</span></li>
-      <li><span class="pw-feat-ic"><svg class="ic ic-16"><use href="#i-bar-chart"/></svg></span><span>Batafsil statistika va reyting jadvali</span></li>
-      <li><span class="pw-feat-ic"><svg class="ic ic-16"><use href="#i-users"/></svg></span><span>Jamoaviy ishlash imkoni</span></li>
-      <li><span class="pw-feat-ic"><svg class="ic ic-16"><use href="#i-palette"/></svg></span><span>Premium dizaynlar</span></li>
+      <li><span class="pw-feat-ic">✨</span><span>Cheksiz reja, maqsad, odat va AI Coach</span></li>
+      <li><span class="pw-feat-ic">📊</span><span>Batafsil statistika va Reyting jadvali</span></li>
+      <li><span class="pw-feat-ic">🤝</span><span>Jamoaviy ishlash imkoni</span></li>
+      <li><span class="pw-feat-ic">🎨</span><span>Premium dizaynlar</span></li>
     </ul>
     <div class="pw-divider"></div>
-    <!-- Tariflar JavaScript'dan render qilinadi -->
+    <!-- Tariflar shu yerga JavaScript'dan render qilinadi -->
     <div class="pw-plans" id="pwPlans"></div>
     <div class="pw-note" id="pwNote" hidden></div>
-    <button class="pw-cta" id="pwCta" type="button">Tarifni tanlash</button>
-    <button class="pw-back" id="pwBack" type="button">Orqaga</button>
+    <button class="pw-cta" id="pwCta">💎 Tarifni tanlash</button>
+    <button class="pw-back" id="pwBack">⬅️ Orqaga</button>
   </div>
 </div>
 
-<!-- Pastki navigatsiya — 5 teng element. Ilgari o'rtadagi AI tugmasi suzib
-     turgan katta doira edi va kontentni to'sardi. -->
-<nav class="nav" aria-label="Asosiy navigatsiya">
-<div class="nav-item active" data-nav="home" role="button" tabindex="0"><svg class="ic"><use href="#i-home"/></svg><span>Asosiy</span></div>
-<div class="nav-item" data-nav="goals" role="button" tabindex="0"><svg class="ic"><use href="#i-target"/></svg><span>Maqsad</span></div>
-<div class="nav-ai" data-nav="ai" role="button" tabindex="0"><svg class="ic"><use href="#i-sparkles"/></svg><span>AI</span></div>
-<div class="nav-item" data-nav="habits" role="button" tabindex="0"><svg class="ic"><use href="#i-check-square"/></svg><span>Odat</span></div>
-<div class="nav-item" data-nav="friends" role="button" tabindex="0"><svg class="ic"><use href="#i-users"/></svg><span>Do'stlar</span></div>
+<nav class="nav">
+<div class="nav-item active" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Asosiy</span></div>
+<div class="nav-item" data-nav="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Maqsad</span></div>
+<div class="nav-ai" data-nav="ai" aria-label="AI"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l1.9 4.8a2.5 2.5 0 0 0 1.4 1.4L20 10.6l-4.7 1.9a2.5 2.5 0 0 0-1.4 1.4L12 18.7l-1.9-4.8a2.5 2.5 0 0 0-1.4-1.4L4 10.6l4.7-1.9a2.5 2.5 0 0 0 1.4-1.4L12 2.5z" opacity=".95"/><circle cx="19" cy="5" r="1.4" opacity=".85"/><circle cx="5.5" cy="18.5" r="1" opacity=".7"/></svg></div>
+<div class="nav-item" data-nav="habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Odat</span></div>
+<div class="nav-item" data-nav="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Do'stlar</span></div>
 </nav>
 
-<!-- Maqsad modali -->
-<div class="modal-back" id="modalBack" role="dialog" aria-modal="true"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3>
+<div class="modal-back" id="modalBack"><div class="modal" id="modal"><div class="grab"></div><h3 id="modalTitle">Yangi maqsad</h3>
 <!-- Davr tanlash — a'zo uchun maqsad yaratganda ochiladi (Yillik/Oylik + yil + oy). -->
 <div id="mPeriodPicker" class="fld" style="display:none">
   <label>Davri</label>
   <div class="seg" id="mPeriodTypeSeg" style="width:100%;margin-bottom:0">
     <div class="seg-indicator" id="mPeriodTypeInd"></div>
-    <div class="seg-item active" data-mpt="yearly">Yillik</div>
-    <div class="seg-item" data-mpt="monthly">Oylik</div>
+    <div class="seg-item active" data-mpt="yearly">📅 Yillik</div>
+    <div class="seg-item" data-mpt="monthly">🗓 Oylik</div>
   </div>
 </div>
 <div class="row gap-12" id="mPeriodYMRow" style="display:none">
-  <div class="fld" style="flex:1"><label for="mYear">Yil</label><select id="mYear"></select></div>
-  <div class="fld" style="flex:1" id="mMonthFld"><label for="mMonth">Oy</label><select id="mMonth"></select></div>
+  <div class="fld" style="flex:1"><label>Yil</label><select id="mYear"></select></div>
+  <div class="fld" style="flex:1" id="mMonthFld"><label>Oy</label><select id="mMonth"></select></div>
 </div>
-<div class="fld"><label for="mTitle">Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label for="mDesc">Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh…"></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel" type="button">Bekor</button><button class="btn" id="mSave" type="button">Saqlash</button></div></div></div>
+<div class="fld"><label>Sarlavha</label><input id="mTitle" placeholder="Masalan: Kitob o'qish"></div><div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="mDesc" placeholder="Qisqacha izoh..."></textarea></div><div class="row gap-12 mt-8"><button class="btn btn-ghost" id="mCancel">Bekor</button><button class="btn" id="mSave">Saqlash</button></div></div></div>
 
-<!-- Reja modali -->
-<div class="modal-back" id="planModalBack" role="dialog" aria-modal="true"><div class="modal"><div class="grab"></div><h3 id="planModalTitle">Yangi reja</h3>
-<div class="fld"><label for="pTitle">Sarlavha</label><input id="pTitle" placeholder="Masalan: Ertalabki yugurish"></div>
-<div class="fld"><label for="pDesc">Tavsif (ixtiyoriy)</label><textarea id="pDesc" placeholder="Qisqacha izoh…"></textarea></div>
-<div class="row gap-12" style="align-items:flex-start"><div class="fld" style="flex:1"><label>Eslatma vaqti <span style="color:var(--danger)">*</span></label><div class="time-pick"><select id="pHour" aria-label="Soat"></select><span class="tcolon">:</span><select id="pMin" aria-label="Daqiqa"></select></div></div><div class="fld" style="flex:1"><label for="pDate">Sana</label><input id="pDate" type="date"></div></div>
-<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="pCancel" type="button">Bekor</button><button class="btn" id="pSave" type="button">Saqlash</button></div></div></div>
+<div class="modal-back" id="planModalBack"><div class="modal"><div class="grab"></div><h3 id="planModalTitle">Yangi reja</h3>
+<div class="fld"><label>Sarlavha</label><input id="pTitle" placeholder="Masalan: Ertalabki yugurish"></div>
+<div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="pDesc" placeholder="Qisqacha izoh..."></textarea></div>
+<div class="row gap-12"><div class="fld" style="flex:1"><label>Eslatma vaqti <span style="color:var(--danger)">*</span></label><div class="time-pick"><select id="pHour" aria-label="Soat"></select><span class="tcolon">:</span><select id="pMin" aria-label="Daqiqa"></select></div></div><div class="fld" style="flex:1"><label>Sana</label><input id="pDate" type="date"></div></div>
+<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="pCancel">Bekor</button><button class="btn" id="pSave">Saqlash</button></div></div></div>
 
-<!-- Odat modali -->
-<div class="modal-back" id="habitModalBack" role="dialog" aria-modal="true"><div class="modal"><div class="grab"></div><h3 id="habitModalTitle">Yangi odat</h3>
+<!-- Day modal (dayModalBack) olib tashlandi — kunlik maqsad tushunchasi endi yo'q. -->
+
+<div class="modal-back" id="habitModalBack"><div class="modal"><div class="grab"></div><h3 id="habitModalTitle">Yangi odat</h3>
 <div class="fld"><label>Belgi</label><div class="emoji-pick" id="habitIconPick"></div></div>
-<div class="fld"><label for="hTitle">Sarlavha</label><input id="hTitle" placeholder="Masalan: Erta turish"></div>
-<div class="fld"><label for="hDesc">Tavsif (ixtiyoriy)</label><textarea id="hDesc" placeholder="Qisqacha izoh…"></textarea></div>
+<div class="fld"><label>Sarlavha</label><input id="hTitle" placeholder="Masalan: Erta turish"></div>
+<div class="fld"><label>Tavsif (ixtiyoriy)</label><textarea id="hDesc" placeholder="Qisqacha izoh..."></textarea></div>
 <div class="fld"><label>Takrorlanish</label><div class="hseg" id="hFreqSeg"><div class="hseg-item active" data-f="daily">Har kuni</div><div class="hseg-item" data-f="weekly">Tanlangan kunlar</div></div><div class="weekday-pick" id="hWeekdays" style="display:none"></div></div>
 <div class="fld"><label>Davomiylik</label><div class="hseg" id="hDurSeg"><div class="hseg-item active" data-d="permanent">Doimiy</div><div class="hseg-item" data-d="days">Muddatli</div></div><div id="hDaysWrap" style="display:none;margin-top:10px"><input id="hTargetDays" type="number" min="1" max="365" inputmode="numeric" placeholder="Necha kun davom etadi? (masalan 30)"></div></div>
 <div class="fld"><label>Eslatma (ixtiyoriy)</label><div class="hseg" id="hRemSeg"><div class="hseg-item active" data-r="off">Eslatmasiz</div><div class="hseg-item" data-r="on">Belgilangan vaqtda</div></div><div id="hRemWrap" style="display:none;margin-top:10px"><div class="time-pick"><select id="hRemHour" aria-label="Soat"></select><span class="tcolon">:</span><select id="hRemMin" aria-label="Daqiqa"></select></div></div></div>
-<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="hCancel" type="button">Bekor</button><button class="btn" id="hSave" type="button">Saqlash</button></div></div></div>
+<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="hCancel">Bekor</button><button class="btn" id="hSave">Saqlash</button></div></div></div>
 
-<!-- Ism modali -->
-<div class="modal-back" id="nameModalBack" role="dialog" aria-modal="true"><div class="modal"><div class="grab"></div><h3>Ismni tahrirlash</h3>
-<div class="fld"><label for="nName">Ismingiz</label><input id="nName" maxlength="60" placeholder="Ismingizni kiriting"></div>
-<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="nCancel" type="button">Bekor</button><button class="btn" id="nSave" type="button">Saqlash</button></div></div></div>
+<div class="modal-back" id="nameModalBack"><div class="modal"><div class="grab"></div><h3>Ismni tahrirlash</h3>
+<div class="fld"><label>Ismingiz</label><input id="nName" maxlength="60" placeholder="Ismingizni kiriting"></div>
+<div class="row gap-12 mt-8"><button class="btn btn-ghost" id="nCancel">Bekor</button><button class="btn" id="nSave">Saqlash</button></div></div></div>
 
-<!-- Tasdiqlash dialogi -->
-<div class="confirm-back" id="confirmBack" role="dialog" aria-modal="true">
+<div class="confirm-back" id="confirmBack">
   <div class="confirm-box">
-    <div class="confirm-ic" id="confirmIc"><svg class="ic"><use href="#i-trash"/></svg></div>
+    <div class="confirm-ic" id="confirmIc">🗑</div>
     <div class="confirm-ttl" id="confirmTtl">O'chirilsinmi?</div>
     <div class="confirm-msg" id="confirmMsg">Bu amalni qaytarib bo'lmaydi.</div>
     <div class="confirm-actions">
-      <button class="confirm-btn cancel" id="confirmCancel" type="button">Bekor</button>
-      <button class="confirm-btn ok" id="confirmOk" type="button">O'chirish</button>
+      <button class="confirm-btn cancel" id="confirmCancel">Bekor</button>
+      <button class="confirm-btn ok" id="confirmOk">O'chirish</button>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="toast" id="toast"></div>
 
 <script defer src="/static/app.js?v=4cae9e09"></script>
 </body>
