@@ -1,0 +1,2480 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   OBSIDIAN — 7-chi (yangi, premium) dizayn tizimi
+   ═══════════════════════════════════════════════════════════════════════════
+   Bu fayl BUTUNLAY qo'shimcha (additive). Har bir qoida
+   `html[data-theme="obsidian"]` bilan scope qilingan, shuning uchun mavjud 6
+   tema (default / sprout / spectrum / gamma / atmosphere / gold) hech qanday
+   o'zgarishsiz qoladi. Foydalanuvchi Profil → 🎨 Tema bo'limidan 7 ta dizayn
+   orasida erkin almashadi.
+
+   Dizayn tili — "serious productivity platform":
+     • chuqur navy / midnight fon, elektr ko'k + nozik binafsha urg'u
+     • kuchli tipografik ierarxiya (o'lcham + qalinlik, rang emas)
+     • hairline (1px) chegaralar, sokin soyalar, cheklangan gradientlar
+     • keng whitespace, o'lchovli radius (8/10/12/14/16px)
+     • animatsiyalar tez, silliq va MAQSADLI — hech qanday sakrash/o'yin effekti
+     • AI uchun alohida, ammo minimal vizual identitet (ko'k→binafsha)
+
+   Struktura:
+     1. Dizayn tokenlari (rang, radius, soya, spacing)
+     2. Baza (body, typography, layout, page transition)
+     3. Yangi Obsidian komponentlari (topbar, obs-card, metrics, AI, ...)
+     4. Mavjud komponentlarni qayta rangla­sh (hdr, hero, plan, habit, ...)
+     5. Modal / paywall / onboarding / friends
+     6. Responsive (tablet + desktop dashboard grid)
+     7. Reduced-motion va bosma (print) himoyasi
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ─────────────────────────────────────────────────────────────
+   1. DIZAYN TOKENLARI
+   ───────────────────────────────────────────────────────────── */
+
+/* Asosiy identitet — premium dark SaaS. `[data-mode="dark"]` bilan bir xil,
+   chunki Obsidian'ning "asl" ko'rinishi qorong'i. Yorug' rejim pastda
+   alohida (nozik, sovuq oq) variant sifatida beriladi. */
+html[data-theme="obsidian"]{
+  /* Brend urg'ulari */
+  --primary:#4F7CFF;
+  --primary-2:#7C5CFF;
+  --primary-soft:rgba(79,124,255,.12);
+  --accent:#7C5CFF;
+  --grad:linear-gradient(135deg,#4F7CFF 0%,#6470FF 52%,#7C5CFF 100%);
+  --grad-soft:linear-gradient(135deg,rgba(79,124,255,.14) 0%,rgba(124,92,255,.10) 100%);
+
+  /* Semantik (juda tejamkor ishlatiladi) */
+  --success:#2FB37C;
+  --warning:#DFA43C;
+  --danger:#E5484D;
+
+  /* Yuza (surface) qatlamlari */
+  --bg:#080B14;
+  --bg-2:#0E1320;
+  --surface:#0E1320;
+  --surface-2:#151B2B;
+  --border:#20283A;
+  --blur-bg:rgba(8,11,20,.82);
+
+  /* Matn ierarxiyasi */
+  --text:#F5F7FA;
+  --text-2:#8B95A7;
+  --text-3:#5F6A7D;
+
+  /* Soyalar — qatlamli, past kontrast (qorong'i fonda soya "chuqurlik" beradi) */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.40);
+  --shadow-md:0 2px 4px rgba(0,0,0,.30),0 12px 28px -12px rgba(0,0,0,.60);
+  --shadow-lg:0 8px 24px -8px rgba(0,0,0,.55),0 32px 64px -24px rgba(2,4,10,.80);
+  --glow:0 0 0 1px rgba(79,124,255,.16),0 10px 34px -14px rgba(79,124,255,.50);
+
+  /* ── Obsidian'ga xos qo'shimcha tokenlar ───────────────────────────── */
+  --obs-hair:#20283A;                       /* hairline chegara */
+  --obs-hair-strong:#2A3448;                /* hover/active chegara */
+  --obs-track:#1A2132;                      /* progress/track foni */
+  --obs-elev-0:none;
+  --obs-elev-1:0 1px 2px rgba(0,0,0,.35);
+  --obs-elev-2:0 1px 2px rgba(0,0,0,.30),0 10px 24px -14px rgba(0,0,0,.70);
+  --obs-inset:inset 0 1px 0 rgba(255,255,255,.04);
+  --obs-focus:0 0 0 3px rgba(79,124,255,.28);
+  --obs-tint:rgba(79,124,255,.08);           /* eng nozik ko'k tint */
+  --obs-tint-2:rgba(124,92,255,.08);         /* eng nozik binafsha tint */
+  --obs-on-accent:#FFFFFF;
+  --obs-ai-glow:radial-gradient(120% 140% at 0% 0%,rgba(124,92,255,.16) 0%,rgba(79,124,255,.08) 38%,transparent 72%);
+  --obs-veil:rgba(4,6,12,.72);               /* modal orqa fon */
+
+  /* Radius shkalasi — yumaloq, ammo ORTIQCHA emas */
+  --obs-r-xs:6px;
+  --obs-r-sm:8px;
+  --obs-r-md:10px;
+  --obs-r-lg:12px;
+  --obs-r-xl:14px;
+  --obs-r-2xl:16px;
+  --obs-r-pill:999px;
+
+  /* Spacing shkalasi (4pt) */
+  --obs-s1:4px;  --obs-s2:8px;  --obs-s3:12px; --obs-s4:16px;
+  --obs-s5:20px; --obs-s6:24px; --obs-s8:32px; --obs-s10:40px;
+
+  /* Harakat (motion) */
+  --obs-ease:cubic-bezier(.22,1,.36,1);
+  --obs-ease-out:cubic-bezier(.16,1,.3,1);
+  --obs-fast:.14s;
+  --obs-mid:.24s;
+  --obs-slow:.42s;
+
+  color-scheme:dark;
+}
+
+/* Yorug' rejim — bir xil brend urg'usi, sovuq oq/grafit yuzalar.
+   Specificity: html[data-theme][data-mode] (0,2,1) → yuqoridagi blokdan
+   ham, app.css'dagi `[data-mode="dark"]` (0,1,0) dan ham kuchli. */
+html[data-theme="obsidian"][data-mode="light"]{
+  --bg:#F7F8FC;
+  --bg-2:#FFFFFF;
+  --surface:#FFFFFF;
+  --surface-2:#F3F5FA;
+  --border:#E4E8F1;
+  --blur-bg:rgba(247,248,252,.86);
+  --text:#0B1020;
+  --text-2:#5B6579;
+  --text-3:#8B95A7;
+  --shadow-sm:0 1px 2px rgba(11,16,32,.05);
+  --shadow-md:0 1px 2px rgba(11,16,32,.04),0 8px 24px -12px rgba(11,16,32,.14);
+  --shadow-lg:0 2px 6px rgba(11,16,32,.05),0 28px 56px -24px rgba(11,16,32,.22);
+  --glow:0 0 0 1px rgba(79,124,255,.18),0 10px 30px -14px rgba(79,124,255,.38);
+  --obs-hair:#E4E8F1;
+  --obs-hair-strong:#D2D9E7;
+  --obs-track:#EDF0F6;
+  --obs-elev-1:0 1px 2px rgba(11,16,32,.05);
+  --obs-elev-2:0 1px 2px rgba(11,16,32,.04),0 10px 26px -16px rgba(11,16,32,.20);
+  --obs-inset:inset 0 1px 0 rgba(255,255,255,.7);
+  --obs-tint:rgba(79,124,255,.06);
+  --obs-tint-2:rgba(124,92,255,.06);
+  --obs-ai-glow:radial-gradient(120% 140% at 0% 0%,rgba(124,92,255,.10) 0%,rgba(79,124,255,.06) 38%,transparent 72%);
+  --obs-veil:rgba(11,16,32,.42);
+  color-scheme:light;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   2. BAZA — body, tipografiya, layout
+   ───────────────────────────────────────────────────────────── */
+
+html[data-theme="obsidian"] body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-feature-settings:'cv02' 1,'cv03' 1,'cv04' 1,'ss01' 1;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  letter-spacing:-.01em;
+  padding-bottom:104px;
+  transition:background var(--obs-mid) linear,color var(--obs-mid) linear;
+}
+
+/* Bezakli blurred "orb"lar — vizual shovqin. Obsidian'da olib tashlanadi va
+   o'rniga bitta juda nozik yuqori vinyetka qoladi. */
+html[data-theme="obsidian"] body::before{
+  content:'';
+  position:fixed;
+  inset:0 0 auto 0;
+  width:100%;
+  height:420px;
+  border-radius:0;
+  filter:none;
+  opacity:1;
+  background:
+    radial-gradient(90% 100% at 78% -20%,rgba(124,92,255,.10) 0%,transparent 62%),
+    radial-gradient(70% 100% at 8% -10%,rgba(79,124,255,.10) 0%,transparent 60%);
+  animation:none;
+  pointer-events:none;
+  z-index:0;
+}
+html[data-theme="obsidian"] body::after{display:none}
+html[data-theme="obsidian"][data-mode="light"] body::before{
+  background:
+    radial-gradient(90% 100% at 78% -20%,rgba(124,92,255,.07) 0%,transparent 62%),
+    radial-gradient(70% 100% at 8% -10%,rgba(79,124,255,.08) 0%,transparent 60%);
+}
+
+html[data-theme="obsidian"] .app{
+  max-width:560px;
+  padding:16px 16px 24px;
+}
+
+/* Sahifa almashinuvi — tez, sokin fade+slide (bounce yo'q) */
+html[data-theme="obsidian"] .page{animation:obsPageIn .34s var(--obs-ease-out) both}
+@keyframes obsPageIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Raqamlar — hamma joyda tabular (ustunlar "sakramaydi") */
+html[data-theme="obsidian"] .ds-ring .v,
+html[data-theme="obsidian"] .stat-card .v,
+html[data-theme="obsidian"] .hs-card .v,
+html[data-theme="obsidian"] .prof-hero .stx .v,
+html[data-theme="obsidian"] .obs-num,
+html[data-theme="obsidian"] .hero-v2 .xpmeta,
+html[data-theme="obsidian"] .lb-val,
+html[data-theme="obsidian"] .hist-row .hv{
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:'tnum' 1;
+}
+
+/* Bo'lim sarlavhalari — eyebrow uslubi, kartadan tashqarida yashaydi */
+html[data-theme="obsidian"] .section-title{margin:0 2px 12px}
+html[data-theme="obsidian"] .section-title h2{
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.02em;
+  color:var(--text-2);
+  text-transform:none;
+}
+
+/* Fokus ko'rinishi — klaviatura bilan navigatsiya uchun (a11y) */
+html[data-theme="obsidian"] :focus-visible{
+  outline:none;
+  box-shadow:var(--obs-focus);
+  border-radius:var(--obs-r-md);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   3. YANGI OBSIDIAN KOMPONENTLARI
+   ───────────────────────────────────────────────────────────── */
+
+/* Barcha JS orqali qo'shilgan node'lar faqat Obsidian faol bo'lganda
+   ko'rinadi (himoya qatlami — teardown ishlamasa ham boshqa temaga
+   o'tib ketmaydi). */
+html:not([data-theme="obsidian"]) .obs-node{display:none !important}
+
+/* ── 3.1 Universal karta ─────────────────────────────────────────────── */
+html[data-theme="obsidian"] .obs-card{
+  position:relative;
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  box-shadow:var(--obs-elev-1);
+  padding:18px;
+  animation:obsRise .44s var(--obs-ease-out) both;
+}
+@keyframes obsRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+html[data-theme="obsidian"] .obs-card--quiet{
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
+  padding:0;
+}
+html[data-theme="obsidian"] .obs-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+html[data-theme="obsidian"] .obs-card-title{
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .obs-eyebrow{
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+
+/* ── 3.2 Badge / chip tizimi ─────────────────────────────────────────── */
+html[data-theme="obsidian"] .obs-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  height:22px;
+  padding:0 8px;
+  border-radius:var(--obs-r-xs);
+  border:1px solid var(--obs-hair);
+  background:var(--surface-2);
+  color:var(--text-2);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.01em;
+  white-space:nowrap;
+}
+html[data-theme="obsidian"] .obs-badge--accent{
+  border-color:rgba(79,124,255,.26);
+  background:rgba(79,124,255,.10);
+  color:#9DB4FF;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-badge--accent{color:#3358D4}
+html[data-theme="obsidian"] .obs-badge--ok{
+  border-color:rgba(47,179,124,.26);
+  background:rgba(47,179,124,.10);
+  color:#54C79A;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-badge--ok{color:#1B8A5E}
+html[data-theme="obsidian"] .obs-badge--warn{
+  border-color:rgba(223,164,60,.28);
+  background:rgba(223,164,60,.10);
+  color:#E0B061;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-badge--warn{color:#9A6A12}
+
+/* ── 3.3 Tugmalar (obs-btn) ──────────────────────────────────────────── */
+html[data-theme="obsidian"] .obs-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  height:36px;
+  padding:0 14px;
+  border-radius:var(--obs-r-md);
+  border:1px solid var(--obs-hair);
+  background:var(--surface-2);
+  color:var(--text);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:-.005em;
+  cursor:pointer;
+  transition:background var(--obs-fast) linear,border-color var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease),color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .obs-btn:hover{border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .obs-btn:active{transform:scale(.985)}
+html[data-theme="obsidian"] .obs-btn--primary{
+  background:var(--primary);
+  border-color:transparent;
+  color:var(--obs-on-accent);
+  box-shadow:0 1px 2px rgba(0,0,0,.25),0 8px 20px -12px rgba(79,124,255,.7);
+}
+html[data-theme="obsidian"] .obs-btn--primary:hover{background:#5D87FF}
+html[data-theme="obsidian"] .obs-btn--ghost{background:transparent}
+html[data-theme="obsidian"] .obs-btn--ghost:hover{background:var(--surface-2)}
+html[data-theme="obsidian"] .obs-btn svg{width:15px;height:15px;flex-shrink:0}
+
+/* ── 3.4 Top navigatsiya (tablet + desktop) ──────────────────────────── */
+html[data-theme="obsidian"] .obs-topbar{
+  display:none;                     /* mobil: yashirin, pastdagi nav ishlaydi */
+  position:sticky;
+  top:0;
+  z-index:90;
+  width:100%;
+  background:var(--blur-bg);
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border-bottom:1px solid var(--obs-hair);
+}
+html[data-theme="obsidian"] .obs-topbar-inner{
+  max-width:1200px;
+  margin:0 auto;
+  height:56px;
+  padding:0 20px;
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+html[data-theme="obsidian"] .obs-brand{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-shrink:0;
+  cursor:pointer;
+  user-select:none;
+}
+html[data-theme="obsidian"] .obs-brand-mark{
+  width:26px;
+  height:26px;
+  border-radius:7px;
+  display:grid;
+  place-items:center;
+  background:var(--grad);
+  box-shadow:0 4px 12px -6px rgba(79,124,255,.9),var(--obs-inset);
+  color:#fff;
+  flex-shrink:0;
+}
+html[data-theme="obsidian"] .obs-brand-mark svg{width:15px;height:15px}
+html[data-theme="obsidian"] .obs-brand-name{
+  font-size:14.5px;
+  font-weight:650;
+  letter-spacing:-.02em;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .obs-brand-name i{
+  font-style:normal;
+  color:var(--text-2);
+  font-weight:550;
+}
+html[data-theme="obsidian"] .obs-nav{
+  display:flex;
+  align-items:center;
+  gap:2px;
+  flex:1;
+  min-width:0;
+}
+html[data-theme="obsidian"] .obs-nav-link{
+  appearance:none;
+  border:none;
+  background:transparent;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:550;
+  letter-spacing:-.005em;
+  color:var(--text-2);
+  height:32px;
+  padding:0 11px;
+  border-radius:var(--obs-r-sm);
+  cursor:pointer;
+  white-space:nowrap;
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .obs-nav-link:hover{color:var(--text);background:var(--surface-2)}
+/* Faol holat — elektr ko'k, JUDA nozik (fon 8%, matn accent) */
+html[data-theme="obsidian"] .obs-nav-link.active{
+  color:#A8BEFF;
+  background:rgba(79,124,255,.10);
+  font-weight:600;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-nav-link.active{color:#3358D4}
+html[data-theme="obsidian"] .obs-topbar-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+html[data-theme="obsidian"] .obs-icon-btn{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:var(--obs-r-sm);
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--text-2);
+  font-size:14px;
+  cursor:pointer;
+  font-family:inherit;
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear,border-color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .obs-icon-btn:hover{color:var(--text);background:var(--surface-2);border-color:var(--obs-hair)}
+html[data-theme="obsidian"] .obs-icon-btn svg{width:16px;height:16px}
+
+/* ── 3.5 AI identiteti: status indikatori ────────────────────────────── */
+html[data-theme="obsidian"] .obs-ai-status{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  height:26px;
+  padding:0 10px 0 9px;
+  border-radius:var(--obs-r-pill);
+  border:1px solid rgba(124,92,255,.24);
+  background:linear-gradient(90deg,rgba(124,92,255,.12),rgba(79,124,255,.08));
+  font-size:11.5px;
+  font-weight:600;
+  color:#B8A8FF;
+  letter-spacing:.005em;
+  white-space:nowrap;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-ai-status{color:#5B3FD6}
+html[data-theme="obsidian"] .obs-ai-dot{
+  position:relative;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#7C5CFF;
+  flex-shrink:0;
+}
+html[data-theme="obsidian"] .obs-ai-dot::after{
+  content:'';
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  border:1px solid rgba(124,92,255,.55);
+  animation:obsAiPing 2.8s var(--obs-ease-out) infinite;
+}
+@keyframes obsAiPing{
+  0%{transform:scale(.6);opacity:.9}
+  70%{transform:scale(1.5);opacity:0}
+  100%{transform:scale(1.5);opacity:0}
+}
+
+/* ── 3.6 Metrics strip (streak / bugun / daraja / XP) ────────────────── */
+html[data-theme="obsidian"] .obs-metrics{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  background:var(--obs-hair);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  overflow:hidden;
+  box-shadow:var(--obs-elev-1);
+}
+html[data-theme="obsidian"] .obs-metric{
+  background:var(--surface);
+  padding:14px 16px 15px;
+  min-width:0;
+  transition:background var(--obs-fast) linear;
+  animation:obsRise .4s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .obs-metric:hover{background:var(--surface-2)}
+html[data-theme="obsidian"] .obs-metric:nth-child(2){animation-delay:.04s}
+html[data-theme="obsidian"] .obs-metric:nth-child(3){animation-delay:.08s}
+html[data-theme="obsidian"] .obs-metric:nth-child(4){animation-delay:.12s}
+html[data-theme="obsidian"] .obs-metric-l{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .obs-metric-l svg{width:12px;height:12px;opacity:.8}
+html[data-theme="obsidian"] .obs-metric-v{
+  margin-top:7px;
+  font-size:23px;
+  font-weight:650;
+  line-height:1.05;
+  letter-spacing:-.03em;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+html[data-theme="obsidian"] .obs-metric-v small{
+  font-size:13px;
+  font-weight:550;
+  color:var(--text-3);
+  letter-spacing:-.01em;
+}
+html[data-theme="obsidian"] .obs-metric-s{
+  margin-top:4px;
+  font-size:11.5px;
+  font-weight:500;
+  color:var(--text-2);
+}
+html[data-theme="obsidian"] .obs-metric-s.up{color:var(--success)}
+html[data-theme="obsidian"] .obs-metric-s.warn{color:var(--warning)}
+
+/* Nozik mini-progress (metrics ichida) */
+html[data-theme="obsidian"] .obs-mini-track{
+  margin-top:10px;
+  height:3px;
+  border-radius:var(--obs-r-pill);
+  background:var(--obs-track);
+  overflow:hidden;
+}
+html[data-theme="obsidian"] .obs-mini-track>i{
+  display:block;
+  height:100%;
+  width:0;
+  border-radius:inherit;
+  background:var(--primary);
+  transition:width .9s var(--obs-ease);
+}
+
+/* ── 3.7 AI insight kartasi ──────────────────────────────────────────── */
+html[data-theme="obsidian"] .obs-ai{
+  position:relative;
+  overflow:hidden;
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:18px;
+  box-shadow:var(--obs-elev-2);
+  animation:obsRise .46s .05s var(--obs-ease-out) both;
+}
+/* AI "aql" belgisi — juda nozik burchak yorug'ligi (glow), gradient EMAS */
+html[data-theme="obsidian"] .obs-ai::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:var(--obs-ai-glow);
+  pointer-events:none;
+}
+/* Yuqorida 1px ko'k→binafsha "hairline" — AI identiteti */
+html[data-theme="obsidian"] .obs-ai::after{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent 0%,rgba(79,124,255,.65) 22%,rgba(124,92,255,.65) 62%,transparent 100%);
+  pointer-events:none;
+}
+html[data-theme="obsidian"] .obs-ai>*{position:relative;z-index:1}
+html[data-theme="obsidian"] .obs-ai-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:13px;
+}
+html[data-theme="obsidian"] .obs-ai-mark{
+  width:28px;
+  height:28px;
+  border-radius:var(--obs-r-sm);
+  display:grid;
+  place-items:center;
+  background:linear-gradient(140deg,rgba(79,124,255,.18),rgba(124,92,255,.18));
+  border:1px solid rgba(124,92,255,.28);
+  color:#A79BFF;
+  flex-shrink:0;
+}
+html[data-theme="obsidian"][data-mode="light"] .obs-ai-mark{color:#5B3FD6}
+html[data-theme="obsidian"] .obs-ai-mark svg{width:15px;height:15px}
+html[data-theme="obsidian"] .obs-ai-label{
+  flex:1;
+  min-width:0;
+  font-size:10.5px;
+  font-weight:650;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .obs-ai-t{
+  font-size:16px;
+  font-weight:600;
+  letter-spacing:-.02em;
+  line-height:1.3;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .obs-ai-d{
+  margin-top:7px;
+  font-size:13.5px;
+  font-weight:450;
+  line-height:1.55;
+  color:var(--text-2);
+}
+html[data-theme="obsidian"] .obs-ai-foot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:15px;
+  padding-top:13px;
+  border-top:1px solid var(--obs-hair);
+}
+
+/* ── 3.8 Tezkor amallar (quick actions) ──────────────────────────────── */
+html[data-theme="obsidian"] .obs-quick{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+html[data-theme="obsidian"] .obs-quick-btn{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:48px;
+  padding:0 13px;
+  border-radius:var(--obs-r-lg);
+  border:1px solid var(--obs-hair);
+  background:var(--surface);
+  color:var(--text);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:550;
+  letter-spacing:-.005em;
+  text-align:left;
+  cursor:pointer;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .obs-quick-btn:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .obs-quick-btn:active{transform:scale(.98)}
+html[data-theme="obsidian"] .obs-quick-ic{
+  width:26px;
+  height:26px;
+  border-radius:var(--obs-r-sm);
+  display:grid;
+  place-items:center;
+  background:var(--obs-tint);
+  border:1px solid rgba(79,124,255,.18);
+  color:var(--primary);
+  flex-shrink:0;
+}
+html[data-theme="obsidian"] .obs-quick-ic svg{width:14px;height:14px}
+
+/* ── 3.9 Haftalik progress (7 kunlik bar chart) ──────────────────────── */
+html[data-theme="obsidian"] .obs-week-chart{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:8px;
+  align-items:end;
+  height:118px;
+  padding-top:4px;
+}
+html[data-theme="obsidian"] .obs-wcol{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  height:100%;
+  min-width:0;
+}
+html[data-theme="obsidian"] .obs-wbar{
+  position:relative;
+  width:100%;
+  max-width:26px;
+  height:0;
+  min-height:3px;
+  border-radius:var(--obs-r-xs);
+  background:var(--obs-track);
+  transition:height .8s var(--obs-ease),background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .obs-wbar.has{
+  background:linear-gradient(180deg,rgba(79,124,255,.85),rgba(79,124,255,.42));
+}
+html[data-theme="obsidian"] .obs-wbar.full{
+  background:linear-gradient(180deg,#4F7CFF,#6470FF);
+  box-shadow:0 0 0 1px rgba(79,124,255,.28);
+}
+html[data-theme="obsidian"] .obs-wcol.today .obs-wbar{
+  box-shadow:0 0 0 1px rgba(124,92,255,.45),0 8px 20px -12px rgba(124,92,255,.8);
+}
+html[data-theme="obsidian"] .obs-wlb{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--text-3);
+  letter-spacing:.02em;
+}
+html[data-theme="obsidian"] .obs-wcol.today .obs-wlb{color:var(--text)}
+
+/* ── 3.10 Oxirgi faollik (recent activity) ───────────────────────────── */
+html[data-theme="obsidian"] .obs-act{display:flex;flex-direction:column}
+html[data-theme="obsidian"] .obs-act-row{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:11px 0;
+  border-top:1px solid var(--obs-hair);
+  animation:obsRise .4s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .obs-act-row:first-child{border-top:none;padding-top:2px}
+html[data-theme="obsidian"] .obs-act-ic{
+  width:24px;
+  height:24px;
+  border-radius:var(--obs-r-xs);
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  background:rgba(47,179,124,.12);
+  border:1px solid rgba(47,179,124,.22);
+  color:var(--success);
+}
+html[data-theme="obsidian"] .obs-act-ic svg{width:12px;height:12px}
+html[data-theme="obsidian"] .obs-act-ic.habit{
+  background:var(--obs-tint-2);
+  border-color:rgba(124,92,255,.22);
+  color:#9C8CFF;
+}
+html[data-theme="obsidian"] .obs-act-b{flex:1;min-width:0}
+html[data-theme="obsidian"] .obs-act-t{
+  font-size:13px;
+  font-weight:550;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+html[data-theme="obsidian"] .obs-act-m{
+  margin-top:2px;
+  font-size:11.5px;
+  font-weight:500;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .obs-act-v{
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-2);
+  font-variant-numeric:tabular-nums;
+  flex-shrink:0;
+}
+
+/* ── 3.11 Bo'sh holat (empty) va yuklanish (skeleton) ────────────────── */
+html[data-theme="obsidian"] .obs-empty{
+  padding:22px 16px;
+  text-align:center;
+}
+html[data-theme="obsidian"] .obs-empty-ic{
+  width:38px;
+  height:38px;
+  margin:0 auto 11px;
+  border-radius:var(--obs-r-md);
+  border:1px solid var(--obs-hair);
+  background:var(--surface-2);
+  display:grid;
+  place-items:center;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .obs-empty-ic svg{width:16px;height:16px}
+html[data-theme="obsidian"] .obs-empty-t{font-size:13.5px;font-weight:600;color:var(--text)}
+html[data-theme="obsidian"] .obs-empty-d{margin-top:4px;font-size:12px;color:var(--text-3);line-height:1.5}
+
+html[data-theme="obsidian"] .obs-skel{
+  border-radius:var(--obs-r-xs);
+  background:linear-gradient(90deg,var(--obs-track) 0%,var(--surface-2) 42%,var(--obs-track) 84%);
+  background-size:280% 100%;
+  animation:obsShimmer 1.5s linear infinite;
+}
+@keyframes obsShimmer{0%{background-position:120% 0}100%{background-position:-120% 0}}
+html[data-theme="obsidian"] .obs-skel-line{height:11px;margin-bottom:8px}
+html[data-theme="obsidian"] .obs-skel-line:last-child{margin-bottom:0;width:62%}
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   4. MAVJUD KOMPONENTLARNI QAYTA RANGLASH
+   (barcha qoidalar faqat Obsidian scope'ida — 6 tema tegilmaydi)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 4.1 Sahifa sarlavhasi (.hdr) ────────────────────────────────────── */
+html[data-theme="obsidian"] .hdr{
+  margin-bottom:20px;
+  padding:0;
+  align-items:flex-start;
+}
+html[data-theme="obsidian"] .hdr-user{gap:12px}
+html[data-theme="obsidian"] .hdr-greet h1{
+  font-size:24px;
+  font-weight:650;
+  letter-spacing:-.035em;
+  line-height:1.2;
+}
+html[data-theme="obsidian"] .hdr-greet p{
+  font-size:13px;
+  font-weight:450;
+  color:var(--text-2);
+  margin-top:3px;
+}
+/* Avatar — kvadratga yaqin, hairline chegara, gradient faqat fallback sifatida */
+html[data-theme="obsidian"] .hdr-av{
+  width:40px;
+  height:40px;
+  border-radius:var(--obs-r-md);
+  border:1px solid var(--obs-hair);
+  background:var(--surface-2);
+  background-size:cover;
+  background-position:center;
+  color:var(--text-2);
+  font-size:15px;
+  font-weight:600;
+  box-shadow:none;
+  transition:border-color var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .hdr-av:hover{border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .hdr-av:active{transform:scale(.96)}
+/* Header ikon tugmalari — ghost, tinch. Suzish/aylanish animatsiyalari o'chirildi. */
+html[data-theme="obsidian"] .hdr-actions{gap:4px}
+html[data-theme="obsidian"] .hdr-actions .mode-btn,
+html[data-theme="obsidian"] .mode-btn{
+  width:36px;
+  height:36px;
+  border-radius:var(--obs-r-md);
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--text-2);
+  font-size:15px;
+  box-shadow:none;
+  animation:none;
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear,border-color var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .mode-btn:hover{color:var(--text);background:var(--surface-2);border-color:var(--obs-hair)}
+html[data-theme="obsidian"] .mode-btn:active{transform:scale(.94)}
+html[data-theme="obsidian"] .mode-btn svg{width:17px;height:17px}
+html[data-theme="obsidian"] .mode-btn .ic{font-size:14px;animation:none}
+html[data-theme="obsidian"] #settingsBtn svg{animation:none}
+html[data-theme="obsidian"] #modeBtn .ic{animation:none}
+html[data-theme="obsidian"] .wave{animation:none}
+
+/* ── 4.2 Fokus paneli (.hero-v2) — "Bugungi holat" ───────────────────── */
+html[data-theme="obsidian"] .hero-v2{
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:20px;
+  margin-bottom:0;
+  box-shadow:var(--obs-elev-2),var(--obs-inset);
+  animation:obsRise .46s var(--obs-ease-out) both;
+  overflow:hidden;
+}
+/* Bezakli blur "blob" va o'tuvchi "shine" — olib tashlanadi */
+html[data-theme="obsidian"] .hero-v2::before{
+  content:'';
+  position:absolute;
+  inset:auto -20% -60% auto;
+  width:320px;
+  height:320px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(79,124,255,.10),transparent 68%);
+  filter:none;
+  animation:none;
+}
+html[data-theme="obsidian"] .hero-v2::after{display:none}
+html[data-theme="obsidian"] .hero-v2 .top{gap:20px;align-items:center}
+
+/* Discipline ring — elektr ko'k, ingichka, nozik glow */
+html[data-theme="obsidian"] .ds-ring{width:104px;height:104px}
+html[data-theme="obsidian"] .ds-ring .bgc{stroke:var(--obs-track);stroke-width:7}
+html[data-theme="obsidian"] .ds-ring .fgc{
+  stroke:var(--primary);
+  stroke-width:7;
+  filter:drop-shadow(0 0 6px rgba(79,124,255,.45));
+  transition:stroke-dashoffset 1.1s var(--obs-ease);
+}
+html[data-theme="obsidian"] .ds-ring .v{
+  font-size:29px;
+  font-weight:650;
+  letter-spacing:-.04em;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .ds-ring .l{
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:.11em;
+  color:var(--text-3);
+  opacity:1;
+  margin-top:4px;
+}
+html[data-theme="obsidian"] .hero-v2 .ds-ring .v.pop{animation:obsPop .38s var(--obs-ease)}
+@keyframes obsPop{0%{transform:scale(1)}45%{transform:scale(1.07)}100%{transform:scale(1)}}
+
+/* Rank chip + daraja + XP */
+html[data-theme="obsidian"] .hero-v2 .rank{
+  background:rgba(79,124,255,.10);
+  border:1px solid rgba(79,124,255,.24);
+  backdrop-filter:none;
+  color:#A8BEFF;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.01em;
+  padding:4px 10px;
+  border-radius:var(--obs-r-xs);
+  animation:none;
+}
+html[data-theme="obsidian"][data-mode="light"] .hero-v2 .rank{color:#3358D4}
+html[data-theme="obsidian"] .hero-v2 .lvl{
+  font-size:13px;
+  font-weight:450;
+  color:var(--text-2);
+  opacity:1;
+  margin-top:11px;
+}
+html[data-theme="obsidian"] .hero-v2 .lvl b{
+  font-size:14px;
+  font-weight:650;
+  color:var(--text);
+  letter-spacing:-.01em;
+}
+html[data-theme="obsidian"] .hero-v2 .xpbar{
+  height:5px;
+  margin-top:9px;
+  background:var(--obs-track);
+  border-radius:var(--obs-r-pill);
+}
+html[data-theme="obsidian"] .hero-v2 .xpbar>i{
+  background:linear-gradient(90deg,#4F7CFF,#7C5CFF);
+  box-shadow:none;
+  transition:width 1s var(--obs-ease);
+}
+html[data-theme="obsidian"] .hero-v2 .xpmeta{
+  font-size:11px;
+  font-weight:550;
+  color:var(--text-3);
+  opacity:1;
+  margin-top:6px;
+}
+html[data-theme="obsidian"] .hero-v2 .bottom{
+  margin-top:18px;
+  padding-top:15px;
+  border-top:1px solid var(--obs-hair);
+  gap:10px;
+}
+html[data-theme="obsidian"] .hero-v2 .chip{
+  font-size:12px;
+  font-weight:550;
+  color:var(--text-2);
+  gap:7px;
+}
+html[data-theme="obsidian"] .hero-v2 .chip .em{font-size:12px;opacity:.9}
+html[data-theme="obsidian"] .hero-v2 .chip.warn{
+  color:var(--warning);
+  background:rgba(223,164,60,.10);
+  border:1px solid rgba(223,164,60,.26);
+  padding:3px 9px;
+  border-radius:var(--obs-r-xs);
+  animation:none;
+}
+
+/* ── 4.3 Kunlik vazifa (.quest) ──────────────────────────────────────── */
+html[data-theme="obsidian"] .quest{
+  background:var(--surface);
+  backdrop-filter:none;
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:16px;
+  margin-bottom:0;
+  gap:14px;
+  box-shadow:var(--obs-elev-1);
+  animation:obsRise .44s .04s var(--obs-ease-out) both;
+}
+/* Chapdagi qalin gradient chiziq → 1px accent hairline */
+html[data-theme="obsidian"] .quest::before{
+  width:2px;
+  background:linear-gradient(180deg,rgba(79,124,255,.9),rgba(124,92,255,.35));
+  border-radius:0;
+}
+html[data-theme="obsidian"] .quest .qic{
+  width:38px;
+  height:38px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+  font-size:17px;
+}
+html[data-theme="obsidian"] .quest.done .qic{
+  background:rgba(47,179,124,.12);
+  border-color:rgba(47,179,124,.28);
+  color:var(--success);
+}
+html[data-theme="obsidian"] .quest .qttl{font-size:14px;font-weight:600;letter-spacing:-.01em}
+html[data-theme="obsidian"] .quest .qsub{font-size:12px;font-weight:450;color:var(--text-2);margin-top:3px;line-height:1.45}
+html[data-theme="obsidian"] .quest .qprog{height:4px;background:var(--obs-track);margin-top:10px}
+html[data-theme="obsidian"] .quest .qprog>i{background:var(--primary)}
+html[data-theme="obsidian"] .quest .qmeta{font-size:11px;font-weight:550;color:var(--text-3);margin-top:6px}
+
+/* ── 4.4 Kun tasmasi (.day-strip) ────────────────────────────────────── */
+html[data-theme="obsidian"] .day-strip{gap:6px;padding:2px 2px 6px}
+html[data-theme="obsidian"] .day-chip{
+  min-width:52px;
+  padding:8px 11px 9px;
+  border-radius:var(--obs-r-lg);
+  border:1px solid var(--obs-hair);
+  background:var(--surface);
+  transition:background var(--obs-fast) linear,border-color var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease),color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .day-chip:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .day-chip:active{transform:scale(.96)}
+html[data-theme="obsidian"] .day-chip .dw{
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.07em;
+  color:var(--text-3);
+  opacity:1;
+}
+html[data-theme="obsidian"] .day-chip .dd{
+  font-size:16px;
+  font-weight:600;
+  letter-spacing:-.02em;
+  margin-top:3px;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .day-chip .dm{font-size:9px;font-weight:550;color:var(--text-3);opacity:1;margin-top:2px}
+/* Bugun — nozik urg'u (fon emas, faqat matn + chegara) */
+html[data-theme="obsidian"] .day-chip.today{border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .day-chip.today .dw{color:var(--text-2)}
+/* Tanlangan kun — elektr ko'k, ammo tinch (10% fon + 1px chegara) */
+html[data-theme="obsidian"] .day-chip.active{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.42);
+  color:var(--text);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .day-chip.active .dw,
+html[data-theme="obsidian"] .day-chip.active .dm{color:#A8BEFF}
+html[data-theme="obsidian"][data-mode="light"] .day-chip.active .dw,
+html[data-theme="obsidian"][data-mode="light"] .day-chip.active .dm{color:#3358D4}
+html[data-theme="obsidian"] .day-chip.active .dd{color:var(--text)}
+html[data-theme="obsidian"] .day-chip.has-dot::after{background:var(--primary);width:4px;height:4px}
+html[data-theme="obsidian"] .day-chip.active.has-dot::after{background:var(--primary)}
+
+/* ── 4.5 Asosiy amal tugmasi (.add-btn) ──────────────────────────────── */
+html[data-theme="obsidian"] .add-btn{
+  height:44px;
+  margin:0;
+  border-radius:var(--obs-r-lg);
+  background:var(--primary);
+  color:var(--obs-on-accent);
+  font-size:13.5px;
+  font-weight:600;
+  letter-spacing:-.005em;
+  box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 24px -14px rgba(79,124,255,.85);
+  animation:none;
+  transition:background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease),box-shadow var(--obs-mid) linear;
+}
+html[data-theme="obsidian"] .add-btn:hover{
+  background:#5D87FF;
+  transform:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.25),0 12px 28px -14px rgba(79,124,255,.95);
+}
+html[data-theme="obsidian"] .add-btn:active{transform:scale(.99)}
+html[data-theme="obsidian"] .add-btn svg{width:15px;height:15px}
+
+/* ── 4.6 Reja qatorlari (.plan) ──────────────────────────────────────── */
+html[data-theme="obsidian"] #plansList{display:flex;flex-direction:column;gap:6px}
+html[data-theme="obsidian"] .plan{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+  margin-bottom:0;
+  gap:12px;
+  animation:obsRise .34s var(--obs-ease-out) both;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .plan:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .plan:active{transform:scale(.995)}
+html[data-theme="obsidian"] .plan.done{background:var(--surface);border-color:var(--obs-hair);opacity:.62}
+html[data-theme="obsidian"] .plan .cbx{
+  width:20px;
+  height:20px;
+  border-radius:var(--obs-r-xs);
+  border:1.5px solid var(--obs-hair-strong);
+  background:transparent;
+  font-size:11px;
+  color:transparent;
+  transition:background var(--obs-fast) linear,border-color var(--obs-fast) linear,color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .plan:hover .cbx{border-color:var(--primary)}
+html[data-theme="obsidian"] .plan .cbx.done{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#fff;
+  box-shadow:none;
+  animation:obsCheck .34s var(--obs-ease);
+}
+@keyframes obsCheck{0%{transform:scale(.7)}55%{transform:scale(1.12)}100%{transform:scale(1)}}
+html[data-theme="obsidian"] .plan .body .ttl{font-size:13.5px;font-weight:550;letter-spacing:-.01em}
+html[data-theme="obsidian"] .plan .body .meta{font-size:11.5px;font-weight:450;color:var(--text-3);margin-top:3px}
+html[data-theme="obsidian"] .plan.done .ttl{color:var(--text-3);text-decoration-color:var(--text-3)}
+html[data-theme="obsidian"] .plan .score{
+  font-size:11px;
+  font-weight:600;
+  color:var(--text-2);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  padding:3px 7px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .plan .actions button{
+  width:26px;
+  height:26px;
+  border-radius:var(--obs-r-xs);
+  color:var(--text-3);
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .plan .actions button:hover{background:var(--surface-2);color:var(--text)}
+html[data-theme="obsidian"] .plan .actions .del:hover{color:var(--danger)}
+/* Odat qatori (home ro'yxatida) — binafsha hairline urg'u */
+html[data-theme="obsidian"] .plan.habit-row{border-left:1px solid var(--obs-hair);position:relative}
+html[data-theme="obsidian"] .plan.habit-row::before{
+  content:'';
+  position:absolute;
+  left:0;top:10px;bottom:10px;
+  width:2px;
+  border-radius:0 2px 2px 0;
+  background:linear-gradient(180deg,rgba(124,92,255,.9),rgba(124,92,255,.25));
+}
+html[data-theme="obsidian"] .plan.habit-row .htag{
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  color:#9C8CFF;
+  background:var(--obs-tint-2);
+  border:1px solid rgba(124,92,255,.22);
+  padding:2px 6px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"][data-mode="light"] .plan.habit-row .htag{color:#5B3FD6}
+
+/* ── 4.7 Odatlar sahifasi ────────────────────────────────────────────── */
+html[data-theme="obsidian"] .habit-summary{gap:1px;background:var(--obs-hair);border:1px solid var(--obs-hair);border-radius:var(--obs-r-2xl);overflow:hidden;margin-bottom:16px}
+html[data-theme="obsidian"] .habit-summary .hs-card{
+  background:var(--surface);
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+  padding:14px 10px;
+}
+html[data-theme="obsidian"] .habit-summary .hs-card .v{
+  font-size:21px;
+  font-weight:650;
+  letter-spacing:-.03em;
+  background:none;
+  -webkit-background-clip:initial;
+  background-clip:initial;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .habit-summary .hs-card .l{font-size:10.5px;font-weight:550;color:var(--text-3);letter-spacing:.03em;margin-top:4px}
+html[data-theme="obsidian"] #habitsList{display:flex;flex-direction:column;gap:6px}
+html[data-theme="obsidian"] .habit{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+  margin-bottom:0;
+  gap:12px;
+  animation:obsRise .34s var(--obs-ease-out) both;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .habit:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .habit.done{background:var(--surface);border-color:rgba(79,124,255,.28)}
+html[data-theme="obsidian"] .habit .hcheck{
+  width:34px;
+  height:34px;
+  border-radius:var(--obs-r-md);
+  border:1px solid var(--obs-hair);
+  background:var(--surface-2);
+  font-size:16px;
+}
+html[data-theme="obsidian"] .habit.done .hcheck{
+  background:rgba(79,124,255,.12);
+  border-color:rgba(79,124,255,.42);
+  color:var(--primary);
+  box-shadow:none;
+  animation:obsCheck .38s var(--obs-ease);
+}
+html[data-theme="obsidian"] .habit .hbody .ttl{font-size:14px;font-weight:550;letter-spacing:-.01em}
+html[data-theme="obsidian"] .habit .hbody .meta{font-size:11.5px;font-weight:450;color:var(--text-3);gap:6px;margin-top:4px}
+html[data-theme="obsidian"] .habit .hbadge{
+  font-size:10.5px;
+  font-weight:550;
+  color:var(--text-2);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  padding:2px 7px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .habit .hstreak{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--warning);
+  background:rgba(223,164,60,.10);
+  border:1px solid rgba(223,164,60,.22);
+  padding:2px 7px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .habit .hactions button{width:26px;height:26px;border-radius:var(--obs-r-xs);color:var(--text-3)}
+html[data-theme="obsidian"] .habit .hactions button:hover{background:var(--surface-2);color:var(--text)}
+html[data-theme="obsidian"] .habit.finished{opacity:.5}
+
+/* ── 4.8 Segmentlar (.seg / .hseg / .habit-view-seg) ─────────────────── */
+html[data-theme="obsidian"] .seg,
+html[data-theme="obsidian"] .hseg,
+html[data-theme="obsidian"] .habit-view-seg,
+html[data-theme="obsidian"] .dv-toggle{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-md);
+  padding:3px;
+  gap:2px;
+  margin-bottom:16px;
+}
+html[data-theme="obsidian"] .hseg{margin-bottom:0}
+html[data-theme="obsidian"] .seg-item,
+html[data-theme="obsidian"] .hseg-item,
+html[data-theme="obsidian"] .habit-view-seg .hvs,
+html[data-theme="obsidian"] .dv-toggle-item{
+  font-size:12.5px;
+  font-weight:550;
+  letter-spacing:-.005em;
+  color:var(--text-2);
+  border-radius:var(--obs-r-sm);
+  padding:8px 4px;
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .seg-item.active{color:var(--text);font-weight:600}
+html[data-theme="obsidian"] .seg-indicator,
+html[data-theme="obsidian"] .dv-toggle-indicator{
+  top:3px;bottom:3px;
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-sm);
+  box-shadow:var(--obs-elev-1);
+  transition:all .3s var(--obs-ease);
+}
+html[data-theme="obsidian"] .hseg-item.active,
+html[data-theme="obsidian"] .habit-view-seg .hvs.active{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  color:var(--text);
+  font-weight:600;
+  box-shadow:var(--obs-elev-1);
+}
+
+/* ── 4.9 Statistika kartalari + grafiklar ────────────────────────────── */
+html[data-theme="obsidian"] .stat-grid{gap:8px;margin-bottom:16px}
+html[data-theme="obsidian"] .stat-card{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:15px;
+  box-shadow:var(--obs-elev-1);
+  animation:obsRise .42s var(--obs-ease-out) both;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .stat-card:hover{transform:none;border-color:var(--obs-hair-strong);background:var(--surface-2);box-shadow:var(--obs-elev-1)}
+html[data-theme="obsidian"] .stat-card .l{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+html[data-theme="obsidian"] .stat-card .v{
+  font-size:24px;
+  font-weight:650;
+  letter-spacing:-.035em;
+  margin-top:8px;
+  background:none;
+  -webkit-background-clip:initial;
+  background-clip:initial;
+  color:var(--text);
+}
+html[data-theme="obsidian"] .stat-card .ch{font-size:11.5px;font-weight:500;color:var(--text-2);margin-top:4px}
+/* Katta dekorativ emoji doira → kichkina, sokin belgi */
+html[data-theme="obsidian"] .stat-card .ic-bg{
+  right:12px;top:12px;
+  width:22px;
+  height:22px;
+  border-radius:var(--obs-r-xs);
+  background:none;
+  color:var(--text-3);
+  font-size:13px;
+  opacity:.7;
+}
+html[data-theme="obsidian"] .chart-card{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:18px;
+  margin-bottom:12px;
+  box-shadow:var(--obs-elev-1);
+}
+html[data-theme="obsidian"] .chart-head{margin-bottom:16px}
+html[data-theme="obsidian"] .chart-head h3{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+html[data-theme="obsidian"] .chart-head .pill{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--text-2);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  padding:3px 8px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .bars{height:124px;gap:8px}
+html[data-theme="obsidian"] .bar{
+  max-width:24px;
+  border-radius:var(--obs-r-xs);
+  background:linear-gradient(180deg,rgba(79,124,255,.85),rgba(79,124,255,.40));
+  box-shadow:none;
+  animation:none;
+  transition:height .8s var(--obs-ease);
+}
+html[data-theme="obsidian"] .bar-col .lb{font-size:10.5px;font-weight:550;color:var(--text-3)}
+html[data-theme="obsidian"] .area-line{stroke-width:2;filter:none}
+html[data-theme="obsidian"] .area-dot{fill:var(--bg-2);stroke:var(--primary);stroke-width:2}
+html[data-theme="obsidian"] .heat-cell{border-radius:3px;background:var(--obs-track)}
+html[data-theme="obsidian"] .heat-cell:hover{transform:scale(1.25)}
+html[data-theme="obsidian"] .heat-cell[data-l="1"]{background:rgba(79,124,255,.24)}
+html[data-theme="obsidian"] .heat-cell[data-l="2"]{background:rgba(79,124,255,.44)}
+html[data-theme="obsidian"] .heat-cell[data-l="3"]{background:rgba(79,124,255,.68)}
+html[data-theme="obsidian"] .heat-cell[data-l="4"]{background:var(--primary)}
+html[data-theme="obsidian"] .hist-row .hbar{height:8px;background:var(--obs-track)}
+html[data-theme="obsidian"] .hist-row .hbar>i{background:var(--primary)}
+html[data-theme="obsidian"] .hist-row .hbar.full>i{background:linear-gradient(90deg,#4F7CFF,#7C5CFF);box-shadow:none}
+html[data-theme="obsidian"] .hist-row .hl{font-size:11.5px;font-weight:550;color:var(--text-3)}
+html[data-theme="obsidian"] .hist-row .hv{font-size:12px;font-weight:600;color:var(--text-2)}
+
+/* Reyting (leaderboard) */
+html[data-theme="obsidian"] .lb-row{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:10px 12px;
+  margin-bottom:6px;
+  animation:obsRise .36s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .lb-row.me{background:rgba(79,124,255,.08);border-color:rgba(79,124,255,.32);box-shadow:none}
+html[data-theme="obsidian"] .lb-row.lb-1,
+html[data-theme="obsidian"] .lb-row.lb-2,
+html[data-theme="obsidian"] .lb-row.lb-3{background:var(--surface);box-shadow:none}
+html[data-theme="obsidian"] .lb-row.lb-1{border-color:rgba(223,164,60,.42)}
+html[data-theme="obsidian"] .lb-row.lb-2{border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .lb-row.lb-3{border-color:rgba(196,131,88,.34)}
+html[data-theme="obsidian"] .lb-row.lb-1 .lb-av{box-shadow:0 0 0 1px rgba(223,164,60,.5);animation:none}
+html[data-theme="obsidian"] .lb-rank{font-size:13px;font-weight:600;color:var(--text-3)}
+html[data-theme="obsidian"] .lb-rank.top{font-size:15px}
+html[data-theme="obsidian"] .lb-av{
+  width:30px;height:30px;
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  font-size:14px;
+}
+html[data-theme="obsidian"] .lb-av img{border-radius:var(--obs-r-sm)}
+html[data-theme="obsidian"] .lb-name{font-size:13px;font-weight:550}
+html[data-theme="obsidian"] .lb-val{font-size:13px;font-weight:600;color:var(--text)}
+
+/* ── 4.10 Maqsadlar sahifasi ─────────────────────────────────────────── */
+html[data-theme="obsidian"] .year-chip,
+html[data-theme="obsidian"] .month-cell{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+  animation:none;
+}
+html[data-theme="obsidian"] .year-chip:hover,
+html[data-theme="obsidian"] .month-cell:hover{transform:none;border-color:var(--obs-hair-strong);background:var(--surface-2);box-shadow:none}
+html[data-theme="obsidian"] .year-chip.active{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.42);
+  color:var(--text);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .year-chip .y{font-size:16px;font-weight:600;letter-spacing:-.02em}
+html[data-theme="obsidian"] .year-chip .c{font-size:10.5px;font-weight:500;color:var(--text-3)}
+html[data-theme="obsidian"] .year-chip.active .c{color:#A8BEFF}
+html[data-theme="obsidian"] .month-cell.current{background:rgba(79,124,255,.08);border-color:rgba(79,124,255,.34)}
+html[data-theme="obsidian"] .month-cell .mn{font-size:12.5px;font-weight:600}
+html[data-theme="obsidian"] .month-cell .ct{font-size:10.5px;font-weight:500;color:var(--text-3);margin-top:5px}
+html[data-theme="obsidian"] .month-cell .dot{background:var(--primary);width:4px;height:4px}
+html[data-theme="obsidian"] .goal{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+  margin-bottom:6px;
+  animation:obsRise .34s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .goal:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .goal .cbx{
+  width:19px;height:19px;
+  border-radius:var(--obs-r-xs);
+  border:1.5px solid var(--obs-hair-strong);
+  color:transparent;
+}
+html[data-theme="obsidian"] .goal .cbx.done{background:var(--primary);border-color:var(--primary);color:#fff}
+html[data-theme="obsidian"] .goal .ttl{font-size:13.5px;font-weight:550}
+html[data-theme="obsidian"] .goal .desc{font-size:11.5px;font-weight:450;color:var(--text-3);margin-top:3px}
+html[data-theme="obsidian"] .goal .del{border-radius:var(--obs-r-xs);color:var(--text-3)}
+html[data-theme="obsidian"] .goal .del:hover{background:var(--surface-2);color:var(--danger)}
+
+/* Tracker jadvali */
+html[data-theme="obsidian"] .tracker-head h3{font-size:14px;font-weight:600}
+html[data-theme="obsidian"] .tracker-head .nav-btn,
+html[data-theme="obsidian"] .mem-datenav .nav-btn,
+html[data-theme="obsidian"] .cal-head .nav-btn{
+  width:30px;height:30px;
+  border-radius:var(--obs-r-sm);
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+  font-size:15px;
+  transition:border-color var(--obs-fast) linear,color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .tracker-head .nav-btn:hover,
+html[data-theme="obsidian"] .mem-datenav .nav-btn:hover{border-color:var(--obs-hair-strong);color:var(--text);background:var(--surface-2)}
+html[data-theme="obsidian"] .tracker .tcell{
+  width:28px;height:28px;
+  border-radius:var(--obs-r-sm);
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  font-size:12px;
+  color:transparent;
+}
+html[data-theme="obsidian"] .tracker .tcell.done{
+  background:rgba(79,124,255,.16);
+  border-color:rgba(79,124,255,.45);
+  color:var(--primary);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .tracker th .tdd{font-size:12px;font-weight:600}
+html[data-theme="obsidian"] .tracker th.ttoday .tdd{color:var(--primary)}
+html[data-theme="obsidian"] .tracker td.tname{font-size:12px;font-weight:500}
+
+/* ── 4.11 Bo'sh holat (mavjud .empty-state) ──────────────────────────── */
+html[data-theme="obsidian"] .empty-state{padding:26px 18px;color:var(--text-3)}
+html[data-theme="obsidian"] .empty-state .ico{
+  width:42px;height:42px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text-3);
+  font-size:18px;
+  margin-bottom:12px;
+  animation:none;
+}
+html[data-theme="obsidian"] .empty-state h4{font-size:13.5px;font-weight:600;color:var(--text)}
+html[data-theme="obsidian"] .empty-state p{font-size:12px;font-weight:450;color:var(--text-3);line-height:1.55;max-width:280px;margin:0 auto}
+
+/* ── 4.12 Pastdagi navigatsiya (mobil) ───────────────────────────────── */
+html[data-theme="obsidian"] .nav{
+  bottom:12px;
+  width:calc(100% - 24px);
+  max-width:536px;
+  padding:6px;
+  background:var(--blur-bg);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  box-shadow:var(--shadow-lg);
+}
+html[data-theme="obsidian"] .nav-item{
+  gap:4px;
+  padding:7px 4px;
+  border-radius:var(--obs-r-md);
+  color:var(--text-3);
+  transition:color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .nav-item svg{width:19px;height:19px;transition:none}
+html[data-theme="obsidian"] .nav-item span{font-size:10px;font-weight:550;letter-spacing:.005em}
+html[data-theme="obsidian"] .nav-item:hover{color:var(--text-2);background:transparent}
+html[data-theme="obsidian"] .nav-item.active{color:var(--primary);background:rgba(79,124,255,.10)}
+html[data-theme="obsidian"] .nav-item.active svg{transform:none}
+html[data-theme="obsidian"] .nav-item:active{transform:scale(.96)}
+/* AI tugmasi — pulsatsiya va halqa o'chirildi; toza kvadrat, nozik gradient */
+html[data-theme="obsidian"] .nav-ai{
+  width:46px;height:46px;
+  margin-top:-6px;
+  border-radius:var(--obs-r-lg);
+  background:var(--grad);
+  box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 24px -12px rgba(99,110,255,.9),var(--obs-inset);
+  animation:none;
+  transition:transform var(--obs-fast) var(--obs-ease),box-shadow var(--obs-mid) linear;
+}
+html[data-theme="obsidian"] .nav-ai::before{display:none}
+html[data-theme="obsidian"] .nav-ai svg{width:21px;height:21px}
+html[data-theme="obsidian"] .nav-ai:active{transform:scale(.94)}
+html[data-theme="obsidian"] .nav-ai.active{
+  transform:none;
+  box-shadow:0 0 0 1px rgba(124,92,255,.5),0 12px 28px -10px rgba(99,110,255,1);
+}
+
+/* ── 4.13 Profil sahifasi ────────────────────────────────────────────── */
+html[data-theme="obsidian"] .prof-hero{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:24px 20px 20px;
+  color:var(--text);
+  box-shadow:var(--obs-elev-2),var(--obs-inset);
+  animation:obsRise .44s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .prof-hero::before{
+  background:radial-gradient(90% 120% at 50% -10%,rgba(79,124,255,.10),transparent 62%);
+}
+html[data-theme="obsidian"] .prof-hero .av{
+  width:64px;height:64px;
+  border-radius:var(--obs-r-xl);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  backdrop-filter:none;
+  color:var(--text);
+  font-size:24px;
+  font-weight:600;
+  margin-bottom:12px;
+}
+html[data-theme="obsidian"] .prof-hero .nm{font-size:18px;font-weight:650;letter-spacing:-.03em}
+html[data-theme="obsidian"] .prof-hero .un{font-size:12.5px;font-weight:450;color:var(--text-3);opacity:1;margin-top:3px}
+html[data-theme="obsidian"] .prof-hero .stx{
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid var(--obs-hair);
+}
+html[data-theme="obsidian"] .prof-hero .stx .v{font-size:20px;font-weight:650;letter-spacing:-.03em}
+html[data-theme="obsidian"] .prof-hero .stx .l{font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--text-3);opacity:1;margin-top:3px}
+html[data-theme="obsidian"] .setting{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+  margin-bottom:6px;
+  gap:12px;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .setting:hover{transform:none;border-color:var(--obs-hair-strong);background:var(--surface-2);box-shadow:none}
+html[data-theme="obsidian"] .setting .ic{
+  width:32px;height:32px;
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+  font-size:15px;
+}
+html[data-theme="obsidian"] .setting .ttl{font-size:13.5px;font-weight:550}
+html[data-theme="obsidian"] .setting .dsc{font-size:11.5px;font-weight:450;color:var(--text-3);margin-top:2px}
+html[data-theme="obsidian"] .toggle{width:40px;height:23px;background:var(--obs-track);border:1px solid var(--obs-hair)}
+html[data-theme="obsidian"] .toggle.on{background:var(--primary);border-color:transparent}
+html[data-theme="obsidian"] .toggle i{width:17px;height:17px;top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+html[data-theme="obsidian"] .toggle.on i{left:19px}
+html[data-theme="obsidian"] .share-card{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+}
+html[data-theme="obsidian"] .share-card:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .share-card .t{font-size:13px;font-weight:550}
+html[data-theme="obsidian"] .share-card .d{font-size:11.5px;font-weight:450;color:var(--text-3);margin-top:2px}
+
+/* Yutuqlar */
+html[data-theme="obsidian"] .achs{gap:8px}
+html[data-theme="obsidian"] .ach{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:13px 8px;
+  animation:obsRise .4s var(--obs-ease-out) both;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .ach:hover{transform:none;border-color:var(--obs-hair-strong);background:var(--surface-2);box-shadow:none}
+html[data-theme="obsidian"] .ach .ic{
+  width:36px;height:36px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text);
+  font-size:17px;
+  box-shadow:none;
+  margin-bottom:8px;
+}
+html[data-theme="obsidian"] .ach .nm{font-size:10.5px;font-weight:600}
+html[data-theme="obsidian"] .ach .ds{font-size:9.5px;font-weight:450;color:var(--text-3);margin-top:3px}
+html[data-theme="obsidian"] .ach.locked{opacity:.4;filter:none}
+
+/* Tema tanlash gridi — 7-chi tema shu yerdan tanlanadi */
+html[data-theme="obsidian"] .theme-grid{gap:8px}
+html[data-theme="obsidian"] .theme-tile{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:9px;
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .theme-tile:hover{transform:none;border-color:var(--obs-hair-strong);background:var(--surface-2);box-shadow:none}
+html[data-theme="obsidian"] .theme-tile.active{
+  border-color:rgba(79,124,255,.55);
+  background:rgba(79,124,255,.06);
+  box-shadow:0 0 0 1px rgba(79,124,255,.28);
+}
+html[data-theme="obsidian"] .theme-tile .sw{
+  height:30px;
+  border-radius:var(--obs-r-sm);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  margin-bottom:8px;
+}
+html[data-theme="obsidian"] .theme-tile .nm{font-size:10.5px;font-weight:550;color:var(--text-2)}
+html[data-theme="obsidian"] .theme-tile.active .nm{color:var(--text);font-weight:600}
+html[data-theme="obsidian"] .theme-tile.locked{opacity:.45;filter:none}
+
+/* Obuna holati (sub-status) — premium, ammo sokin: gradient chegara + tint */
+html[data-theme="obsidian"] .sub-status{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:16px;
+  box-shadow:var(--obs-elev-1);
+}
+html[data-theme="obsidian"] .sub-status.premium{
+  background:
+    linear-gradient(var(--surface),var(--surface)) padding-box,
+    linear-gradient(135deg,rgba(79,124,255,.55),rgba(124,92,255,.45)) border-box;
+  border:1px solid transparent;
+  box-shadow:var(--obs-elev-2);
+}
+html[data-theme="obsidian"] .sub-status.premium::before,
+html[data-theme="obsidian"] .sub-status.premium::after{display:none}
+html[data-theme="obsidian"] .sub-status .ss-ic{
+  width:40px;height:40px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+  font-size:19px;
+}
+html[data-theme="obsidian"] .sub-status.premium .ss-ic{
+  background:var(--obs-tint);
+  border-color:rgba(79,124,255,.3);
+  color:var(--primary);
+  backdrop-filter:none;
+  box-shadow:none;
+  animation:none;
+}
+html[data-theme="obsidian"] .sub-status .ss-ttl{font-size:14.5px;font-weight:600;letter-spacing:-.015em}
+html[data-theme="obsidian"] .sub-status.premium .ss-ttl{color:var(--text)}
+html[data-theme="obsidian"] .sub-status .ss-sub{font-size:12px;font-weight:450;color:var(--text-2);margin-top:4px}
+html[data-theme="obsidian"] .sub-status.premium .ss-sub{color:var(--text-2)}
+html[data-theme="obsidian"] .sub-status .ss-live{background:var(--success);box-shadow:none;animation:obsAiPing 2.8s var(--obs-ease-out) infinite}
+html[data-theme="obsidian"] .sub-status .ss-bar{height:4px;background:var(--obs-track);margin-top:13px}
+html[data-theme="obsidian"] .sub-status .ss-bar>i{background:linear-gradient(90deg,#4F7CFF,#7C5CFF);box-shadow:none}
+html[data-theme="obsidian"] .sub-status .ss-cta{
+  background:var(--primary);
+  border-radius:var(--obs-r-md);
+  padding:9px 13px;
+  font-size:12.5px;
+  font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+
+/* ── 4.14 AI sahifasi (chat) ─────────────────────────────────────────── */
+html[data-theme="obsidian"] .chat-card{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:16px 14px 14px;
+  box-shadow:var(--obs-elev-2);
+  position:relative;
+  overflow:hidden;
+}
+html[data-theme="obsidian"] .chat-card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(79,124,255,.6) 25%,rgba(124,92,255,.6) 65%,transparent);
+}
+html[data-theme="obsidian"] .chat-head{padding:0 2px 12px;border-bottom:1px solid var(--obs-hair);margin-bottom:12px}
+html[data-theme="obsidian"] .chat-head .av{
+  width:36px;height:36px;
+  border-radius:var(--obs-r-md);
+  background:linear-gradient(140deg,rgba(79,124,255,.2),rgba(124,92,255,.2));
+  border:1px solid rgba(124,92,255,.3);
+  box-shadow:none;
+  animation:none;
+}
+html[data-theme="obsidian"] .chat-head .av svg{width:20px;height:20px}
+html[data-theme="obsidian"] .chat-head .av::after{
+  width:9px;height:9px;
+  background:var(--success);
+  border:2px solid var(--surface);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .chat-head .ti .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+html[data-theme="obsidian"] .chat-head .ti .st{font-size:11px;font-weight:450;color:var(--text-3);margin-top:2px}
+html[data-theme="obsidian"] .chat-head .ti .st .dot{width:5px;height:5px;background:var(--success);box-shadow:none}
+html[data-theme="obsidian"] .chat-head .lim{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--text-2);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  padding:3px 8px;
+  border-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .chat-msg{
+  max-width:88%;
+  padding:10px 13px;
+  border-radius:var(--obs-r-lg);
+  font-size:13.5px;
+  font-weight:450;
+  line-height:1.55;
+  animation:obsRise .28s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .chat-msg.bot{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-bottom-left-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .chat-msg.user{
+  background:var(--primary);
+  color:#fff;
+  border-bottom-right-radius:var(--obs-r-xs);
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+html[data-theme="obsidian"] .chat-msg.err{
+  background:rgba(229,72,77,.10);
+  border:1px solid rgba(229,72,77,.28);
+  color:#F87A7E;
+}
+html[data-theme="obsidian"] .chat-typing{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  border-bottom-left-radius:var(--obs-r-xs);
+}
+html[data-theme="obsidian"] .chat-typing i{width:5px;height:5px;background:var(--text-3)}
+html[data-theme="obsidian"] .chat-sugg .s{
+  font-size:11.5px;
+  font-weight:550;
+  color:var(--text-2);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-md);
+  padding:7px 11px;
+  transition:border-color var(--obs-fast) linear,color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .chat-sugg .s:hover{border-color:rgba(79,124,255,.4);color:var(--text)}
+html[data-theme="obsidian"] .chat-bar{border-top:1px solid var(--obs-hair);padding-top:12px}
+html[data-theme="obsidian"] .chat-bar textarea{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  font-size:13.5px;
+  min-height:40px;
+  padding:10px 13px;
+}
+html[data-theme="obsidian"] .chat-bar textarea:focus{border-color:rgba(79,124,255,.55);box-shadow:var(--obs-focus)}
+html[data-theme="obsidian"] .chat-send{
+  width:40px;height:40px;
+  border-radius:var(--obs-r-md);
+  background:var(--primary);
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+html[data-theme="obsidian"] .chat-send svg{width:17px;height:17px}
+html[data-theme="obsidian"] .mood-row{gap:6px}
+html[data-theme="obsidian"] .mood-pill{
+  font-size:21px;
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease);
+}
+html[data-theme="obsidian"] .mood-pill:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .mood-pill.active{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.45);
+  box-shadow:none;
+  transform:none;
+}
+html[data-theme="obsidian"] .energy-cell{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-md);
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .energy-cell.active{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.45);
+  color:var(--primary);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .insight{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  padding:12px 13px;
+  margin-bottom:6px;
+  gap:11px;
+  animation:obsRise .36s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .insight .ic{
+  width:28px;height:28px;
+  border-radius:var(--obs-r-sm);
+  background:var(--obs-tint);
+  border:1px solid rgba(79,124,255,.2);
+  color:var(--primary);
+  font-size:14px;
+}
+html[data-theme="obsidian"] .insight .body .t{font-size:13px;font-weight:600;letter-spacing:-.01em}
+html[data-theme="obsidian"] .insight .body .d{font-size:11.5px;font-weight:450;color:var(--text-2);margin-top:3px;line-height:1.5}
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   5. MODAL / FORMA / PAYWALL / ONBOARDING / FRIENDS
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 5.1 Modallar ────────────────────────────────────────────────────── */
+html[data-theme="obsidian"] .modal-back{
+  background:var(--obs-veil);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+html[data-theme="obsidian"] .modal{
+  background:var(--bg-2);
+  border:1px solid var(--obs-hair);
+  border-bottom:none;
+  border-radius:var(--obs-r-2xl) var(--obs-r-2xl) 0 0;
+  padding:22px 20px 28px;
+  box-shadow:var(--shadow-lg);
+  animation:obsSheetIn .32s var(--obs-ease-out);
+}
+@keyframes obsSheetIn{from{transform:translateY(14px);opacity:.6}to{transform:translateY(0);opacity:1}}
+html[data-theme="obsidian"] .modal h3{font-size:16.5px;font-weight:650;letter-spacing:-.025em;margin-bottom:16px}
+html[data-theme="obsidian"] .modal .grab{width:32px;height:3px;background:var(--obs-hair-strong);border-radius:var(--obs-r-pill);margin:-8px auto 16px}
+
+/* ── 5.2 Forma elementlari ───────────────────────────────────────────── */
+html[data-theme="obsidian"] .fld{margin-bottom:14px}
+html[data-theme="obsidian"] .fld label{
+  font-size:11.5px;
+  font-weight:550;
+  letter-spacing:.01em;
+  color:var(--text-2);
+  margin-bottom:7px;
+}
+html[data-theme="obsidian"] .fld input,
+html[data-theme="obsidian"] .fld textarea,
+html[data-theme="obsidian"] .fld select,
+html[data-theme="obsidian"] .time-pick select,
+html[data-theme="obsidian"] .digest-select,
+html[data-theme="obsidian"] #hRemWrap input[type=time],
+html[data-theme="obsidian"] #hRemWrap select,
+html[data-theme="obsidian"] #hDaysWrap input{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-md);
+  padding:11px 13px;
+  font-size:13.5px;
+  font-weight:450;
+  color:var(--text);
+  transition:border-color var(--obs-fast) linear,box-shadow var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .fld input::placeholder,
+html[data-theme="obsidian"] .fld textarea::placeholder,
+html[data-theme="obsidian"] .chat-bar textarea::placeholder{color:var(--text-3)}
+html[data-theme="obsidian"] .fld input:focus,
+html[data-theme="obsidian"] .fld textarea:focus,
+html[data-theme="obsidian"] .fld select:focus,
+html[data-theme="obsidian"] .time-pick select:focus{
+  border-color:rgba(79,124,255,.6);
+  box-shadow:var(--obs-focus);
+  background:var(--surface);
+}
+html[data-theme="obsidian"] .time-pick select{font-size:14.5px;font-weight:550}
+html[data-theme="obsidian"] .time-pick .tcolon{color:var(--text-3);font-weight:600}
+html[data-theme="obsidian"] .emoji-pick .em{
+  width:38px;height:38px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  font-size:18px;
+}
+html[data-theme="obsidian"] .emoji-pick .em.sel{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.5);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .weekday-pick .wdc{
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--text-3);
+}
+html[data-theme="obsidian"] .weekday-pick .wdc.sel{
+  background:rgba(79,124,255,.12);
+  border-color:rgba(79,124,255,.5);
+  color:var(--primary);
+  box-shadow:none;
+}
+
+/* ── 5.3 Tugmalar (.btn tizimi) ──────────────────────────────────────── */
+html[data-theme="obsidian"] .btn{
+  padding:12px 16px;
+  border-radius:var(--obs-r-md);
+  background:var(--primary);
+  color:var(--obs-on-accent);
+  font-size:13.5px;
+  font-weight:600;
+  letter-spacing:-.005em;
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+  transition:background var(--obs-fast) linear,transform var(--obs-fast) var(--obs-ease),border-color var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .btn:hover{background:#5D87FF}
+html[data-theme="obsidian"] .btn:active{transform:scale(.985)}
+html[data-theme="obsidian"] .btn-ghost{
+  background:var(--surface-2);
+  color:var(--text);
+  border:1px solid var(--obs-hair);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .btn-ghost:hover{background:var(--surface);border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .btn-danger{
+  background:rgba(229,72,77,.12);
+  border:1px solid rgba(229,72,77,.34);
+  color:#F5787C;
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .btn-danger:hover{background:rgba(229,72,77,.18)}
+html[data-theme="obsidian"][data-mode="light"] .btn-danger{color:#C62A2F}
+html[data-theme="obsidian"] .btn-icon{
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+}
+html[data-theme="obsidian"] .btn-icon:hover{border-color:var(--obs-hair-strong);background:var(--surface);color:var(--text)}
+html[data-theme="obsidian"] .ripple-ink{background:rgba(255,255,255,.22)}
+
+/* ── 5.4 Toast + confirm ─────────────────────────────────────────────── */
+html[data-theme="obsidian"] .toast{
+  top:16px;
+  background:var(--surface-2);
+  color:var(--text);
+  border:1px solid var(--obs-hair-strong);
+  border-radius:var(--obs-r-md);
+  padding:11px 16px;
+  font-size:12.5px;
+  font-weight:550;
+  letter-spacing:-.005em;
+  box-shadow:var(--shadow-lg);
+}
+html[data-theme="obsidian"] .confirm-back{background:var(--obs-veil);backdrop-filter:blur(8px)}
+html[data-theme="obsidian"] .confirm-box{
+  background:var(--bg-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:24px 22px 18px;
+  max-width:330px;
+  box-shadow:var(--shadow-lg);
+  animation:obsDialogIn .26s var(--obs-ease-out);
+}
+@keyframes obsDialogIn{from{opacity:0;transform:scale(.97) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+html[data-theme="obsidian"] .confirm-ic{
+  width:44px;height:44px;
+  border-radius:var(--obs-r-lg);
+  font-size:20px;
+  background:rgba(229,72,77,.10);
+  border:1px solid rgba(229,72,77,.24);
+  margin-bottom:14px;
+}
+html[data-theme="obsidian"] .confirm-ic.kind-premium{
+  background:var(--obs-tint);
+  border-color:rgba(79,124,255,.28);
+  color:var(--primary);
+}
+html[data-theme="obsidian"] .confirm-ttl{font-size:15.5px;font-weight:650;letter-spacing:-.02em;margin-bottom:7px}
+html[data-theme="obsidian"] .confirm-msg{font-size:12.5px;font-weight:450;color:var(--text-2);line-height:1.55;margin-bottom:20px}
+html[data-theme="obsidian"] .confirm-btn{
+  padding:11px;
+  border-radius:var(--obs-r-md);
+  font-size:13px;
+  font-weight:600;
+}
+html[data-theme="obsidian"] .confirm-btn.cancel{background:var(--surface-2);border:1px solid var(--obs-hair);color:var(--text)}
+html[data-theme="obsidian"] .confirm-btn.ok{
+  background:#DC3E43;
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+html[data-theme="obsidian"] .confirm-btn.ok.kind-premium{
+  background:var(--primary);
+  box-shadow:0 1px 2px rgba(0,0,0,.3);
+}
+
+/* ── 5.5 Yutuq (unlock) + XP popup — bayram, ammo o'lchovli ──────────── */
+html[data-theme="obsidian"] .unlock-overlay{background:var(--obs-veil);backdrop-filter:blur(10px)}
+html[data-theme="obsidian"] .unlock-card{
+  background:var(--bg-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-2xl);
+  padding:26px 24px 22px;
+  box-shadow:var(--shadow-lg);
+  animation:obsDialogIn .3s var(--obs-ease-out);
+}
+html[data-theme="obsidian"] .unlock-card .badge{
+  width:88px;height:88px;
+  border-radius:var(--obs-r-xl);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  font-size:42px;
+  box-shadow:none;
+  animation:none;
+}
+html[data-theme="obsidian"] .unlock-card .lbl{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--text-3)}
+html[data-theme="obsidian"] .unlock-card .ttl{font-size:19px;font-weight:650;letter-spacing:-.03em}
+html[data-theme="obsidian"] .unlock-card .rar{
+  background:var(--obs-tint);
+  border:1px solid rgba(79,124,255,.28);
+  color:#A8BEFF;
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.1em;
+  border-radius:var(--obs-r-xs);
+  padding:3px 9px;
+}
+html[data-theme="obsidian"] .unlock-card .ok{
+  background:var(--primary);
+  border-radius:var(--obs-r-md);
+  font-size:13.5px;
+  font-weight:600;
+  padding:11px 24px;
+  box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+html[data-theme="obsidian"] .xp-pop{
+  background:var(--surface-2);
+  border:1px solid rgba(79,124,255,.42);
+  color:var(--text);
+  border-radius:var(--obs-r-lg);
+  padding:13px 22px;
+  font-size:18px;
+  font-weight:650;
+  letter-spacing:-.02em;
+  box-shadow:var(--shadow-lg);
+}
+
+/* ── 5.6 Paywall — premium, sokin ────────────────────────────────────── */
+html[data-theme="obsidian"] .paywall{background:var(--bg)}
+html[data-theme="obsidian"] .paywall h1{font-size:clamp(22px,6vw,26px);font-weight:650;letter-spacing:-.035em}
+html[data-theme="obsidian"] .pw-pro{
+  background:var(--grad);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  animation:none;
+}
+html[data-theme="obsidian"] .pw-title-gem{animation:none;filter:none}
+html[data-theme="obsidian"] .paywall .pw-feats li{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  font-size:13px;
+  font-weight:450;
+  color:var(--text-2);
+}
+html[data-theme="obsidian"] .paywall .pw-feat-ic{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-sm);
+  color:var(--primary);
+}
+html[data-theme="obsidian"] .paywall .pw-divider{background:var(--obs-hair)}
+html[data-theme="obsidian"] .paywall .pw-plan{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  box-shadow:none;
+  animation:obsRise .4s var(--obs-ease-out) both;
+}
+html[data-theme="obsidian"] .paywall .pw-plan:hover{border-color:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .paywall .pw-plan.featured{
+  border-color:rgba(79,124,255,.45);
+  background:rgba(79,124,255,.06);
+}
+html[data-theme="obsidian"] .paywall .pw-plan-amount{
+  background:none;
+  -webkit-background-clip:initial;
+  background-clip:initial;
+  color:var(--text);
+  font-weight:650;
+  letter-spacing:-.02em;
+}
+html[data-theme="obsidian"] .paywall .pw-plan-title{font-size:13px;font-weight:550}
+html[data-theme="obsidian"] .paywall .pw-cta{
+  background:var(--primary);
+  border-radius:var(--obs-r-lg);
+  font-size:14.5px;
+  font-weight:600;
+  letter-spacing:-.005em;
+  min-height:50px;
+  box-shadow:0 1px 2px rgba(0,0,0,.25),0 14px 32px -16px rgba(79,124,255,.9);
+}
+html[data-theme="obsidian"] .paywall .pw-cta:hover{background:#5D87FF}
+html[data-theme="obsidian"] .paywall .pw-cta::after{display:none}
+html[data-theme="obsidian"] .paywall .pw-back{
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  color:var(--text-2);
+  font-size:13.5px;
+  font-weight:550;
+}
+html[data-theme="obsidian"] .paywall .pw-back:hover{background:var(--surface-2);color:var(--text)}
+html[data-theme="obsidian"] .locked-card::after{
+  background:var(--obs-tint);
+  border:1px solid rgba(79,124,255,.3);
+  color:#A8BEFF;
+  border-radius:var(--obs-r-xs);
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:.06em;
+}
+
+/* ── 5.7 Onboarding — gradient fon o'rniga chuqur navy ───────────────── */
+html[data-theme="obsidian"] .ob{
+  background:var(--bg);
+  color:var(--text);
+}
+html[data-theme="obsidian"] .ob::before{
+  width:100%;height:340px;
+  border-radius:0;
+  top:0;right:0;
+  background:radial-gradient(80% 100% at 70% 0%,rgba(124,92,255,.16),transparent 65%);
+  filter:none;
+  animation:none;
+}
+html[data-theme="obsidian"] .ob::after{display:none}
+html[data-theme="obsidian"] .ob .em{filter:none;animation:none}
+html[data-theme="obsidian"] .ob h1{font-weight:650;letter-spacing:-.035em;text-shadow:none}
+html[data-theme="obsidian"] .ob p{color:var(--text-2);opacity:1;font-weight:450}
+html[data-theme="obsidian"] .ob .opt{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  backdrop-filter:none;
+  color:var(--text);
+  font-size:13.5px;
+  font-weight:550;
+}
+html[data-theme="obsidian"] .ob .opt.sel{
+  background:rgba(79,124,255,.10);
+  border-color:rgba(79,124,255,.5);
+  color:var(--text);
+  box-shadow:none;
+}
+html[data-theme="obsidian"] .ob .opt.sel div div{color:var(--text-2) !important}
+html[data-theme="obsidian"] .ob .dot{background:var(--obs-hair-strong)}
+html[data-theme="obsidian"] .ob .dot.active{background:var(--primary);box-shadow:none;width:20px}
+html[data-theme="obsidian"] .ob .nav .next{
+  background:var(--primary);
+  color:#fff;
+  border-radius:var(--obs-r-lg);
+  font-size:14px;
+  font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.25),0 12px 28px -16px rgba(79,124,255,.9);
+}
+html[data-theme="obsidian"] .ob .nav .skip{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  color:var(--text-2);
+  backdrop-filter:none;
+  text-shadow:none;
+}
+
+/* ── 5.8 Do'stlar (Friends) moduli ───────────────────────────────────── */
+html[data-theme="obsidian"] .grp-card,
+html[data-theme="obsidian"] .mem-card,
+html[data-theme="obsidian"] .mem-item,
+html[data-theme="obsidian"] .perm-row,
+html[data-theme="obsidian"] #tgPickerList .tgp-item{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-lg);
+  transition:border-color var(--obs-fast) linear,background var(--obs-fast) linear;
+}
+html[data-theme="obsidian"] .grp-card:hover,
+html[data-theme="obsidian"] .mem-card:hover,
+html[data-theme="obsidian"] #tgPickerList .tgp-item:hover{border-color:var(--obs-hair-strong);background:var(--surface-2)}
+html[data-theme="obsidian"] .grp-card .ic{
+  width:38px;height:38px;
+  border-radius:var(--obs-r-md);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  font-size:18px;
+}
+html[data-theme="obsidian"] .grp-card .nm{font-size:14px;font-weight:600;letter-spacing:-.015em}
+html[data-theme="obsidian"] .grp-card .sub{font-size:11.5px;font-weight:450;color:var(--text-3);margin-top:3px}
+html[data-theme="obsidian"] .grp-card .badge-owner{
+  background:var(--obs-tint);
+  border:1px solid rgba(79,124,255,.28);
+  color:#A8BEFF;
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.05em;
+  border-radius:var(--obs-r-xs);
+  padding:2px 7px;
+}
+html[data-theme="obsidian"] .mem-card.me{background:rgba(79,124,255,.07);border-color:rgba(79,124,255,.3)}
+html[data-theme="obsidian"] .mem-card .av{
+  width:34px;height:34px;
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  background-image:none;
+  border:1px solid var(--obs-hair);
+  color:var(--text);
+  font-size:14px;
+  font-weight:600;
+}
+html[data-theme="obsidian"] .mem-card .nm{font-size:13.5px;font-weight:550}
+html[data-theme="obsidian"] .mem-card .st .chip{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-xs);
+  font-size:10.5px;
+  font-weight:550;
+  color:var(--text-2);
+  padding:2px 7px;
+}
+html[data-theme="obsidian"] .mem-card .st .chip.ok{background:rgba(47,179,124,.10);border-color:rgba(47,179,124,.24);color:var(--success)}
+html[data-theme="obsidian"] .mem-card .st .chip.mine{background:var(--obs-tint);border-color:rgba(79,124,255,.28);color:#A8BEFF}
+html[data-theme="obsidian"] .mem-item .cbx{border-radius:var(--obs-r-xs);border:1.5px solid var(--obs-hair-strong);color:transparent}
+html[data-theme="obsidian"] .mem-item .cbx.done{background:var(--primary);border-color:var(--primary);color:#fff}
+html[data-theme="obsidian"] .ge-tabs,
+html[data-theme="obsidian"] .ge-src-seg{
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  border-radius:var(--obs-r-md);
+}
+html[data-theme="obsidian"] .ge-tab,
+html[data-theme="obsidian"] .ge-src-seg .src-opt{
+  font-size:12.5px;
+  font-weight:550;
+  color:var(--text-2);
+  border-radius:var(--obs-r-sm);
+}
+html[data-theme="obsidian"] .ge-tab.active,
+html[data-theme="obsidian"] .ge-src-seg .src-opt.active{
+  background:var(--surface);
+  border:1px solid var(--obs-hair);
+  color:var(--text);
+  font-weight:600;
+  box-shadow:var(--obs-elev-1);
+}
+html[data-theme="obsidian"] .ge-mem-tag{
+  background:var(--obs-tint);
+  border-color:rgba(79,124,255,.26);
+  color:#A8BEFF;
+  border-radius:var(--obs-r-xs);
+  font-size:9.5px;
+}
+html[data-theme="obsidian"] .digest-row{border-top-color:var(--obs-hair);font-size:12.5px}
+html[data-theme="obsidian"] .digest-row .digest-label{font-weight:500;color:var(--text-2)}
+html[data-theme="obsidian"] .digest-row .digest-value{font-weight:550}
+html[data-theme="obsidian"] .mem-datelabel{font-size:13px;font-weight:600}
+html[data-theme="obsidian"] .mem-kick{border-radius:var(--obs-r-sm);border-color:rgba(229,72,77,.3)}
+html[data-theme="obsidian"] #tgPickerList .tgp-icon{
+  border-radius:var(--obs-r-sm);
+  background:var(--surface-2);
+  border:1px solid var(--obs-hair);
+  color:var(--text);
+}
+html[data-theme="obsidian"] #tgPickerList .tgp-empty{border-color:var(--obs-hair);background:var(--surface);border-radius:var(--obs-r-lg)}
+
+
+/* ─────────────────────────────────────────────────────────────
+   6. RESPONSIVE — mobil → planshet → desktop dashboard
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 6.1 Mobil: home sahifasi bitta ustun, aniq ritm ─────────────────── */
+html[data-theme="obsidian"] .page[data-page="home"].active{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+/* Flex kontekstda margin'lar kerak emas — gap ritmni boshqaradi */
+html[data-theme="obsidian"] .page[data-page="home"].active>.hdr{margin-bottom:0;order:1}
+html[data-theme="obsidian"] .page[data-page="home"].active>.hero-v2{order:2;margin-bottom:0}
+html[data-theme="obsidian"] .page[data-page="home"].active>.quest{order:4;margin-bottom:0}
+html[data-theme="obsidian"] .page[data-page="home"].active>.section-title{order:7;margin:0 2px -8px}
+html[data-theme="obsidian"] .page[data-page="home"].active>.day-strip{order:8;margin-bottom:-4px}
+html[data-theme="obsidian"] .page[data-page="home"].active>#addPlanBtn{order:9;margin-bottom:-6px}
+html[data-theme="obsidian"] .page[data-page="home"].active>#plansList{order:10}
+html[data-theme="obsidian"] .page[data-page="home"].active>#obsWeek{order:11}
+/* Yon ustun konteyneri — mobilda "shaffof" bo'ladi (display:contents),
+   shuning uchun bolalari order bilan aralashadi. */
+html[data-theme="obsidian"] #obsSide{display:contents}
+html[data-theme="obsidian"] #obsMetrics{order:3}
+html[data-theme="obsidian"] #obsAi{order:5}
+html[data-theme="obsidian"] #obsQuick{order:6}
+html[data-theme="obsidian"] #obsActivity{order:12}
+
+/* ── 6.2 Kichik telefonlar ───────────────────────────────────────────── */
+@media (max-width:380px){
+  html[data-theme="obsidian"] .ds-ring{width:88px;height:88px}
+  html[data-theme="obsidian"] .ds-ring .v{font-size:25px}
+  html[data-theme="obsidian"] .hero-v2{padding:16px}
+  html[data-theme="obsidian"] .hero-v2 .top{gap:14px}
+  html[data-theme="obsidian"] .hdr-greet h1{font-size:21px}
+  html[data-theme="obsidian"] .obs-metric-v{font-size:21px}
+  html[data-theme="obsidian"] .obs-quick{grid-template-columns:1fr}
+}
+
+/* ── 6.3 Planshet (≥ 700px) — kengroq kanvas, 4 ustunli metrics ──────── */
+@media (min-width:700px){
+  html[data-theme="obsidian"] .app{max-width:720px;padding:24px 24px 32px}
+  html[data-theme="obsidian"] .hdr-greet h1{font-size:27px}
+  html[data-theme="obsidian"] .obs-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .obs-quick{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .obs-quick-btn{flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:74px;padding:12px 13px}
+  html[data-theme="obsidian"] .stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .achs{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .theme-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .modal{
+    max-width:480px;
+    border-radius:var(--obs-r-2xl);
+    border-bottom:1px solid var(--obs-hair);
+    margin-bottom:auto;
+    margin-top:auto;
+  }
+  html[data-theme="obsidian"] .modal-back.show{place-items:center}
+}
+
+/* ── 6.4 Desktop (≥ 1000px) — professional SaaS dashboard ────────────── */
+@media (min-width:1000px){
+  /* Yuqori navigatsiya paydo bo'ladi, pastdagi nav yashiriladi */
+  html[data-theme="obsidian"] .obs-topbar{display:block}
+  html[data-theme="obsidian"] .nav{display:none}
+  html[data-theme="obsidian"] body{padding-bottom:48px}
+  html[data-theme="obsidian"] .app{max-width:1200px;padding:28px 24px 40px}
+
+  /* Home — 2 ustunli grid: asosiy ustun + o'ng panel */
+  html[data-theme="obsidian"] .page[data-page="home"].active{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 348px;
+    column-gap:24px;
+    row-gap:20px;
+    align-items:start;
+  }
+  html[data-theme="obsidian"] .page[data-page="home"].active>*{grid-column:1;min-width:0}
+  html[data-theme="obsidian"] .page[data-page="home"].active>.hdr{grid-column:1 / -1}
+  html[data-theme="obsidian"] .page[data-page="home"].active>#obsSide{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    grid-column:2;
+    grid-row:2 / span 40;
+    position:sticky;
+    top:80px;
+  }
+  html[data-theme="obsidian"] #obsMetrics,
+  html[data-theme="obsidian"] #obsAi,
+  html[data-theme="obsidian"] #obsQuick,
+  html[data-theme="obsidian"] #obsActivity{order:0}
+  html[data-theme="obsidian"] .obs-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html[data-theme="obsidian"] .obs-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html[data-theme="obsidian"] .obs-quick-btn{flex-direction:row;align-items:center;min-height:48px;gap:10px}
+
+  /* Boshqa sahifalar — o'qish uchun qulay kenglik, markazda */
+  html[data-theme="obsidian"] .page:not([data-page="home"]){max-width:860px;margin:0 auto}
+  html[data-theme="obsidian"] .hdr-greet h1{font-size:30px}
+  html[data-theme="obsidian"] .hero-v2{padding:26px}
+  html[data-theme="obsidian"] .ds-ring{width:116px;height:116px}
+  html[data-theme="obsidian"] .ds-ring .v{font-size:32px}
+  html[data-theme="obsidian"] .chat-log{min-height:420px;max-height:56vh}
+  html[data-theme="obsidian"] .stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html[data-theme="obsidian"] .mood-row,
+  html[data-theme="obsidian"] .energy-row{max-width:520px}
+  /* Kun tasmasi desktopda ham gorizontal, ammo scrollbar ko'rinmaydi */
+  html[data-theme="obsidian"] .day-strip{padding-bottom:8px}
+}
+
+@media (min-width:1320px){
+  html[data-theme="obsidian"] .page[data-page="home"].active{grid-template-columns:minmax(0,1fr) 380px;column-gap:28px}
+  html[data-theme="obsidian"] .obs-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Hover effektlarini faqat haqiqiy kursorli qurilmalarda qoldiramiz —
+   telefonlarda "yopishib qolgan hover" muammosini oldini oladi. */
+@media (hover:none){
+  html[data-theme="obsidian"] .plan:hover,
+  html[data-theme="obsidian"] .habit:hover,
+  html[data-theme="obsidian"] .setting:hover,
+  html[data-theme="obsidian"] .goal:hover,
+  html[data-theme="obsidian"] .obs-metric:hover,
+  html[data-theme="obsidian"] .obs-quick-btn:hover,
+  html[data-theme="obsidian"] .stat-card:hover,
+  html[data-theme="obsidian"] .day-chip:hover{background:var(--surface);border-color:var(--obs-hair)}
+  html[data-theme="obsidian"] .obs-metric:hover{background:var(--surface)}
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   7. HARAKATNI KAMAYTIRISH (a11y) + bosma
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  html[data-theme="obsidian"] *,
+  html[data-theme="obsidian"] *::before,
+  html[data-theme="obsidian"] *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+@media print{
+  html[data-theme="obsidian"] .obs-topbar,
+  html[data-theme="obsidian"] .nav{display:none !important}
+}
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   8. YAKUNIY TOZALASH — dekorativ shovqinni olib tashlash
+   ───────────────────────────────────────────────────────────── */
+
+/* Emoji ASOSIY UI elementi bo'lmasligi kerak. Quyidagilar faqat bezak
+   (matn yonida takror ma'no beradi), shuning uchun Obsidian'da yashiriladi.
+   Foydalanuvchi kiritgan emoji (odat belgisi, kayfiyat, yutuq) QOLADI. */
+html[data-theme="obsidian"] .hero-v2 .chip .em,
+html[data-theme="obsidian"] #rankEmoji,
+html[data-theme="obsidian"] .stat-card .ic-bg{display:none}
+/* Diqqat: `.em` yashiringach ham flex `gap` saqlanadi — u "14" va
+   "kun streak" oralig'idagi bo'shliqni beradi (bo'sh joy matn node emas). */
+html[data-theme="obsidian"] .hero-v2 .chip{gap:5px}
+/* .ic-bg yashiringach — matn to'liq kenglikdan foydalanadi */
+html[data-theme="obsidian"] .stat-card .l{padding-right:0}
+
+/* Chat kiritish maydoni — placeholder bir qatorga sig'ishi uchun */
+html[data-theme="obsidian"] .chat-bar textarea{min-height:44px}
+
+/* Desktopda header ikonlari topbar'da takrorlanadi — sahifa sarlavhasidan
+   olib tashlanadi (bitta amal = bitta joy). */
+@media (min-width:1000px){
+  html[data-theme="obsidian"] .page[data-page="home"] .hdr-actions{display:none}
+}

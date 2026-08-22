@@ -10,8 +10,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Obsidian (7-chi tema) uchun qo'shimcha Inter og'irliklari (450/500/550/650).
+     Mavjud 6 tema bu og'irliklarni ishlatmaydi — ular uchun hech narsa
+     o'zgarmaydi. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@450;500;550;650&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="/static/app.css?v=4cae9e09">
+<!-- 7-chi (premium) dizayn: to'liq scope qilingan dizayn tizimi.
+     Faqat html[data-theme="obsidian"] ostida ishlaydi. -->
+<link rel="stylesheet" href="/static/theme-obsidian.css?v=4cae9e09">
+<script>
+/* Tema/rejimni ERTA qo'yamiz (app.js DOMContentLoaded'dan oldin) — shunda
+   yuklanishda "yorug' → qorong'i" sakrash (flash) bo'lmaydi. app.js keyin
+   xuddi shu qiymatlarni qayta qo'yadi (idempotent). */
+(function(){try{
+  var t=localStorage.getItem('iz_theme')||'obsidian';
+  var m=localStorage.getItem('iz_mode')||(t==='obsidian'?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+  document.documentElement.setAttribute('data-mode',m);
+}catch(e){}})();
+</script>
 </head>
 <body>
 <div class="app">
@@ -589,5 +607,8 @@
 <div class="toast" id="toast"></div>
 
 <script defer src="/static/app.js?v=4cae9e09"></script>
+<!-- Obsidian dashboard moduli — app.js'dan KEYIN yuklanadi (defer tartibi
+     saqlanadi) va faqat 7-chi tema faol bo'lganda ishlaydi. -->
+<script defer src="/static/theme-obsidian.js?v=4cae9e09"></script>
 </body>
 </html>
