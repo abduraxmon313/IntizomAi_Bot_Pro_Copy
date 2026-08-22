@@ -31,17 +31,11 @@ STATIC_DIR = Path(__file__).parent / "static"
 # yangilanishi uchun ular URL'da `?v=<hash>` versiyaga bog'lanadi. Bu hash
 # fayl mazmunidan hisoblanadi — mazmun o'zgarsa hash ham o'zgaradi va client
 # yangi versiyani yuklab oladi. Qattiq kodlangan versiya YO'Q.
-# Versiyalanadigan statik aktivlar. `theme-obsidian.*` — 7-chi (premium)
-# dizayn tizimi; ular ham hashga kiradi, aks holda faqat tema fayli
-# o'zgarganda clientlar keshdan eski nusxani olib qolardi.
-_VERSIONED_ASSETS = ("app.js", "app.css", "theme-obsidian.css", "theme-obsidian.js")
-
-
 def _compute_asset_version() -> str:
-    """Statik aktivlar tarkibi asosidagi qisqa SHA256 hash (12 ta belgi)."""
+    """app.js + app.css tarkibi asosidagi qisqa SHA256 hash (12 ta belgi)."""
     try:
         h = hashlib.sha256()
-        for name in _VERSIONED_ASSETS:
+        for name in ("app.js", "app.css"):
             p = STATIC_DIR / name
             if p.exists():
                 h.update(p.read_bytes())
@@ -290,26 +284,6 @@ async def static_css():
 async def static_js():
     return FileResponse(
         STATIC_DIR / "app.js",
-        media_type="application/javascript",
-        headers={"Cache-Control": _STATIC_MAX_AGE},
-    )
-
-
-# ── Obsidian (7-chi, premium dizayn) aktivlari ───────────────────────────
-# Alohida fayllarda saqlanadi: mavjud 6 temaga tegmasdan kengaytirish uchun.
-@app.get("/static/theme-obsidian.css")
-async def static_theme_obsidian_css():
-    return FileResponse(
-        STATIC_DIR / "theme-obsidian.css",
-        media_type="text/css",
-        headers={"Cache-Control": _STATIC_MAX_AGE},
-    )
-
-
-@app.get("/static/theme-obsidian.js")
-async def static_theme_obsidian_js():
-    return FileResponse(
-        STATIC_DIR / "theme-obsidian.js",
         media_type="application/javascript",
         headers={"Cache-Control": _STATIC_MAX_AGE},
     )
