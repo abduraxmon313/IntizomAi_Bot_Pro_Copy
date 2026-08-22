@@ -710,9 +710,9 @@ async function loadSubscription(){
     try{localStorage.setItem('iz_premium',s.is_premium?'1':'0');}catch(_){}
     renderPaywallPlans(s.plans);
     applyPremiumUI(s);
-    // Tema tanlash Premium bilan bog'liq (qulf badge/opacity). renderThemes()
+    // Ko'rinish tanlash Premium bilan bog'liq (qulf badge/opacity). renderThemes()
     // DOMContentLoaded'da chaqirilgan bo'lardi (State.sub yo'q edi u paytda),
-    // shuning uchun premium user'lar dastlab qulflangan tema ko'rar edi.
+    // shuning uchun premium user'lar dastlab qulflangan ko'rinish ko'rar edi.
     // Endi subscription javobi kelgach QAYTA chaqiramiz — qulflar to'g'ri
     // qo'llanadi (premium user: ochiq, bepul: qulf).
     try{renderThemes();}catch(_){}
@@ -913,11 +913,11 @@ function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_
 // Bajarilgan rejalar tarixi — har kun uchun to'ladigan chiziq + bajarilgan/jami
 async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('📋','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
 
-const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
-// Tema tanlash — faqat Premium foydalanuvchilar uchun.
-// Bepul foydalanuvchi tugmani bosa, temani o'zgartirmaymiz va paywall'ni ochamiz.
-// (Faol tema (State.theme) old-oldindan localStorage'dan yuklanadi, shuning uchun
-// bepul foydalanuvchi hech bo'lmaganda default temani ko'rishi mumkin.)
+const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'},{k:'obsidian',n:'Obsidian',g:'linear-gradient(135deg,#6C63FF,#4338CA)'},{k:'slate',n:'Slate',g:'linear-gradient(135deg,#1D4ED8,#1E3A8A)'},{k:'carbon',n:'Carbon',g:'linear-gradient(135deg,#F59E0B,#B45309)'},{k:'graphite',n:'Graphite',g:'linear-gradient(135deg,#2DD4BF,#0D9488)'},{k:'onyx',n:'Onyx',g:'linear-gradient(135deg,#7C5CFC,#5B34F0)'}];
+// Ko'rinish tanlash — faqat Premium foydalanuvchilar uchun.
+// Bepul foydalanuvchi tugmani bosa, ko'rinishni o'zgartirmaymiz va paywall'ni ochamiz.
+// (Faol ko'rinish (State.theme) old-oldindan localStorage'dan yuklanadi, shuning uchun
+// bepul foydalanuvchi hech bo'lmaganda default ko'rinishni ko'rishi mumkin.)
 function renderThemes(){
   const g=document.getElementById('themeGrid');
   if(!g)return;
@@ -928,14 +928,14 @@ function renderThemes(){
       // Premium yo'q — tema o'zgartirmaymiz. Faqat qisqa xabar ko'rsatamiz;
       // paywall'ga o'tkazMAYMIZ (foydalanuvchi tanlovi buzilmasin).
       try{tg?.HapticFeedback?.notificationOccurred?.('warning');}catch(_){}
-      toast('🎨 Temani o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
+      toast('🎨 Ko\'rinishni o\'zgartirish faqat Premium foydalanuvchilar uchun',true);
       return;
     }
     State.theme=t.dataset.th;
     document.documentElement.setAttribute('data-theme',State.theme);
     localStorage.setItem('iz_theme',State.theme);
     renderThemes();
-    toast('🎨 Tema o\'zgartirildi');
+    toast('🎨 Ko\'rinish o\'zgartirildi');
     if(document.querySelector('.page[data-page="stats"]').classList.contains('active'))renderStats();
   });
 }
