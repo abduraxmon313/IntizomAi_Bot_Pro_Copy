@@ -1,12 +1,6 @@
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand();tg?.disableClosingConfirmation?.();}catch(_){}
 const API='';
-const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'🏃',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],// Default dizayn = 'obsidian' (7-chi, premium tema). Ilgari tanlab qo'yilgan
-// foydalanuvchilarda localStorage'dagi qiymat saqlanadi — ular o'z temasida
-// qoladi. Eski dizaynga qaytish: Profil → 🎨 Tema → "Asl holat".
-theme:localStorage.getItem('iz_theme')||'obsidian',
-// Rejim: foydalanuvchi tanlovi ustuvor. Tanlanmagan bo'lsa — Obsidian'da
-// qorong'i (uning asl identiteti), qolgan temalarda avvalgidek yorug'.
-mode:localStorage.getItem('iz_mode')||((localStorage.getItem('iz_theme')||'obsidian')==='obsidian'?'dark':'light'),
+const State={telegramId:null,user:null,plans:[],goals:[],habits:[],habitModal:{id:null},habitIcon:'🏃',habitFreq:'daily',habitDur:'permanent',habitWeekdays:[],habitRem:'off',habitView:'today',trackerWeekStart:null,statsView:'mine',lbPeriod:'all',goalPeriod:'yearly',selectedDate:new Date(),selectedYear:new Date().getFullYear(),selectedMonth:new Date().getMonth(),modal:{period:'yearly',periodKey:null,id:null},planModal:{id:null},plansRange:[],theme:localStorage.getItem('iz_theme')||'default',mode:localStorage.getItem('iz_mode')||'light',
   // Do'stlar (Friends) moduli
   friendsView:'list',       // 'list' | 'group' | 'member'
   groups:[],
@@ -85,12 +79,6 @@ async function api(path,opts={}){
   }
   return res.json();
 }
-
-// ── Tashqi modullar uchun ko'prik (bridge) ──────────────────────────────
-// `State` va `api` — top-level `const`, shuning uchun alohida <script>
-// fayllardan ko'rinmaydi. Obsidian (7-chi tema) moduli faqat O'QISH uchun
-// shu ko'prikdan foydalanadi. Boshqa hech qanday xatti-harakat o'zgarmaydi.
-try{window.IZ=Object.assign(window.IZ||{},{State:State,api:api});}catch(_){}
 
 async function loadPlansAPI(){try{const d=await api('/api/webapp/plans');State.plans=d.plans||[];if(d.user){State.user={...State.user,...d.user};if(d.user.full_name)applyUserName(d.user.full_name);setText('streakCount',d.user.streak||0);setText('msScore',d.user.total_score||0);setText('stStreak',d.user.streak||0);setText('stTotal',d.user.total_score||0);setText('pfStreak',d.user.streak||0);setText('pfScore',d.user.total_score||0);}setText('msPlans',State.plans.length);renderDayStrip();renderPlans();renderHero();updateHomePlansTitle();loadHomeHabits();}catch(e){console.warn('plans',e);State.plans=[];renderPlans();}}
 
@@ -925,11 +913,7 @@ function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_
 // Bajarilgan rejalar tarixi — har kun uchun to'ladigan chiziq + bajarilgan/jami
 async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('📋','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
 
-// ⚠️ Mavjud 6 tema O'ZGARTIRILMAYDI. `obsidian` — 7-chi (yangi, premium)
-// dizayn: chuqur navy + elektr ko'k/binafsha. Uning to'liq dizayn tizimi
-// alohida fayllarda yashaydi: static/theme-obsidian.css + theme-obsidian.js.
-const THEMES=[{k:'obsidian',n:'Obsidian',g:'linear-gradient(140deg,#0E1320 0%,#4F7CFF 58%,#7C5CFF 100%)'},
-  {k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
+const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
 // Tema tanlash — faqat Premium foydalanuvchilar uchun.
 // Bepul foydalanuvchi tugmani bosa, temani o'zgartirmaymiz va paywall'ni ochamiz.
 // (Faol tema (State.theme) old-oldindan localStorage'dan yuklanadi, shuning uchun

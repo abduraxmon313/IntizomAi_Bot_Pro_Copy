@@ -23,39 +23,9 @@ streaks, daily quests, and an emotional AI coach.
 - Smart insights based on the user's last 30 days
 - Calendar, weekly diary, monthly grid for goals
 - Statistics: trend chart, heatmap, donut, achievements
-- 7 themes + dark mode (see *Obsidian* below)
+- 6 themes + dark mode
 - Achievement unlock modal with confetti
 - 3-step first-run onboarding
-
-### Obsidian — 7th theme (premium default)
-
-`Obsidian` is a full design system, not just an accent-colour swap: deep
-midnight-navy surfaces, electric blue `#4F7CFF` + restrained violet `#7C5CFF`
-accents, hairline borders, tabular numerals and a professional SaaS dashboard
-layout. It ships as the default design (`iz_theme` unset → `obsidian`, mode →
-`dark`); anyone who already picked one of the other 6 themes keeps it, and all
-7 remain switchable from **Profil → 🎨 Tema**.
-
-```
-webapp/static/theme-obsidian.css   design tokens + every component, scoped to
-                                   html[data-theme="obsidian"] (nothing leaks)
-webapp/static/theme-obsidian.js    additive dashboard module: top navigation,
-                                   metrics strip, AI insight card, quick
-                                   actions, weekly progress, recent activity
-```
-
-Rules the theme follows so the other 6 designs stay byte-identical:
-
-- `app.css` is **not** touched; all Obsidian rules live in the separate file
-  and every selector is prefixed with `html[data-theme="obsidian"]`
-- the JS module no-ops unless the theme is active, only ever *adds* DOM with
-  new ids (`#obsSide`, `#obsMetrics`, `#obsAi`, …), and removes it again on
-  theme switch
-- existing render functions are wrapped, never replaced, and data is read
-  through the small read-only `window.IZ` bridge
-- desktop (≥1000px) gets a two-column dashboard + top nav, tablet (≥700px) a
-  wider single column, mobile keeps the bottom nav — each breakpoint is laid
-  out deliberately rather than scaled down
 
 ### Gamification engine
 - XP curve `50 × (n−1) × n` — fast early, earned later
@@ -91,8 +61,7 @@ webapp/
   app.py         FastAPI app + bot lifespan (RUN_BOT bilan boshqariladi)
   security.py    Telegram initData HMAC tekshiruvi + rate limit + auth dependency
   routes/        plans, goals, stats, subscription, ai
-  static/        index.html (SPA) + app.css/app.js
-                 theme-obsidian.css/.js (7th theme: scoped design system)
+  static/        index.html (single-file SPA)
 start.py         lokal kirish nuqtasi — uvicorn serverni ishga tushiradi (bot lifespan orqali)
 ```
 
