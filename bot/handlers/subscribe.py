@@ -344,7 +344,7 @@ async def premium_menu_cb(callback: CallbackQuery, state: FSMContext, session: A
         await callback.message.edit_text(
             "💎 <b>Premium</b>\n\n"
             "Premium bilan <b>cheksiz</b> reja va maqsadlar, cheksiz AI Coach, "
-            "Streak Freeze va premium ko'rinishlar ochiladi.\n\nQuyidagidan birini tanlang 👇",
+            "Streak Freeze va premium temalar ochiladi.\n\nQuyidagidan birini tanlang 👇",
             parse_mode="HTML",
             reply_markup=premium_promo_keyboard(),
         )
