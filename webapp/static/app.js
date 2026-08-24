@@ -42,8 +42,15 @@ function dismissSplash(){
   sp.classList.add('hide');
   setTimeout(()=>{sp.remove();},700);
 }
-// Xavfsizlik: agar API'dan javob kelmasa ham 4 sekundda splash o'chadi
-setTimeout(dismissSplash,4000);
+// Splash screen kamida 3 soniya ko'rinib turadi
+const _splashMinTime=Date.now()+3000;
+function _trySplashDismiss(){
+  const remaining=_splashMinTime-Date.now();
+  if(remaining>0){setTimeout(dismissSplash,remaining);}
+  else{dismissSplash();}
+}
+// Xavfsizlik: agar API'dan javob kelmasa ham 5 sekundda splash o'chadi
+setTimeout(dismissSplash,5000);
 
 function applyUserName(nm){
   nm=(nm||'Foydalanuvchi').trim()||'Foydalanuvchi';
@@ -2287,7 +2294,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Boshlang'ich yuklamalar — bog'liq bo'lmagan so'rovlarni PARALLEL yuboramiz
   // (avval loadPlansAPI().then(...) waterfall edi). Har biri o'z bo'limini
   // mustaqil render qiladi.
-  Promise.all([loadPlansAPI(),loadSnapshot()]).then(()=>{dismissSplash();}).catch(()=>{dismissSplash();});
+  Promise.all([loadPlansAPI(),loadSnapshot()]).then(()=>{_trySplashDismiss();}).catch(()=>{_trySplashDismiss();});
   loadGoalsAPI();
   loadQuest();
 
