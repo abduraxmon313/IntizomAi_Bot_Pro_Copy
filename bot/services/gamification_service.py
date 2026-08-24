@@ -725,6 +725,34 @@ async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
     except Exception:
         pass
 
+    # 2b) Bugungi odatlarni ham hisobga olamiz (due_today + done_today).
+    try:
+        from bot.services.habit_service import get_user_habits, is_due_on
+        from bot.models.habit import HabitLog
+        habits = await get_user_habits(session, user)
+        for habit in habits:
+            # Tugallangan odatlarni o'tkazib yuboramiz
+            end = None
+            if habit.duration_type == "days" and habit.target_days and habit.start_date:
+                end = habit.start_date + timedelta(days=habit.target_days - 1)
+            if end and today > end:
+                continue
+            if is_due_on(habit, today):
+                today_total += 1
+                # Bugun belgilangan ekanini tekshiramiz
+                log_exists = await session.scalar(
+                    select(func.count(HabitLog.id)).where(
+                        and_(
+                            HabitLog.habit_id == habit.id,
+                            HabitLog.log_date == today,
+                        )
+                    )
+                )
+                if log_exists:
+                    today_done += 1
+    except Exception:
+        pass
+
     # 3) Yutuqlar — alohida himoyalangan.
     achievements = []
     try:

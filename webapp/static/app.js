@@ -486,7 +486,7 @@ function renderHero(){
   setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const C=2*Math.PI*42;const ring=document.getElementById('dsRing');if(ring)ring.setAttribute('stroke-dashoffset',String(C*(1-ds/100)));countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');const dv=document.getElementById('dsValue');if(dv){dv.classList.remove('pop');void dv.offsetWidth;dv.classList.add('pop');}},120);
 }
 
-async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
+async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}finally{try{const sp=document.getElementById('splashScreen');if(sp&&!sp.classList.contains('hidden')){sp.classList.add('hidden');setTimeout(()=>{if(sp.parentNode)sp.parentNode.removeChild(sp);},600);}}catch(_){}}}
 
 async function loadQuest(){try{const q=await api('/api/webapp/quest');const c=document.getElementById('questCard');if(!c)return;c.style.display='flex';c.classList.toggle('done',!!q.completed);setText('qIcon',q.icon||'🎯');setText('qTitle',q.title||'');setText('qSub',q.subtitle||'');const pct=q.target?Math.round((q.progress||0)*100/q.target):0;setTimeout(()=>{const qp=document.getElementById('qProg');if(qp)qp.style.width=pct+'%';},150);setText('qMetaProg',(q.progress||0)+'/'+(q.target||0));setText('qReward',q.reward_xp?('+'+q.reward_xp+' XP'):'✓');}catch(e){console.warn('quest',e);}}
 
@@ -858,12 +858,12 @@ function habit30Rate(h){const logs=new Set(h.log_dates||[]);let due=0,done=0;con
 function renderHabitStats(){
   const grid=document.getElementById('habitStatGrid');const list=document.getElementById('habitStatList');
   const hs=State.habits||[];
-  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML=emptyState('✅','Odat yo\'q','Odat bo\'limidan qo\'shing');return;}
+  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML='';return;}
   const dueToday=hs.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;
   const best=hs.reduce((m,h)=>Math.max(m,h.streak||0),0);
   const totalDone=hs.reduce((s,h)=>s+(h.total_done||0),0);
   if(grid)grid.innerHTML=`<div class="stat-card"><div class="ic-bg">✅</div><div class="l">Bugun</div><div class="v">${doneToday}/${dueToday.length}</div><div class="ch">bajarildi</div></div><div class="stat-card"><div class="ic-bg">🔥</div><div class="l">Eng uzun streak</div><div class="v">${best}</div><div class="ch">kun</div></div><div class="stat-card"><div class="ic-bg">📦</div><div class="l">Faol odatlar</div><div class="v">${hs.length}</div><div class="ch">ta</div></div><div class="stat-card"><div class="ic-bg">🎯</div><div class="l">Jami bajarilgan</div><div class="v">${totalDone}</div><div class="ch">marta</div></div>`;
-  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun</div></div><div class="lb-val">${h.total_done||0} <span style="font-size:10px;color:var(--text-3)">marta</span></div></div>`;}).join('');
+  if(list)list.innerHTML='';
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
 function lbAvatar(r){if(r&&r.photo_url){const em=esc(r.emoji||'🌱');return `<div class="lb-av" data-em="${em}"><img src="${esc(r.photo_url)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=this.parentNode.dataset.em"></div>`;}return `<div class="lb-av">${esc((r&&r.emoji)||'🌱')}</div>`;}
@@ -959,7 +959,6 @@ async function renderStats(){
   const types=['yearly','monthly'];const labels=['Yillik','Oylik'];
   document.getElementById('goalBreakdown').innerHTML=types.map((t,i)=>{const tot=State.goals.filter(g=>g.goal_type===t).length;const dn=State.goals.filter(g=>g.goal_type===t&&g.completed).length;const p=tot?Math.round(dn*100/tot):0;return `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px"><span style="width:60px;color:var(--text-2);font-weight:600">${labels[i]}</span><div style="flex:1;height:6px;background:var(--border);border-radius:999px;overflow:hidden"><div style="width:${p}%;height:100%;background:var(--grad);border-radius:999px;transition:width 1s ease"></div></div><span style="font-weight:700;color:var(--primary);min-width:38px;text-align:right">${dn}/${tot}</span></div>`;}).join('');
 
-  renderHistory();
   document.getElementById('stStreakDelta').textContent=Math.min(7,State.user?.streak||0);
   document.getElementById('stTotalDelta').textContent=PR.filter(p=>p.status==='done'&&new Date(p.plan_date)>=addDays(tod,-7)).reduce((s,p)=>s+(p.score_value||0),0);
   renderExtraStats(PR);
@@ -2113,6 +2112,11 @@ function switchPage(n){
 function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();const ink=document.createElement('span');ink.className='ripple-ink';const sz=Math.max(r.width,r.height);ink.style.width=ink.style.height=sz+'px';ink.style.left=(e.clientX-r.left-sz/2)+'px';ink.style.top=(e.clientY-r.top-sz/2)+'px';t.appendChild(ink);setTimeout(()=>ink.remove(),600);}
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // Splash screen ko'rsatish (app yuklanguncha)
+  const splash=document.getElementById('splashScreen');
+  function hideSplash(){if(splash&&!splash.classList.contains('hidden')){splash.classList.add('hidden');setTimeout(()=>{if(splash.parentNode)splash.parentNode.removeChild(splash);},600);}}
+  // Maksimal 3 sekund kutamiz — so'ng ham yashiramiz (fallback)
+  setTimeout(hideSplash,3000);
   document.documentElement.setAttribute('data-theme',State.theme);applyMode();initUser();renderThemes();
   // Admin panelidan boshqariladigan global bayroqlarni fon rejimida yuklab
   // olamiz (Do'stlar sahifasidagi Ruxsatlar tugmasini shu asosda yashiramiz).
