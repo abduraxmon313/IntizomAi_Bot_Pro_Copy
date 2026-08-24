@@ -61,7 +61,7 @@ elif not STRICT_AUTH:
 INITDATA_MAX_AGE = int(os.getenv("INITDATA_MAX_AGE", 86400))  # 24 soat
 
 # So'rov tanasi maksimal hajmi (bayt)
-MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", 64 * 1024))  # 64 KB
+MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", 1_500_000))  # 1.5 MB (avatar upload uchun)
 
 # Rate limit: bir IP uchun oynada ruxsat etilgan so'rovlar
 RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", 120))     # so'rov

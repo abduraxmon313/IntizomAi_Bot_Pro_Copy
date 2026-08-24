@@ -20,12 +20,15 @@ class ProfileOut(BaseModel):
     referral_link: Optional[str] = None
     referral_count: int = 0
     photo_url: Optional[str] = None
+    custom_photo_url: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     notifications_enabled: Optional[bool] = None
     photo_url: Optional[str] = None
+    custom_photo_url: Optional[str] = None
+    remove_custom_photo: Optional[bool] = None
 
 
 async def get_session():
@@ -48,6 +51,7 @@ def _profile_payload(user) -> ProfileOut:
         referral_link=build_referral_link(BOT_USERNAME, user.telegram_id),
         referral_count=int(user.referral_count or 0),
         photo_url=user.photo_url,
+        custom_photo_url=user.custom_photo_url,
     )
 
 
@@ -87,6 +91,18 @@ async def update_profile(
     if body.photo_url is not None:
         pu = body.photo_url.strip()
         user.photo_url = pu[:512] if pu else None
+
+    # Custom avatar — foydalanuvchi o'zi yuklagan rasm (base64 data URL).
+    # remove_custom_photo=True bo'lsa — o'chiriladi va Telegram rasmiga qaytiladi.
+    if body.remove_custom_photo:
+        user.custom_photo_url = None
+    elif body.custom_photo_url is not None:
+        cpu = body.custom_photo_url.strip()
+        # Haddan tashqari katta rasmlarni rad etamiz (1MB gacha base64 ruxsat)
+        if cpu and len(cpu) <= 1_048_576:
+            user.custom_photo_url = cpu
+        elif not cpu:
+            user.custom_photo_url = None
 
     user.last_active = datetime.utcnow()
     await session.commit()

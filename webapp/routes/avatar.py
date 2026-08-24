@@ -159,6 +159,29 @@ async def avatar(telegram_id: int, session: AsyncSession = Depends(get_session))
     """Foydalanuvchi profil rasmini qaytaradi (yo'q bo'lsa 404 — frontend emojiga tushadi)."""
     now = time.time()
 
+    # Agar foydalanuvchida custom_photo_url (o'zi yuklagan rasm) bo'lsa —
+    # Telegram rasmi o'rniga uni redirect qilamiz.
+    from fastapi.responses import RedirectResponse
+    res_user = await session.execute(
+        select(User.custom_photo_url).where(User.telegram_id == telegram_id)
+    )
+    custom_url = res_user.scalar_one_or_none()
+    if custom_url:
+        # data:image/... URL bo'lsa — uni to'g'ridan-to'g'ri qaytaramiz
+        if custom_url.startswith("data:"):
+            import base64 as _b64
+            # Parse data URL: data:image/png;base64,<data>
+            try:
+                header, b64data = custom_url.split(",", 1)
+                ct = header.split(":")[1].split(";")[0] if ":" in header else "image/jpeg"
+                img_bytes = _b64.b64decode(b64data)
+                return Response(
+                    content=img_bytes, media_type=ct,
+                    headers={"Cache-Control": "public, max-age=3600"},
+                )
+            except Exception:
+                pass  # Fallback to Telegram photo
+
     cached = _CACHE.get(telegram_id)
     if cached and cached[2] > now:
         return _resp(cached[0], cached[1])

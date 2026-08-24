@@ -309,9 +309,44 @@ async def _recompute_xp_and_score(session: AsyncSession, user: User) -> None:
     user.avatar_emoji = emoji
 
 
+async def _recompute_weekly_xp(session: AsyncSession, user: User) -> None:
+    """weekly_xp ni SHU HAFTA (Dushanba'dan bugunga) bajarilgan reja va odatlardan
+    deterministik hisoblab yangilaydi. Shu tufayli toggle qilganda drift bo'lmaydi."""
+    from bot.config import HABIT_DONE_SCORE
+    today = _today()
+    # Dushanbani topamiz (weekday() -> 0=Mon)
+    monday = today - timedelta(days=today.weekday())
+
+    # Shu haftadagi bajarilgan rejalar ballari
+    week_plan_score = await session.scalar(
+        select(func.coalesce(func.sum(Plan.score_value), 0)).where(
+            and_(
+                Plan.user_id == user.id,
+                Plan.status == PlanStatus.done,
+                Plan.plan_date >= monday,
+                Plan.plan_date <= today,
+            )
+        )
+    ) or 0
+
+    # Shu haftadagi bajarilgan odatlar soni
+    week_habit_count = await session.scalar(
+        select(func.count(HabitLog.id)).where(
+            and_(
+                HabitLog.user_id == user.id,
+                HabitLog.log_date >= monday,
+                HabitLog.log_date <= today,
+            )
+        )
+    ) or 0
+
+    user.weekly_xp = int(week_plan_score) + int(week_habit_count) * int(HABIT_DONE_SCORE)
+
+
 async def recompute_user_points(session: AsyncSession, user: User) -> None:
     """Odat belgilangach (yoki bekor qilingach) ball/daraja/discipline'ni qayta hisoblaydi."""
     await _recompute_xp_and_score(session, user)
+    await _recompute_weekly_xp(session, user)
     await _recompute_discipline_score(session, user)
 
 
@@ -340,6 +375,7 @@ async def _run_gamification(user_id: int, became_done: bool) -> CompletionReward
 
         # ── XP/streak/discipline — ENG MUHIM, alohida commit ──
         await _recompute_xp_and_score(s, u)
+        await _recompute_weekly_xp(s, u)
         out.new_level = u.level
         out.leveled_up = u.level > prev_level
         out.discipline_score = await _recompute_discipline_score(s, u)

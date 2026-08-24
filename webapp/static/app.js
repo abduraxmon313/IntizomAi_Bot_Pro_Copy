@@ -45,7 +45,7 @@ function applyUserName(nm){
   if(pav){if(photo){pav.style.backgroundImage='url("'+photo+'")';pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';pav.textContent='';}else{pav.style.backgroundImage='';pav.textContent=ini;}}
   const dsc=document.getElementById('editNameDsc');if(dsc)dsc.textContent='Joriy: '+nm;
 }
-function initUser(){const u=tg?.initDataUnsafe?.user;if(u){State.telegramId=u.id;State.user=u;State.photoUrl=u.photo_url||null;}else{State.telegramId=parseInt(localStorage.getItem('iz_demo_id')||'12345',10);State.user={id:State.telegramId,first_name:'Foydalanuvchi',username:'demo'};State.photoUrl=null;}
+function initUser(){const u=tg?.initDataUnsafe?.user;if(u){State.telegramId=u.id;State.user=u;State.photoUrl=u.photo_url||null;}else{State.telegramId=parseInt(localStorage.getItem('iz_demo_id')||'12345',10);State.user={id:State.telegramId,first_name:'Foydalanuvchi',username:'demo'};State.photoUrl=null;}State.customPhotoUrl=null;
 const nm=State.user.first_name||'Foydalanuvchi';
 applyUserName(nm);
 document.getElementById('profUn').textContent=State.user.username?'@'+State.user.username:'';document.getElementById('todayDate').textContent=formatDateLong(new Date());}
@@ -206,7 +206,7 @@ function _applyAppConfig(){
   // no-op: hozircha DOM'ga hech qanday ta'sir yo'q.
 }
 
-async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
+async function loadProfileMeta(){try{const p=await api('/api/webapp/profile');State.profile=p;if(p&&p.full_name)applyUserName(p.full_name);if(p.custom_photo_url){State.customPhotoUrl=p.custom_photo_url;State.photoUrl=p.custom_photo_url;applyUserName(p.full_name||State.displayName||'Foydalanuvchi');}const sd=document.getElementById('shareDesc');if(sd){const c=p.referral_count||0;sd.textContent=c>0?(c+' faol do\'st taklif qilingan · davom eting'):'Do\'stingiz birinchi rejasini bajarsa — unga 3 kun, sizga har 5 faol do\'stga 7 kun';}}catch(_){}}
 
 // ── Do'stni taklif qilish (ulashish) ────────────────────────────────────
 // Bot va Mini App bir xil xabarni ulashadi (foydalanuvchi bir xil natija ko'radi):
@@ -415,6 +415,47 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
 function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
 function closeNameModal(){const b=document.getElementById('nameModalBack');if(b)b.classList.remove('show');}
 async function saveNameModal(){const nm=(document.getElementById('nName')?.value||'').trim();if(!nm){toast('Ism bo\'sh',true);return;}try{const res=await apiProfileUpdate(nm);applyUserName(res.full_name||nm);closeNameModal();toast('✓ Ism saqlandi');}catch(e){toast('Xato: '+String(e&&e.message||''),true);}}
+
+// ── Profil rasmi tahrirlash (avatar) ─────────────────────────────────────
+function openAvatarPicker(){
+  const hasCustom=!!State.customPhotoUrl;
+  if(hasCustom){
+    // Agar maxsus rasm bor bo'lsa — tanlash dialog ochiladi
+    confirmDialog({title:'Profil rasmi',message:'Maxsus rasmni o\'chirish yoki yangi rasm tanlash?',okText:'Yangi rasm',cancelText:'O\'chirish'}).then(ok=>{
+      if(ok){document.getElementById('avatarFileInput')?.click();}
+      else{removeCustomAvatar();}
+    });
+  } else {
+    document.getElementById('avatarFileInput')?.click();
+  }
+}
+async function handleAvatarFile(e){
+  const file=e.target?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){toast('Faqat rasm fayl tanlang',true);return;}
+  if(file.size>1024*1024){toast('Rasm hajmi 1MB dan kichik bo\'lishi kerak',true);return;}
+  try{
+    const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});
+    toast('⏳ Saqlanmoqda...');
+    const resp=await api('/api/webapp/profile',{method:'PUT',body:JSON.stringify({custom_photo_url:dataUrl})});
+    State.customPhotoUrl=resp.custom_photo_url||dataUrl;
+    State.photoUrl=State.customPhotoUrl;
+    applyUserName(State.displayName||State.user?.first_name||'Foydalanuvchi');
+    toast('✓ Rasm saqlandi');
+  }catch(err){toast('Xato: '+String(err&&err.message||''),true);}
+  e.target.value='';
+}
+async function removeCustomAvatar(){
+  try{
+    toast('⏳ O\'chirilmoqda...');
+    await api('/api/webapp/profile',{method:'PUT',body:JSON.stringify({remove_custom_photo:true})});
+    State.customPhotoUrl=null;
+    // Telegram rasmiga qaytamiz
+    const tgPhoto=tg?.initDataUnsafe?.user?.photo_url||null;
+    State.photoUrl=tgPhoto;
+    applyUserName(State.displayName||State.user?.first_name||'Foydalanuvchi');
+    toast('✓ Telegram rasmi qaytarildi');
+  }catch(err){toast('Xato: '+String(err&&err.message||''),true);}
+}
 
 // Sarlavhadagi bosh emoji-ni olib tashlaydi (rankEmoji alohida ko'rsatilgani uchun
 // "🌱 🌱 Boshlovchi" kabi takror chiqmasligi uchun)
@@ -770,19 +811,37 @@ function habitRowHTML(h,i){
 }
 function renderPlans(){
   const w=document.getElementById('plansList');if(!w)return;
-  const isToday=ymd(State.selectedDate||new Date())===ymd(new Date());
-  // Bugun uchun rejalar YONIDA odatlar ham ko'rsatiladi (faqat odatlar bo'limida
-  // emas). Vaqtli/vaqtsiz — hammasi, agar bugun bajarilishi kerak bo'lsa.
-  const habitItems=isToday?(State.habits||[]).filter(h=>h.due_today&&!h.finished):[];
+  const selDate=State.selectedDate||new Date();
+  const selStr=ymd(selDate);
+  const isToday=selStr===ymd(new Date());
+  // Rejalar YONIDA odatlar ham ko'rsatiladi — bugun uchun due_today,
+  // o'tgan/kelajak kunlar uchun log_dates asosida (odat yozuvchisi bilan).
+  let habitItems=[];
+  if(isToday){
+    habitItems=(State.habits||[]).filter(h=>h.due_today&&!h.finished);
+  } else {
+    // O'tgan yoki kelajak kun uchun: shu kunda due bo'lgan odatlarni ko'rsatamiz
+    habitItems=(State.habits||[]).filter(h=>{
+      if(h.finished)return false;
+      return habitDueOn(h,selDate);
+    });
+    // Har bir odat uchun shu kundagi done holatini log_dates dan hisoblaymiz
+    habitItems=habitItems.map(h=>({...h,_done_on_day:(h.log_dates||[]).indexOf(selStr)>=0}));
+  }
   if(!State.plans.length&&!habitItems.length){w.innerHTML=emptyState('📋','Hozircha rejalar yo\'q','+ tugmasi orqali yangi reja yoki Odat bo\'limidan odat qo\'shing');return;}
   const items=[];
   State.plans.forEach(p=>items.push({t:p.scheduled_time||'99:99',kind:'plan',p}));
   habitItems.forEach(h=>items.push({t:h.reminder_time||'99:99',kind:'habit',h}));
   items.sort((a,b)=>String(a.t).localeCompare(String(b.t)));
-  w.innerHTML=items.map((it,i)=>it.kind==='plan'?planRowHTML(it.p,i):habitRowHTML(it.h,i)).join('');
+  w.innerHTML=items.map((it,i)=>{
+    if(it.kind==='plan')return planRowHTML(it.p,i);
+    // O'tgan kunlar uchun done holatini _done_on_day dan olamiz
+    if(!isToday){const hCopy={...it.h,done_today:it.h._done_on_day||false};return habitRowHTML(hCopy,i);}
+    return habitRowHTML(it.h,i);
+  }).join('');
   bindPlanActions();bindHomeHabitActions();
 }
-function bindHomeHabitActions(){document.querySelectorAll('#plansList .plan[data-hid]').forEach(row=>{const id=+row.dataset.hid;const cb=row.querySelector('[data-act="htoggle"]');if(!cb)return;cb.onclick=async e=>{e.stopPropagation();const h=(State.habits||[]).find(x=>x.id===id);if(!h)return;const next=!h.done_today;try{const snap=await apiHabitToggle(id,next);Object.assign(h,snap);renderPlans();if(next){xpPop(HABIT_SCORE);confetti(30);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}scheduleStatsRefresh(false);}catch(_){toast('Xato!',true);}};});}
+function bindHomeHabitActions(){document.querySelectorAll('#plansList .plan[data-hid]').forEach(row=>{const id=+row.dataset.hid;const cb=row.querySelector('[data-act="htoggle"]');if(!cb)return;cb.onclick=async e=>{e.stopPropagation();const h=(State.habits||[]).find(x=>x.id===id);if(!h)return;const selDate=State.selectedDate||new Date();const selStr=ymd(selDate);const isToday=selStr===ymd(new Date());const curDone=isToday?h.done_today:((h.log_dates||[]).indexOf(selStr)>=0);const next=!curDone;try{const snap=await apiHabitToggle(id,next,isToday?null:selStr);Object.assign(h,snap);renderPlans();if(next){xpPop(HABIT_SCORE);confetti(30);try{tg?.HapticFeedback?.notificationOccurred?.('success');}catch(_){}toast('🔥 '+(snap.streak||0)+' kun streak!');}else{toast('Belgilash olindi');}scheduleStatsRefresh(false);}catch(_){toast('Xato!',true);}};});}
 async function loadHomeHabits(){try{State.habits=await api('/api/webapp/habits');}catch(_){}renderPlans();}
 
 // ── Statistika: Mening / Reyting ────────────────────────────────────────
@@ -804,7 +863,7 @@ function renderHabitStats(){
   const best=hs.reduce((m,h)=>Math.max(m,h.streak||0),0);
   const totalDone=hs.reduce((s,h)=>s+(h.total_done||0),0);
   if(grid)grid.innerHTML=`<div class="stat-card"><div class="ic-bg">✅</div><div class="l">Bugun</div><div class="v">${doneToday}/${dueToday.length}</div><div class="ch">bajarildi</div></div><div class="stat-card"><div class="ic-bg">🔥</div><div class="l">Eng uzun streak</div><div class="v">${best}</div><div class="ch">kun</div></div><div class="stat-card"><div class="ic-bg">📦</div><div class="l">Faol odatlar</div><div class="v">${hs.length}</div><div class="ch">ta</div></div><div class="stat-card"><div class="ic-bg">🎯</div><div class="l">Jami bajarilgan</div><div class="v">${totalDone}</div><div class="ch">marta</div></div>`;
-  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun · 30 kun: ${r}%</div></div><div class="lb-val">${r}%</div></div>`;}).join('');
+  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun</div></div><div class="lb-val">${h.total_done||0} <span style="font-size:10px;color:var(--text-3)">marta</span></div></div>`;}).join('');
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
 function lbAvatar(r){if(r&&r.photo_url){const em=esc(r.emoji||'🌱');return `<div class="lb-av" data-em="${em}"><img src="${esc(r.photo_url)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=this.parentNode.dataset.em"></div>`;}return `<div class="lb-av">${esc((r&&r.emoji)||'🌱')}</div>`;}
@@ -873,12 +932,14 @@ async function renderStats(){
   await loadPlansRange();
   const PR=State.plansRange.length?State.plansRange:State.plans;
   const tod=new Date();
-  // Haftalik faollik chizig'i: FAQAT bajarilgan rejalar (kunlik maqsad tushunchasi olib tashlandi).
+  const HB=State.habits||[];
+  // Haftalik faollik chizig'i: bajarilgan rejalar + bajarilgan odatlar.
   const bars=[];
   for(let i=6;i>=0;i--){
     const d=addDays(tod,-i);const k=ymd(d);
-    const c=PR.filter(p=>p.plan_date===k&&p.status==='done').length;
-    bars.push({d,cnt:c});
+    const plansDone=PR.filter(p=>p.plan_date===k&&p.status==='done').length;
+    const habitsDone=HB.filter(h=>(h.log_dates||[]).indexOf(k)>=0).length;
+    bars.push({d,cnt:plansDone+habitsDone});
   }
   const mx=Math.max(1,...bars.map(b=>b.cnt));
   document.getElementById('weekBars').innerHTML=bars.map(b=>`<div class="bar-col"><div class="bar" data-v="${b.cnt}" style="height:0px"></div><div class="lb">${UZ_DOW_SHORT[(b.d.getDay()+6)%7]}</div></div>`).join('');
@@ -887,7 +948,7 @@ async function renderStats(){
 
   const heat=document.getElementById('heatGrid');
   const cells=[];
-  for(let i=0;i<98;i++){const d=addDays(tod,-(97-i));const c=PR.filter(p=>p.plan_date===ymd(d)&&p.status==='done').length;const l=c===0?0:c<2?1:c<4?2:c<6?3:4;cells.push(`<div class="heat-cell" data-l="${l}" title="${ymd(d)}: ${c}"></div>`);}
+  for(let i=0;i<98;i++){const d=addDays(tod,-(97-i));const k=ymd(d);const plansDone=PR.filter(p=>p.plan_date===k&&p.status==='done').length;const habitsDone=HB.filter(h=>(h.log_dates||[]).indexOf(k)>=0).length;const c=plansDone+habitsDone;const l=c===0?0:c<2?1:c<4?2:c<6?3:4;cells.push(`<div class="heat-cell" data-l="${l}" title="${k}: ${c}"></div>`);}
   heat.innerHTML=cells.join('');
 
   // Maqsadlar donut + Yillik/Oylik bo'yicha taqsimot (faqat 2 tur qoldi).
@@ -2189,6 +2250,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   const _ens=document.getElementById('editNameSetting');if(_ens)_ens.onclick=openNameModal;
   const _nc=document.getElementById('nCancel');if(_nc)_nc.onclick=closeNameModal;
   const _ns=document.getElementById('nSave');if(_ns)_ns.onclick=saveNameModal;
+  // Avatar tahrirlash wiring
+  const _eas=document.getElementById('editAvatarSetting');if(_eas)_eas.onclick=openAvatarPicker;
+  const _afi=document.getElementById('avatarFileInput');if(_afi)_afi.onchange=handleAvatarFile;
   const _nmb=document.getElementById('nameModalBack');if(_nmb)_nmb.onclick=e=>{if(e.target.id==='nameModalBack')closeNameModal();};
   document.querySelectorAll('#goalSeg .seg-item').forEach(s=>s.onclick=()=>{document.querySelectorAll('#goalSeg .seg-item').forEach(x=>x.classList.remove('active'));s.classList.add('active');State.goalPeriod=s.dataset.gp;moveGoalSegInd();renderGoalsView();});
   // dvToggle / diaryPrev / diaryNext / calPrev / calNext / weekPrev / weekNext

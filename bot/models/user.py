@@ -18,6 +18,10 @@ class User(Base):
     # Telegram profil rasmi URL'i (Mini App ochilganda saqlanadi — reytingda
     # boshqalarning rasmini ko'rsatish uchun).
     photo_url = Column(String(512), nullable=True)
+    # Foydalanuvchi o'zi yuklagan maxsus profil rasmi (base64 data URL yoki URL).
+    # Agar mavjud bo'lsa — Telegram rasmi o'rniga shu ko'rsatiladi.
+    # O'chirilsa (NULL) — yana Telegram rasmiga qaytiladi.
+    custom_photo_url = Column(String(1048576), nullable=True)
     username = Column(String(255), nullable=True)
 
     # Core score (legacy — kept for back-compat)
