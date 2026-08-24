@@ -33,10 +33,15 @@ const formatDateLong=d=>UZ_DOW_FULL[(d.getDay()+6)%7]+', '+d.getDate()+' '+UZ_MO
 const formatRange=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'–'+b.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]:a.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+UZ_MONTHS_SHORT[b.getMonth()];
 
 // ── Splash screen (Launch Screen) dismiss ──────────────────────
-// Gunesh uslubi: data yuklanganidan keyin opacity 0 → keyin display none.
+// Data yuklanganidan keyin opacity 0 → keyin display none.
+// Kamida 3 sekund ko'rinib turadi (tez internet bo'lsa ham).
 let _splashDismissed=false;
+const _splashStart=Date.now();
 function dismissSplash(){
   if(_splashDismissed)return;
+  const elapsed=Date.now()-_splashStart;
+  const remaining=3000-elapsed;
+  if(remaining>0){setTimeout(dismissSplash,remaining);return;}
   _splashDismissed=true;
   const sp=document.getElementById('splash');
   if(!sp)return;
