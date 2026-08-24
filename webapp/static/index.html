@@ -16,29 +16,16 @@
 <body>
 
 <!-- ═══ SPLASH SCREEN (Launch Screen) ═══ -->
-<div id="splashScreen" class="splash">
-  <div class="splash-content">
+<div id="splash" class="splash">
+  <div class="splash-inner">
     <div class="splash-logo">
-      <div class="splash-icon">
-        <svg viewBox="0 0 80 80" width="80" height="80" fill="none">
-          <defs>
-            <linearGradient id="splashGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#14b8a6"/>
-              <stop offset="100%" stop-color="#06b6d4"/>
-            </linearGradient>
-          </defs>
-          <rect width="80" height="80" rx="20" fill="url(#splashGrad)"/>
-          <path d="M24 42l10 10 22-22" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" class="splash-check"/>
-        </svg>
-      </div>
-      <h1 class="splash-title">Intizom AI</h1>
-      <p class="splash-subtitle">Maqsadga — intizom bilan</p>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
     </div>
-    <div class="splash-loader">
-      <div class="splash-dots">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
+    <div class="splash-text">Intizom AI</div>
+    <div class="splash-spinner"></div>
   </div>
 </div>
 
