@@ -33,24 +33,16 @@ const formatDateLong=d=>UZ_DOW_FULL[(d.getDay()+6)%7]+', '+d.getDate()+' '+UZ_MO
 const formatRange=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'–'+b.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]:a.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+UZ_MONTHS_SHORT[b.getMonth()];
 
 // ── Splash screen (Launch Screen) dismiss ──────────────────────
+// Gunesh uslubi: data yuklanganidan keyin opacity 0 → keyin display none.
 let _splashDismissed=false;
 function dismissSplash(){
   if(_splashDismissed)return;
   _splashDismissed=true;
-  const sp=document.getElementById('splashScreen');
+  const sp=document.getElementById('splash');
   if(!sp)return;
-  sp.classList.add('hide');
-  setTimeout(()=>{sp.remove();},700);
+  sp.style.opacity='0';
+  setTimeout(()=>{sp.style.display='none';},400);
 }
-// Splash screen kamida 3 soniya ko'rinib turadi
-const _splashMinTime=Date.now()+3000;
-function _trySplashDismiss(){
-  const remaining=_splashMinTime-Date.now();
-  if(remaining>0){setTimeout(dismissSplash,remaining);}
-  else{dismissSplash();}
-}
-// Xavfsizlik: agar API'dan javob kelmasa ham 5 sekundda splash o'chadi
-setTimeout(dismissSplash,5000);
 
 function applyUserName(nm){
   nm=(nm||'Foydalanuvchi').trim()||'Foydalanuvchi';
@@ -2294,7 +2286,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Boshlang'ich yuklamalar — bog'liq bo'lmagan so'rovlarni PARALLEL yuboramiz
   // (avval loadPlansAPI().then(...) waterfall edi). Har biri o'z bo'limini
   // mustaqil render qiladi.
-  Promise.all([loadPlansAPI(),loadSnapshot()]).then(()=>{_trySplashDismiss();}).catch(()=>{_trySplashDismiss();});
+  Promise.all([loadPlansAPI(),loadSnapshot()]).then(()=>{dismissSplash();}).catch(()=>{dismissSplash();});
   loadGoalsAPI();
   loadQuest();
 
