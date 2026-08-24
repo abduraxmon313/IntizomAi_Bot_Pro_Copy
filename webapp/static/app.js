@@ -33,17 +33,16 @@ const formatDateLong=d=>UZ_DOW_FULL[(d.getDay()+6)%7]+', '+d.getDate()+' '+UZ_MO
 const formatRange=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'–'+b.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]:a.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+UZ_MONTHS_SHORT[b.getMonth()];
 
 // ── Splash screen (Launch Screen) dismiss ──────────────────────
+// Gunesh uslubi: data yuklanganidan keyin opacity 0 → keyin display none.
 let _splashDismissed=false;
 function dismissSplash(){
   if(_splashDismissed)return;
   _splashDismissed=true;
-  const sp=document.getElementById('splashScreen');
+  const sp=document.getElementById('splash');
   if(!sp)return;
-  sp.classList.add('hide');
-  setTimeout(()=>{sp.remove();},700);
+  sp.style.opacity='0';
+  setTimeout(()=>{sp.style.display='none';},400);
 }
-// Xavfsizlik: agar API'dan javob kelmasa ham 4 sekundda splash o'chadi
-setTimeout(dismissSplash,4000);
 
 function applyUserName(nm){
   nm=(nm||'Foydalanuvchi').trim()||'Foydalanuvchi';
