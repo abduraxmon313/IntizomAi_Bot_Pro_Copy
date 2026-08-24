@@ -14,6 +14,34 @@
 <link rel="stylesheet" href="/static/app.css?v=4cae9e09">
 </head>
 <body>
+
+<!-- ═══ SPLASH SCREEN (Launch Screen) ═══ -->
+<div id="splashScreen" class="splash">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <div class="splash-icon">
+        <svg viewBox="0 0 80 80" width="80" height="80" fill="none">
+          <defs>
+            <linearGradient id="splashGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#14b8a6"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+          <rect width="80" height="80" rx="20" fill="url(#splashGrad)"/>
+          <path d="M24 42l10 10 22-22" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" class="splash-check"/>
+        </svg>
+      </div>
+      <h1 class="splash-title">Intizom AI</h1>
+      <p class="splash-subtitle">Maqsadga — intizom bilan</p>
+    </div>
+    <div class="splash-loader">
+      <div class="splash-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 <section class="page active" data-page="home">
 <div class="hdr">
@@ -152,15 +180,12 @@
 <div class="stat-grid" id="extraStats"></div>
 <div class="section-title"><h2>✅ Odatlar statistikasi</h2></div>
 <div class="stat-grid" id="habitStatGrid"></div>
-<div id="habitStatList" style="margin-bottom:6px"></div>
 <div class="chart-card"><div class="chart-head"><h3>Haftalik faollik</h3><span class="pill">Oxirgi 7 kun</span></div><div class="bars" id="weekBars"></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Discipline Score Trend</h3><span class="pill" id="dstPill">30 kun</span></div><div class="area-wrap"><svg id="trendSvg" viewBox="0 0 320 160" preserveAspectRatio="none"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)" stop-opacity=".5"/><stop offset="100%" stop-color="var(--primary)" stop-opacity="0"/></linearGradient></defs><g id="trendG"></g></svg></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Faollik xaritasi</h3><span class="pill">14 hafta</span></div><div class="heat-grid" id="heatGrid"></div></div>
 <div class="chart-card"><div class="chart-head"><h3>Maqsadlar bajarilishi</h3><span class="pill" id="goalDonutPill">0%</span></div>
 <div style="display:flex;align-items:center;gap:20px"><svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--border)" stroke-width="10"/><circle id="donut" cx="55" cy="55" r="46" fill="none" stroke="url(#donutGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289" transform="rotate(-90 55 55)" style="transition:stroke-dashoffset 1.5s cubic-bezier(.22,1,.36,1)"/><defs><linearGradient id="donutGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="var(--primary-2)"/></linearGradient></defs></svg>
 <div style="flex:1"><div style="font-size:13px;color:var(--text-2);margin-bottom:8px">Tip bo'yicha taqsimot</div><div id="goalBreakdown" style="display:flex;flex-direction:column;gap:6px"></div></div></div></div>
-<div class="section-title"><h2>📋 Bajarilgan rejalar ro'yxati</h2></div>
-<div class="chart-card"><div class="hist-list" id="histList"></div></div>
 </div>
 <div id="statsRating" class="hidden">
 <div class="habit-view-seg" id="lbSeg"><div class="hvs active" data-lb="all">Umumiy</div><div class="hvs" data-lb="week">Haftalik</div><div class="hvs" data-lb="streak">Streak</div></div>

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import TIMEZONE
 from bot.models.achievement import Achievement
-from bot.models.habit import HabitLog
+from bot.models.habit import Habit, HabitLog
 from bot.models.plan import Plan, PlanStatus
 from bot.models.score_log import ScoreLog
 from bot.models.user import User
@@ -710,7 +710,7 @@ async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
 
     today = _today()
 
-    # 2) Bugungi rejalar — alohida himoyalangan (xato bo'lsa ham snapshot qaytadi).
+    # 2) Bugungi rejalar + odatlar — alohida himoyalangan (xato bo'lsa ham snapshot qaytadi).
     today_done = 0
     today_total = 0
     try:
@@ -722,6 +722,36 @@ async def build_user_snapshot(session: AsyncSession, user: User) -> dict:
         today_plans = res.scalars().all()
         today_total = len(today_plans)
         today_done = sum(1 for p in today_plans if p.status == PlanStatus.done)
+    except Exception:
+        pass
+
+    # 2b) Bugungi odatlar — rejalar bilan birga hisoblanadi.
+    #     "due today" bo'lgan odatlar today_total ga qo'shiladi,
+    #     bajarilganlari today_done ga qo'shiladi.
+    try:
+        from bot.services.habit_service import is_due_on
+        habits_res = await session.execute(
+            select(Habit).where(
+                and_(Habit.user_id == user.id, Habit.archived == False)  # noqa: E712
+            )
+        )
+        all_habits = habits_res.scalars().all()
+        due_habits = [h for h in all_habits if is_due_on(h, today)]
+        today_total += len(due_habits)
+
+        if due_habits:
+            due_ids = [h.id for h in due_habits]
+            logs_res = await session.execute(
+                select(HabitLog.habit_id).where(
+                    and_(
+                        HabitLog.user_id == user.id,
+                        HabitLog.log_date == today,
+                        HabitLog.habit_id.in_(due_ids),
+                    )
+                )
+            )
+            done_habit_ids = {row[0] for row in logs_res.all()}
+            today_done += len(done_habit_ids)
     except Exception:
         pass
 
