@@ -32,6 +32,19 @@ function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 const formatDateLong=d=>UZ_DOW_FULL[(d.getDay()+6)%7]+', '+d.getDate()+' '+UZ_MONTHS_SHORT[d.getMonth()].toLowerCase();
 const formatRange=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'–'+b.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]:a.getDate()+' '+UZ_MONTHS_SHORT[a.getMonth()]+' – '+b.getDate()+' '+UZ_MONTHS_SHORT[b.getMonth()];
 
+// ── Splash screen (Launch Screen) dismiss ──────────────────────
+let _splashDismissed=false;
+function dismissSplash(){
+  if(_splashDismissed)return;
+  _splashDismissed=true;
+  const sp=document.getElementById('splashScreen');
+  if(!sp)return;
+  sp.classList.add('hide');
+  setTimeout(()=>{sp.remove();},700);
+}
+// Xavfsizlik: agar API'dan javob kelmasa ham 4 sekundda splash o'chadi
+setTimeout(dismissSplash,4000);
+
 function applyUserName(nm){
   nm=(nm||'Foydalanuvchi').trim()||'Foydalanuvchi';
   if(State.user)State.user.first_name=nm;
@@ -858,12 +871,12 @@ function habit30Rate(h){const logs=new Set(h.log_dates||[]);let due=0,done=0;con
 function renderHabitStats(){
   const grid=document.getElementById('habitStatGrid');const list=document.getElementById('habitStatList');
   const hs=State.habits||[];
-  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML=emptyState('✅','Odat yo\'q','Odat bo\'limidan qo\'shing');return;}
+  if(!hs.length){if(grid)grid.innerHTML='';if(list)list.innerHTML='';return;}
   const dueToday=hs.filter(h=>h.due_today&&!h.finished);const doneToday=dueToday.filter(h=>h.done_today).length;
   const best=hs.reduce((m,h)=>Math.max(m,h.streak||0),0);
   const totalDone=hs.reduce((s,h)=>s+(h.total_done||0),0);
   if(grid)grid.innerHTML=`<div class="stat-card"><div class="ic-bg">✅</div><div class="l">Bugun</div><div class="v">${doneToday}/${dueToday.length}</div><div class="ch">bajarildi</div></div><div class="stat-card"><div class="ic-bg">🔥</div><div class="l">Eng uzun streak</div><div class="v">${best}</div><div class="ch">kun</div></div><div class="stat-card"><div class="ic-bg">📦</div><div class="l">Faol odatlar</div><div class="v">${hs.length}</div><div class="ch">ta</div></div><div class="stat-card"><div class="ic-bg">🎯</div><div class="l">Jami bajarilgan</div><div class="v">${totalDone}</div><div class="ch">marta</div></div>`;
-  if(list)list.innerHTML=hs.map(h=>{const r=habit30Rate(h);return `<div class="lb-row"><div class="lb-av">${esc(h.icon||'✅')}</div><div class="lb-name">${esc(h.title)}<div style="font-size:11px;color:var(--text-2);font-weight:600">🔥 ${h.streak||0} kun</div></div><div class="lb-val">${h.total_done||0} <span style="font-size:10px;color:var(--text-3)">marta</span></div></div>`;}).join('');
+  if(list)list.innerHTML='';
 }
 const LB_UNIT={all:'ball',week:'ball',streak:'kun'};
 function lbAvatar(r){if(r&&r.photo_url){const em=esc(r.emoji||'🌱');return `<div class="lb-av" data-em="${em}"><img src="${esc(r.photo_url)}" referrerpolicy="no-referrer" loading="lazy" onerror="this.parentNode.textContent=this.parentNode.dataset.em"></div>`;}return `<div class="lb-av">${esc((r&&r.emoji)||'🌱')}</div>`;}
@@ -971,8 +984,8 @@ function renderTrend(days){const PR=State.plansRange.length?State.plansRange:Sta
 
 function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_score||0;const dn=State.goals.filter(g=>g.completed).length+State.plans.filter(p=>p.status==='done').length;const list=[{ic:'🔥',nm:'Olov',ds:'3 kun streak',un:st>=3},{ic:'⚡',nm:'Yashin',ds:'7 kun streak',un:st>=7},{ic:'💎',nm:'Olmos',ds:'30 kun streak',un:st>=30},{ic:'🎯',nm:'Aniq',ds:'10 maqsad',un:dn>=10},{ic:'🏆',nm:'Chempion',ds:'100 ball',un:sc>=100},{ic:'👑',nm:'Qirol',ds:'500 ball',un:sc>=500}];document.getElementById('achs').innerHTML=list.map(a=>`<div class="ach ${a.un?'':'locked'}"><div class="ic">${a.ic}</div><div class="nm">${a.nm}</div><div class="ds">${a.ds}</div></div>`).join('');}
 
-// Bajarilgan rejalar tarixi — har kun uchun to'ladigan chiziq + bajarilgan/jami
-async function renderHistory(){const el=document.getElementById('histList');if(!el)return;let days=[];try{const r=await api('/api/webapp/history');days=r.days||[];}catch(e){console.warn('history',e);}if(!days.length){el.innerHTML=emptyState('📋','Hali tarix yo\'q','Reja qo\'shib, bajara boshlang');return;}const todayStr=ymd(new Date());const yStr=ymd(addDays(new Date(),-1));el.innerHTML=days.map(d=>{const pct=d.total?Math.round(d.done*100/d.total):0;let label;if(d.date===todayStr)label='Bugun';else if(d.date===yStr)label='Kecha';else{const dt=new Date(d.date+'T00:00:00');label=dt.getDate()+' '+UZ_MONTHS_SHORT[dt.getMonth()];}const full=pct>=100?'full':'';const zero=d.done===0?'zero':'';return `<div class="hist-row ${zero}"><span class="hl">${esc(label)}</span><div class="hbar ${full}"><i data-w="${pct}"></i></div><span class="hv">${d.done}/${d.total}</span></div>`;}).join('');setTimeout(()=>{el.querySelectorAll('.hbar>i').forEach(b=>{b.style.width=(b.dataset.w||0)+'%';});},60);}
+// Bajarilgan rejalar tarixi — olib tashlandi (UI juda uzun bo'lib ketardi)
+async function renderHistory(){}
 
 const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
 // Tema tanlash — faqat Premium foydalanuvchilar uchun.
@@ -2274,9 +2287,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Boshlang'ich yuklamalar — bog'liq bo'lmagan so'rovlarni PARALLEL yuboramiz
   // (avval loadPlansAPI().then(...) waterfall edi). Har biri o'z bo'limini
   // mustaqil render qiladi.
-  loadPlansAPI();
+  Promise.all([loadPlansAPI(),loadSnapshot()]).then(()=>{dismissSplash();}).catch(()=>{dismissSplash();});
   loadGoalsAPI();
-  loadSnapshot();
   loadQuest();
 
   // ── AI page wiring ─────────────────────────────────────────────────
