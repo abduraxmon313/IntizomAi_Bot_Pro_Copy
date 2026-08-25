@@ -1251,7 +1251,7 @@ function openPlanModal(plan){
       dEl.min=todayStr;  // yangi rejada o'tib ketgan kun tanlab bo'lmaydi
     }
   }
-  const back=document.getElementById('planModalBack');if(back){requestAnimationFrame(()=>back.classList.add('show'));}
+  const back=document.getElementById('planModalBack');if(back)back.classList.add('show');
 }
 function closePlanModal(){
   const b=document.getElementById('planModalBack');if(b)b.classList.remove('show');
