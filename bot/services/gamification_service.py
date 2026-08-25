@@ -181,14 +181,46 @@ def _update_streak_on_complete(user: User) -> bool:
 async def _recompute_discipline_score(session: AsyncSession, user: User) -> int:
     """
     Discipline score = weighted blend of:
-      • 30-day completion rate (50%)
+      • 30-day completion rate (50%)  — REJALAR + ODATLAR birgalikda
       • current streak vs 30 cap (25%)
       • 7-day activity intensity (15%)
       • inactivity penalty (10%)
-    """
-    today = _today()
-    window_start = today - timedelta(days=29)
 
+    MUHIM QOIDALAR:
+      1) Discipline = "bajarishlik". Shuning uchun ODATLAR ham rejalar bilan
+         teng hisobga olinadi (oldin faqat rejalar hisoblanardi).
+      2) HALI VAQTI KELMAGAN ish bajarilmagan deb JAZOLANMAYDI:
+           • Reja: bugungi reja va uning `scheduled_time` hali kelmagan bo'lsa
+             maxrajga (total) qo'shilmaydi.
+           • Odat: bugun bajarilishi kerak bo'lgan odat — `reminder_time` hali
+             kelmagan bo'lsa (yoki eslatma vaqti yo'q bo'lsa, ya'ni kun hali
+             tugamagan) maxrajga qo'shilmaydi.
+           • Kelasi kun rejalari umuman hisobga kirmaydi.
+      3) ARXIVLANGAN (foydalanuvchi to'xtatgan) odat: faqat BAJARILGAN kunlari
+         hisobga olinadi. To'xtatilgandan keyingi kunlar uchun jazo yo'q —
+         odatni to'xtatish discipline'ni pasaytirmaydi.
+    """
+    now = datetime.now(TIMEZONE)
+    today = now.date()
+    cur_hm = now.strftime("%H:%M")
+    window_start = today - timedelta(days=29)
+    last7 = today - timedelta(days=6)
+
+    def _time_reached(hm: Optional[str]) -> bool:
+        """ "HH:MM" vaqti bugun allaqachon kelganmi? (nol bilan to'ldirilgan
+        satrlar uchun leksikografik solishtirish to'g'ri ishlaydi)."""
+        if not hm:
+            return False
+        hm = hm.strip()[:5]
+        if len(hm) != 5 or hm[2] != ":":
+            return False
+        return cur_hm >= hm
+
+    total = 0        # hisobga olinadigan (vaqti kelgan) ishlar soni
+    done = 0         # ulardan bajarilganlari
+    last7_done = 0   # oxirgi 7 kunda bajarilganlar (intensivlik uchun)
+
+    # ── 1) REJALAR ──────────────────────────────────────────────
     res = await session.execute(
         select(Plan).where(
             and_(
@@ -200,17 +232,85 @@ async def _recompute_discipline_score(session: AsyncSession, user: User) -> int:
     )
     plans = res.scalars().all()
 
-    total = len(plans)
-    done = sum(1 for p in plans if p.status == PlanStatus.done)
+    for p in plans:
+        if p.status == PlanStatus.done:
+            total += 1
+            done += 1
+            if p.plan_date >= last7:
+                last7_done += 1
+            continue
+        # Bajarilmagan reja — faqat vaqti o'tgan bo'lsa hisobga kiradi
+        if p.plan_date < today:
+            total += 1
+        elif p.plan_date == today and _time_reached(p.scheduled_time):
+            total += 1
+        # aks holda: vaqti hali kelmagan → jazo yo'q
+
+    # ── 2) ODATLAR ──────────────────────────────────────────────
+    try:
+        from bot.services.habit_service import is_due_on
+
+        habits_res = await session.execute(
+            select(Habit).where(Habit.user_id == user.id)
+        )
+        habits = habits_res.scalars().all()
+
+        if habits:
+            logs_res = await session.execute(
+                select(HabitLog.habit_id, HabitLog.log_date).where(
+                    and_(
+                        HabitLog.user_id == user.id,
+                        HabitLog.log_date >= window_start,
+                        HabitLog.log_date <= today,
+                    )
+                )
+            )
+            logs_by_habit: dict[int, set] = {}
+            for hid, ldate in logs_res.all():
+                if ldate is not None:
+                    logs_by_habit.setdefault(hid, set()).add(ldate)
+
+            day_count = (today - window_start).days + 1
+            for h in habits:
+                hlogs = logs_by_habit.get(h.id, set())
+                archived = bool(h.archived)
+
+                for i in range(day_count):
+                    d = window_start + timedelta(days=i)
+
+                    if d in hlogs:
+                        # Bajarilgan kun — arxivlangan odat uchun ham hisoblanadi
+                        # (tarix saqlanadi, statistika buzilmaydi).
+                        total += 1
+                        done += 1
+                        if d >= last7:
+                            last7_done += 1
+                        continue
+
+                    # Bajarilmagan kun. Arxivlangan (to'xtatilgan) odat uchun
+                    # jazo YO'Q — faqat bajarilganlari yuqorida hisoblandi.
+                    if archived:
+                        continue
+
+                    if not is_due_on(h, d):
+                        continue  # bu kunda rejalashtirilmagan
+
+                    if d < today:
+                        total += 1
+                    elif d == today and _time_reached(h.reminder_time):
+                        total += 1
+                    # bugun, vaqti kelmagan (yoki eslatmasiz) → jazo yo'q
+    except Exception:
+        # Odatlar hisobida xato bo'lsa — rejalar asosidagi ball baribir qaytadi.
+        pass
+
     completion_rate = (done / total) if total else 0.0
 
     streak_norm = min(1.0, (user.streak or 0) / 30.0)
 
-    last7 = today - timedelta(days=6)
-    last7_done = sum(
-        1 for p in plans if p.plan_date >= last7 and p.status == PlanStatus.done
-    )
-    intensity = min(1.0, last7_done / 14.0)  # 2/day saturates
+    # Intensivlik: endi rejalar + odatlar birgalikda hisoblanadi, shuning uchun
+    # to'yinish chegarasi 3/kun (21/hafta) — oldin faqat rejalar uchun 2/kun edi.
+    intensity = min(1.0, last7_done / 21.0)
 
     # Inactivity penalty
     if user.last_completed_date is None:

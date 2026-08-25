@@ -242,8 +242,18 @@ body::after{width:320px;height:320px;bottom:60px;left:-120px;background:var(--gr
    Endi transition ishlatiladi — element doim render qilingani uchun flash yo'q. */
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:200;display:grid;place-items:end center;opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease}
 .modal-back.show{opacity:1;visibility:visible}
-.modal{background:var(--bg-2);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:24px 20px 30px;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.22,1,.36,1)}
-.modal-back.show .modal{transform:translateY(0)}
+/* NATIVE WIDGET FLASH FIX (reja modali: <select> pHour/pMin + <input type=date> pDate).
+   Android WebView'da native form widget'lari transform animatsiya paytida bir kadr
+   YAKUNIY joyida chizilib qolardi — ekranda "lip etib" ko'rinardi. Reja modali —
+   yagona modal, ochilganda native widget'lari KO'RINADI (maqsad/odatda ular
+   display:none ichida), shuning uchun muammo faqat unda sezilardi.
+   Yechim: (1) `translateZ(0)` + `will-change` bilan panel o'z compositing
+   layer'iga ko'tariladi — native widget layer bilan birga rasterizatsiya
+   qilinadi va oldindan chizilmaydi; (2) yopiq holatda `visibility:hidden`
+   bevosita `.modal`ga beriladi — native widget'lar visibility'ni ishonchli
+   hurmat qiladi (opacity'ni esa ba'zan e'tiborsiz qoldiradi). */
+.modal{background:var(--bg-2);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:24px 20px 30px;max-height:90vh;overflow-y:auto;transform:translateY(100%) translateZ(0);will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden;visibility:hidden;transition:transform .35s cubic-bezier(.22,1,.36,1),visibility .35s}
+.modal-back.show .modal{transform:translateY(0) translateZ(0);visibility:visible}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal h3{font-size:18px;font-weight:800;margin-bottom:14px}

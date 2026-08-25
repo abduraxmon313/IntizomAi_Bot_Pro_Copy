@@ -2129,6 +2129,10 @@ function ripple(e){const t=e.currentTarget;const r=t.getBoundingClientRect();con
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.documentElement.setAttribute('data-theme',State.theme);applyMode();initUser();renderThemes();
+  // Reja modali vaqt tanlagichlarini DARHOL to'ldiramiz. Aks holda ular modal
+  // ochilgan paytda innerHTML bilan to'ldirilib, o'sha kadrda layout/paint
+  // yuzaga kelardi (native <select> "lip etishi"ga qo'shimcha sabab).
+  try{fillTimeSelects();}catch(_){}
   // Admin panelidan boshqariladigan global bayroqlarni fon rejimida yuklab
   // olamiz (Do'stlar sahifasidagi Ruxsatlar tugmasini shu asosda yashiramiz).
   loadAppConfig();
