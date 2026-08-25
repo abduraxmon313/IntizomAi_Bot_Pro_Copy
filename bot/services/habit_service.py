@@ -283,13 +283,20 @@ async def update_habit(
 
 
 async def delete_habit(session: AsyncSession, habit_id: int, user_id: int) -> bool:
+    """Odatni o'chirish — aslida ARXIVLASH.
+
+    Odat o'chirilganda uning barcha tarixiy log'lari (HabitLog) saqlanib qoladi.
+    Bu foydalanuvchining umumiy statistikasi (jami ball, XP, streak tarixi)
+    o'zgarmasligini kafolatlaydi. Arxivlangan odat foydalanuvchiga ko'rinmaydi
+    lekin backend hisobotlarda mavjud bo'lib qoladi.
+    """
     res = await session.execute(
         select(Habit).where(and_(Habit.id == habit_id, Habit.user_id == user_id))
     )
     habit = res.scalar_one_or_none()
     if not habit:
         return False
-    await session.delete(habit)
+    habit.archived = True
     await session.commit()
     return True
 
