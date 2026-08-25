@@ -393,7 +393,7 @@ function openHabitModal(habit){State.habitModal={id:habit?habit.id:null};State.h
   if(habit&&habit.reminder_time&&habit.reminder_time.includes(':')){const pp=habit.reminder_time.split(':');rh=pad(parseInt(pp[0],10)||0);rm=pad(Math.round((parseInt(pp[1],10)||0)/5)*5%60);}
   const rhSel=document.getElementById('hRemHour');if(rhSel)rhSel.value=rh;
   const rmSel=document.getElementById('hRemMin');if(rmSel)rmSel.value=rm;
-  renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();applyHabitRemUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');setTimeout(()=>{const f=document.getElementById('hTitle');if(f)f.focus();},300);}
+  renderHabitIconPick();renderHabitWeekdays();applyHabitFreqUI();applyHabitDurUI();applyHabitRemUI();const back=document.getElementById('habitModalBack');if(back)back.classList.add('show');}
 function closeHabitModal(){
   const b=document.getElementById('habitModalBack');if(b)b.classList.remove('show');
   State.forMemberContext=null;
@@ -429,7 +429,7 @@ async function saveHabitModal(){const t=(document.getElementById('hTitle')?.valu
   try{if(isEdit){const nh=await apiHabitUpdate(State.habitModal.id,body);const idx=State.habits.findIndex(x=>x.id===State.habitModal.id);if(idx>=0)State.habits[idx]={...State.habits[idx],...nh};toast('✓ Yangilandi');}else{const nh=await apiHabitCreate(body);State.habits.push(nh);toast('✨ Odat qo\'shildi');}closeHabitModal();renderHabitsPage();}catch(e){const m=String(e&&e.message||'');if(m.includes('402')){closeHabitModal();return;/* Premium dialog global api() da avtomatik ochiladi */}toast('Xato: '+m,true);}}
 
 // ── Ism tahrirlash ──────────────────────────────────────────────────────
-function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');setTimeout(()=>{if(inp){inp.focus();inp.select();}},300);}
+function openNameModal(){const inp=document.getElementById('nName');if(inp)inp.value=State.displayName||State.user?.first_name||'';const back=document.getElementById('nameModalBack');if(back)back.classList.add('show');}
 function closeNameModal(){const b=document.getElementById('nameModalBack');if(b)b.classList.remove('show');}
 async function saveNameModal(){const nm=(document.getElementById('nName')?.value||'').trim();if(!nm){toast('Ism bo\'sh',true);return;}try{const res=await apiProfileUpdate(nm);applyUserName(res.full_name||nm);closeNameModal();toast('✓ Ism saqlandi');}catch(e){toast('Xato: '+String(e&&e.message||''),true);}}
 
@@ -559,7 +559,6 @@ async function chatSend(text){
     }
   }finally{
     State.chatBusy=false;if(sendBtn)sendBtn.disabled=false;
-    if(input)input.focus();
   }
 }
 
@@ -1110,7 +1109,6 @@ function openModal(period,periodKey,goal){
   // "isMemberCreate" oqimi olib tashlandi.
   _setupModalPeriodPicker(false, period, periodKey);
   document.getElementById('modalBack').classList.add('show');
-  setTimeout(()=>document.getElementById('mTitle').focus(),300);
 }
 
 // Modal ichidagi davr tanlash (Yillik/Oylik + yil + oy). Faqat a'zo uchun
@@ -1252,7 +1250,6 @@ function openPlanModal(plan){
     }
   }
   const back=document.getElementById('planModalBack');if(back)back.classList.add('show');
-  setTimeout(()=>{const f=document.getElementById('pTitle');if(f)f.focus();},300);
 }
 function closePlanModal(){
   const b=document.getElementById('planModalBack');if(b)b.classList.remove('show');
