@@ -1249,7 +1249,7 @@ function openPlanModal(plan){
       dEl.min=todayStr;  // yangi rejada o'tib ketgan kun tanlab bo'lmaydi
     }
   }
-  const back=document.getElementById('planModalBack');if(back)back.classList.add('show');
+  const back=document.getElementById('planModalBack');if(back){requestAnimationFrame(()=>back.classList.add('show'));}
 }
 function closePlanModal(){
   const b=document.getElementById('planModalBack');if(b)b.classList.remove('show');
@@ -1588,7 +1588,6 @@ function openGroupCreateModal(){
   document.getElementById('gcName').value='';
   document.getElementById('gcDesc').value='';
   document.getElementById('groupCreateBack').classList.add('show');
-  setTimeout(()=>document.getElementById('gcName').focus(),200);
 }
 async function saveGroupCreate(){
   const name=document.getElementById('gcName').value.trim();
