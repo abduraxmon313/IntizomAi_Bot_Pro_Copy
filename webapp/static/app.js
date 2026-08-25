@@ -1089,7 +1089,9 @@ async function premiumRequiredDialog(opts){
 // Yordamchi: agar bepul foydalanuvchi bo'lsa, dialogni ochib true qaytaradi
 // (chaqiruvchi kod amaldan chiqishi kerak); premium bo'lsa false — davom eting.
 function premiumGate(sectionMeta){
-  if(State.sub&&State.sub.is_premium)return false;
+  // State.sub hali yuklanmagan bo'lsa localStorage'dan tekshiramiz (flash yo'q)
+  const isPrem=State.sub?State.sub.is_premium:(localStorage.getItem('iz_premium')==='1');
+  if(isPrem)return false;
   premiumRequiredDialog(sectionMeta||{});
   return true;
 }
