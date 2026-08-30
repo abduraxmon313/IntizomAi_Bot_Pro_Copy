@@ -137,6 +137,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         telegram_id=message.from_user.id,
         full_name=message.from_user.full_name,
         username=message.from_user.username or "",
+        bot_name="main",
     )
 
     # ── Referral (taklif havolasi) — yangi foydalanuvchini taklif qiluvchiga bog'lash

@@ -59,6 +59,13 @@ class User(Base):
     # Allaqachon mukofotlangan takliflar soni (5 talik to'plamlar bo'yicha).
     referral_rewards_given = Column(Integer, default=0)
 
+    # ── Bot manba (qaysi botda /start bosgan) ──────────────
+    # Bir foydalanuvchi IKKALA botda ham bo'lishi mumkin — shuning uchun
+    # alohida boolean ustunlar. Broadcast va user_count shu bayroqlarga
+    # qarab filtrlanadi (har bir bot faqat O'Z userlariga xabar yuboradi).
+    started_main_bot = Column(Boolean, default=False)
+    started_dilshodbek_bot = Column(Boolean, default=False)
+
     # ── System ───────────────────────────────────────────
     is_active = Column(Boolean, default=True)
     # Push eslatmalarni yoqish/o'chirish (Mini App sozlamalari orqali).

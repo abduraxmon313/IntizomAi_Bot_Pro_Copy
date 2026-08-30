@@ -32,13 +32,30 @@ async def is_admin(session: AsyncSession, telegram_id: int) -> bool:
     return result.scalar_one_or_none() is not None
 
 
-async def get_all_users(session: AsyncSession) -> list[User]:
-    result = await session.execute(select(User).order_by(User.created_at.desc()))
+def _bot_filter(bot_name: str | None = None):
+    """Bot nomi bo'yicha filter shartini qaytaradi."""
+    if bot_name == "main":
+        return User.started_main_bot == True  # noqa: E712
+    elif bot_name == "dilshodbek":
+        return User.started_dilshodbek_bot == True  # noqa: E712
+    return None
+
+
+async def get_all_users(session: AsyncSession, bot_name: str | None = None) -> list[User]:
+    stmt = select(User).order_by(User.created_at.desc())
+    flt = _bot_filter(bot_name)
+    if flt is not None:
+        stmt = stmt.where(flt)
+    result = await session.execute(stmt)
     return result.scalars().all()
 
 
-async def get_users_count(session: AsyncSession) -> int:
-    result = await session.execute(select(func.count(User.id)))
+async def get_users_count(session: AsyncSession, bot_name: str | None = None) -> int:
+    stmt = select(func.count(User.id))
+    flt = _bot_filter(bot_name)
+    if flt is not None:
+        stmt = stmt.where(flt)
+    result = await session.execute(stmt)
     return result.scalar()
 
 
@@ -83,9 +100,13 @@ async def get_user_plan_stats(session: AsyncSession, user: User) -> dict:
     }
 
 
-async def get_detailed_users_stats(session: AsyncSession) -> dict:
+async def get_detailed_users_stats(session: AsyncSession, bot_name: str | None = None) -> dict:
     """Userlar haqida to'liq statistika"""
-    users_result = await session.execute(select(User))
+    stmt = select(User)
+    flt = _bot_filter(bot_name)
+    if flt is not None:
+        stmt = stmt.where(flt)
+    users_result = await session.execute(stmt)
     users = users_result.scalars().all()
 
     total = len(users)

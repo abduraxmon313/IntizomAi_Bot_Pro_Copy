@@ -65,6 +65,7 @@ async def start_handler(message: Message, state: FSMContext, session: AsyncSessi
             telegram_id=message.from_user.id,
             full_name=message.from_user.full_name,
             username=message.from_user.username or "",
+            bot_name="dilshodbek",
         )
     except Exception:
         # Bazaga yozish ishlamasa ham foydalanuvchiga javob beramiz.

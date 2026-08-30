@@ -70,6 +70,8 @@ USER_NEW_COLUMNS = [
     ("trial_used", "BOOLEAN DEFAULT FALSE"),
     ("photo_url", "VARCHAR(512)"),
     ("custom_photo_url", "TEXT"),
+    ("started_main_bot", "BOOLEAN DEFAULT FALSE"),
+    ("started_dilshodbek_bot", "BOOLEAN DEFAULT FALSE"),
 ]
 
 # habits jadvali uchun yangi ustunlar (avvalgi versiyada yaratilgan bo'lsa).
