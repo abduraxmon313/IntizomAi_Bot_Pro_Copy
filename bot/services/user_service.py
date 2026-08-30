@@ -4,7 +4,8 @@ from bot.models.user import User
 from datetime import datetime
 
 
-async def get_or_create_user(session: AsyncSession, telegram_id: int, full_name: str, username: str) -> User:
+async def get_or_create_user(session: AsyncSession, telegram_id: int, full_name: str, username: str,
+                             bot_name: str | None = None) -> User:
     result = await session.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
 
@@ -13,6 +14,8 @@ async def get_or_create_user(session: AsyncSession, telegram_id: int, full_name:
             telegram_id=telegram_id,
             full_name=full_name,
             username=username,
+            started_main_bot=(bot_name == "main"),
+            started_dilshodbek_bot=(bot_name == "dilshodbek"),
         )
         session.add(user)
         await session.commit()
@@ -26,6 +29,13 @@ async def get_or_create_user(session: AsyncSession, telegram_id: int, full_name:
         changed = True
     if username is not None and user.username != username:
         user.username = username
+        changed = True
+    # Bot bayrog'ini yoqamiz (faqat True ga o'tkazamiz, hech qachon False qilmaymiz)
+    if bot_name == "main" and not user.started_main_bot:
+        user.started_main_bot = True
+        changed = True
+    elif bot_name == "dilshodbek" and not user.started_dilshodbek_bot:
+        user.started_dilshodbek_bot = True
         changed = True
     user.last_active = datetime.utcnow()
     try:

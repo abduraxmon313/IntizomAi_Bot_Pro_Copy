@@ -453,7 +453,7 @@ async def admin_users_count(callback: CallbackQuery, session: AsyncSession):
         return
 
     from bot.services.admin_service import get_detailed_users_stats, get_activity_stats
-    stats = await get_detailed_users_stats(session)
+    stats = await get_detailed_users_stats(session, bot_name="main")
     activity = await get_activity_stats(session)
 
     # Top userlar
@@ -733,7 +733,7 @@ async def broadcast_start(callback: CallbackQuery, state: FSMContext, session: A
         await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
 
-    count = await get_users_count(session)
+    count = await get_users_count(session, bot_name="main")
 
     await callback.message.edit_text(
         f"📢 <b>Xabar yuborish</b>\n\n"
@@ -841,7 +841,7 @@ async def broadcast_text_received(message: Message, state: FSMContext, session: 
     await state.update_data(broadcast_text=message.text)
 
     if target == "all":
-        count = await get_users_count(session)
+        count = await get_users_count(session, bot_name="main")
         preview_header = f"📢 <b>Barcha {count} ta userlarga yuboriladi</b>\n\n"
     else:
         preview_header = f"👤 <b>{target_name}</b> ga yuboriladi\n\n"
@@ -862,9 +862,8 @@ async def broadcast_text_received(message: Message, state: FSMContext, session: 
 # Yuborish tasdiqlandi
 async def _run_broadcast_all(bot, final_text, progress_msg):
     """
-    Barcha userlarga xabar yuborish — FON (background) vazifa sifatida.
-    Handler darhol javob qaytaradi, yuborish esa orqa fonda davom etadi
-    (flood-control + bloklagan userni nofaol qilish bilan).
+    Asosiy bot userlarga xabar yuborish — FON (background) vazifa sifatida.
+    Faqat started_main_bot=True bo'lgan userlarga yuboriladi.
     """
     import asyncio
     from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
@@ -874,7 +873,9 @@ async def _run_broadcast_all(bot, final_text, progress_msg):
 
     sent = failed = blocked = 0
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(select(User))).scalars().all()
+        users = (await session.execute(
+            select(User).where(User.started_main_bot == True)  # noqa: E712
+        )).scalars().all()
         total = len(users)
         for i, user in enumerate(users, 1):
             try:
@@ -996,7 +997,7 @@ async def admin_premium_stats(callback: CallbackQuery, session: AsyncSession):
     from bot.config import SUBSCRIPTION_PLANS
 
     premium_count = await get_premium_count(session)
-    total_users = await get_users_count(session)
+    total_users = await get_users_count(session, bot_name="main")
     total_subs = await session.scalar(select(func.count(Subscription.id))) or 0
 
     # Faol obunalar tarif bo'yicha + taxminiy daromad
@@ -1761,8 +1762,8 @@ async def admin_promo_discount_create_process(message: Message, state: FSMContex
 
 async def _run_promo_broadcast(bot, broadcast_text, progress_msg):
     """
-    Maxsus promokod xabarini barcha userlarga yuborish — FON vazifasi.
-    `_run_broadcast_all` bilan bir xil pattern (flood-control + blocked user handling).
+    Maxsus promokod xabarini asosiy bot userlarga yuborish — FON vazifasi.
+    Faqat started_main_bot=True bo'lgan userlarga yuboriladi.
     """
     import asyncio as _asyncio
     from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
@@ -1772,7 +1773,9 @@ async def _run_promo_broadcast(bot, broadcast_text, progress_msg):
 
     sent = failed = blocked = 0
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(select(User))).scalars().all()
+        users = (await session.execute(
+            select(User).where(User.started_main_bot == True)  # noqa: E712
+        )).scalars().all()
         total = len(users)
         for i, user in enumerate(users, 1):
             try:

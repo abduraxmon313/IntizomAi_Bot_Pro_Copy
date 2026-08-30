@@ -41,9 +41,9 @@ class DilshodBroadcast(StatesGroup):
 
 PANEL_TEXT = (
     "🛡 <b>Admin Panel</b> (Dilshodbek bot)\n\n"
-    "👥 Bazadagi userlar: <b>{count} ta</b>\n\n"
+    "👥 Shu botning userlari: <b>{count} ta</b>\n\n"
     "<i>Eslatma: xabar faqat shu botga /start bosgan foydalanuvchilarga "
-    "yetib boradi.</i>\n\nKerakli amalni tanlang:"
+    "yuboriladi.</i>\n\nKerakli amalni tanlang:"
 )
 
 
@@ -53,7 +53,7 @@ async def admin_panel(message: Message, state: FSMContext, session: AsyncSession
         await message.answer("❌ Sizda admin huquqi yo'q.")
         return
     await state.clear()
-    count = await get_users_count(session)
+    count = await get_users_count(session, bot_name="dilshodbek")
     await message.answer(
         PANEL_TEXT.format(count=count),
         parse_mode="HTML",
@@ -67,7 +67,7 @@ async def admin_panel_cb(callback: CallbackQuery, state: FSMContext, session: As
         await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
         return
     await state.clear()
-    count = await get_users_count(session)
+    count = await get_users_count(session, bot_name="dilshodbek")
     await callback.message.edit_text(
         PANEL_TEXT.format(count=count),
         parse_mode="HTML",
@@ -118,14 +118,14 @@ async def broadcast_text_received(message: Message, state: FSMContext, session: 
         return
 
     await state.update_data(broadcast_text=text)
-    count = await get_users_count(session)
+    count = await get_users_count(session, bot_name="dilshodbek")
 
     await message.answer(
         "👁 <b>Preview:</b>\n"
         "━━━━━━━━━━━━━━━\n"
         f"{text}\n"
         "━━━━━━━━━━━━━━━\n\n"
-        f"📢 Bazadagi <b>{count} ta</b> userga yuborishga harakat qilinadi "
+        f"📢 Shu botning <b>{count} ta</b> useriga yuboriladi.\n\n"
         "(faqat shu botga start bosganlar oladi).\n\n"
         "Tasdiqlaysizmi?",
         parse_mode="HTML",
@@ -156,10 +156,8 @@ async def broadcast_send(callback: CallbackQuery, state: FSMContext, session: As
 
 async def _run_broadcast(bot, text: str, progress_msg) -> None:
     """
-    Barcha userlarga (umumiy baza) xabar yuborish — FON vazifasi.
-
-    `is_active` maydoni O'ZGARTIRILMAYDI (u asosiy botga tegishli). Yetib
-    bormagan userlar shunchaki "yetib bormadi" deb sanaladi.
+    Dilshodbek bot userlarga xabar yuborish — FON vazifasi.
+    Faqat started_dilshodbek_bot=True bo'lgan userlarga yuboriladi.
     """
     from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
     from sqlalchemy import select
@@ -169,7 +167,9 @@ async def _run_broadcast(bot, text: str, progress_msg) -> None:
 
     sent = failed = unreachable = 0
     async with AsyncSessionLocal() as session:
-        users = (await session.execute(select(User))).scalars().all()
+        users = (await session.execute(
+            select(User).where(User.started_dilshodbek_bot == True)  # noqa: E712
+        )).scalars().all()
         total = len(users)
 
         for i, user in enumerate(users, 1):
