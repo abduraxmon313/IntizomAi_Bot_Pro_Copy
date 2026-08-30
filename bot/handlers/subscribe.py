@@ -76,6 +76,7 @@ async def render_subscription(
     bonus_days: int = 0,
     promo_code: str | None = None,
     force_plans: bool = False,
+    discount_percent: int = 0,
 ):
     """
     Obuna sahifasini ko'rsatadi (holatga qarab).
@@ -141,6 +142,12 @@ async def render_subscription(
             f"Har bir tarifga <b>+{bonus_days} kun</b> qo'shildi! 🎁\n\n"
             "👇 Tarifni tanlang:"
         )
+    elif discount_percent > 0 and promo_code:
+        text += (
+            f"🎯 <b>Promokod qabul qilindi:</b> <code>{promo_code}</code>\n"
+            f"1 oylik va 3 oylik tariflarga <b>{discount_percent}% chegirma</b> qo'llandi! 🔥\n\n"
+            "👇 Tarifni tanlang:"
+        )
     else:
         text += "👇 Tarifni tanlang:"
 
@@ -149,14 +156,19 @@ async def render_subscription(
         parse_mode="HTML",
         reply_markup=plans_keyboard(
             bonus_days=bonus_days, promo_applied=bool(promo_code),
+            discount_percent=discount_percent,
         ),
     )
 
 
-async def _state_promo(state: FSMContext) -> tuple[int, str | None]:
-    """FSM holatidan qo'llangan promokod bonusini o'qiydi."""
+async def _state_promo(state: FSMContext) -> tuple[int, str | None, int]:
+    """FSM holatidan qo'llangan promokod bonusini va chegirmasini o'qiydi."""
     data = await state.get_data()
-    return int(data.get("promo_bonus_days") or 0), data.get("promo_code")
+    return (
+        int(data.get("promo_bonus_days") or 0),
+        data.get("promo_code"),
+        int(data.get("promo_discount_percent") or 0),
+    )
 
 
 async def open_premium_flow(
@@ -272,10 +284,11 @@ async def subscription_button(message: Message, state: FSMContext, session: Asyn
 @router.callback_query(F.data == "open_subscription")
 async def open_subscription_cb(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     # State TOZALANMAYDI — qo'llangan promokod tariflarga qaytganda saqlanadi.
-    bonus_days, promo_code = await _state_promo(state)
+    bonus_days, promo_code, discount_percent = await _state_promo(state)
     await render_subscription(
         callback.message, session, callback.from_user.id,
         bonus_days=bonus_days, promo_code=promo_code,
+        discount_percent=discount_percent,
     )
     await callback.answer()
 
@@ -287,11 +300,12 @@ async def sub_extend_cb(callback: CallbackQuery, state: FSMContext, session: Asy
     tariflar ro'yxati chiqadi. To'lovdan so'ng kunlar mavjud tugash sanasi ustiga
     additiv qo'shiladi (activate_subscription ichida).
     """
-    bonus_days, promo_code = await _state_promo(state)
+    bonus_days, promo_code, discount_percent = await _state_promo(state)
     await render_subscription(
         callback.message, session, callback.from_user.id,
         bonus_days=bonus_days, promo_code=promo_code,
         force_plans=True,
+        discount_percent=discount_percent,
     )
     await callback.answer()
 
@@ -489,12 +503,17 @@ async def receive_promocode(message: Message, state: FSMContext, session: AsyncS
         return
 
     # ── `+` turi (sotib olish + bonus): bonusni holatga saqlaymiz ──
-    await state.update_data(promo_code=code, promo_bonus_days=int(result.bonus_days or 0))
+    await state.update_data(
+        promo_code=code,
+        promo_bonus_days=int(result.bonus_days or 0),
+        promo_discount_percent=int(result.discount_percent or 0),
+    )
     await state.set_state(None)  # tariflar bosqichiga qaytamiz (data saqlanadi)
 
     await render_subscription(
         message, session, message.from_user.id,
         bonus_days=int(result.bonus_days or 0), promo_code=code,
+        discount_percent=int(result.discount_percent or 0),
     )
     logger.info(f"🎟 Promokod qo'llandi: user={message.from_user.id} code={code} bonus={result.bonus_days}")
 
@@ -521,7 +540,7 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
     # tugash sanasi USTIGA kunlarni additiv qo'shadi.
     is_extending = user_is_premium(user)
 
-    bonus_days, promo_code = await _state_promo(state)
+    bonus_days, promo_code, discount_percent = await _state_promo(state)
 
     # Promokod hali ham amaldami — qayta tekshiramiz.
     # Bu bosqichga faqat `+` (sotib olish) turidagi promokodlar keladi; bepul
@@ -530,13 +549,22 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
         recheck = await validate_promocode(session, promo_code)
         if recheck.valid and not recheck.is_free:
             bonus_days = int(recheck.bonus_days or 0)
+            discount_percent = int(recheck.discount_percent or 0)
         else:
-            bonus_days, promo_code = 0, None
-            await state.update_data(promo_code=None, promo_bonus_days=0)
+            bonus_days, promo_code, discount_percent = 0, None, 0
+            await state.update_data(promo_code=None, promo_bonus_days=0, promo_discount_percent=0)
+
+    # Chegirmali narxni hisoblash (agar promokod chegirmali bo'lsa)
+    if discount_percent > 0:
+        from bot.services.plan_pricing import get_discounted_plan
+        display_plan = get_discounted_plan(plan_key, discount_percent) or plan
+    else:
+        display_plan = plan
 
     # To'lov oynasi (obuna sotib olinadi yoki uzaytiriladi)
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
+    discount_line = f"\n🔥 Chegirma: <b>{discount_percent}%</b>" if discount_percent > 0 and plan_key in ("1m", "3m") else ""
     if PAYLOV_ENABLED:
         note_open = (
             "💳 <b>To'lov usulini tanlang</b> 👇\n"
@@ -559,7 +587,7 @@ async def choose_plan(callback: CallbackQuery, state: FSMContext, session: Async
         "━━━━━━━━━━━━━━━\n"
         f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
         f"📅 Qo'shiladigan kun: <b>{total_days} kun</b>\n"
-        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
+        f"💰 Narx: <b>{format_price(display_plan['price'])} so'm</b>{discount_line}\n\n"
         f"{note}"
     )
     await callback.message.edit_text(
@@ -603,7 +631,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
     # kelishi mumkin. `activate_subscription` webhook'da kunlarni mavjud tugash
     # sanasi ustiga additiv qo'shadi.
 
-    bonus_days, promo_code = await _state_promo(state)
+    bonus_days, promo_code, discount_percent = await _state_promo(state)
 
     # Promokod hali ham amaldami — qayta tekshiramiz (xavfsizlik uchun).
     # Bepul (`-`) turdagi kod to'lov oqimiga umuman ta'sir qilmasligi kerak.
@@ -611,8 +639,9 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         recheck = await validate_promocode(session, promo_code)
         if recheck.valid and not recheck.is_free:
             bonus_days = int(recheck.bonus_days or 0)
+            discount_percent = int(recheck.discount_percent or 0)
         else:
-            bonus_days, promo_code = 0, None
+            bonus_days, promo_code, discount_percent = 0, None, 0
 
     # ── To'lov tizimi hali sozlanmagan (kalitlar yo'q) — Phase 1 ──
     # Tugma bosilsa hech narsa faollashtirilmaydi (bepul premium berilmaydi).
@@ -629,7 +658,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
     try:
         order, checkout_url = await create_checkout_order(
             session, user, plan_key, bonus_days=bonus_days, promo_code=promo_code,
-            provider=provider,
+            provider=provider, discount_percent=discount_percent,
         )
     except (PaylovError, Exception) as e:
         logger.error(f"❌ Checkout yaratishda xato: {type(e).__name__}: {e}")
@@ -643,6 +672,15 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
     total_days = plan["days"] + bonus_days
     bonus_line = f" <b>+{bonus_days} kun</b> (promokod)" if bonus_days > 0 else ""
     prov_label = PROVIDER_LABELS.get(order.provider, order.provider.capitalize())
+
+    # Chegirmali narxni ko'rsatish
+    if discount_percent > 0:
+        from bot.services.plan_pricing import get_discounted_plan
+        display_plan = get_discounted_plan(plan_key, discount_percent) or plan
+    else:
+        display_plan = plan
+    discount_line = f"\n🔥 Chegirma: <b>{discount_percent}%</b>" if discount_percent > 0 and plan_key in ("1m", "3m") else ""
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=f"💳 {prov_label} orqali to'lash", url=checkout_url)],
         [InlineKeyboardButton(text="🔙 Tariflarga qaytish", callback_data="open_subscription")],
@@ -653,7 +691,7 @@ async def pay_plan(callback: CallbackQuery, state: FSMContext, session: AsyncSes
         f"📦 Tarif: <b>{plan['title']}</b>{bonus_line}\n"
         f"🏦 To'lov usuli: <b>{prov_label}</b>\n"
         f"📅 Muddat: <b>{total_days} kun</b>\n"
-        f"💰 Narx: <b>{format_price(plan['price'])} so'm</b>\n\n"
+        f"💰 Narx: <b>{format_price(display_plan['price'])} so'm</b>{discount_line}\n\n"
         f"Quyidagi <b>«💳 {prov_label} orqali to'lash»</b> tugmasi orqali to'lovni yakunlang.\n"
         "To'lov muvaffaqiyatli bo'lgach, <b>premium avtomatik ochiladi</b> va "
         "sizga xabar keladi 🔔",

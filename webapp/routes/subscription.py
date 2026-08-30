@@ -32,6 +32,8 @@ class PlanOut(BaseModel):
     price_label: str
     emoji: Optional[str] = None
     tag: Optional[str] = None
+    original_price: Optional[int] = None
+    original_price_label: Optional[str] = None
 
 
 class SubscriptionOut(BaseModel):
@@ -47,14 +49,24 @@ class SubscriptionOut(BaseModel):
     bot_username: str
 
 
-def _plans_catalog() -> list[PlanOut]:
+def _plans_catalog(discount_percent: int = 0) -> list[PlanOut]:
     """
     Mini App katalogi — bot bilan bir xil "effective" (admin override qilgan)
     tariflardan olinadi. Shu tariqa foydalanuvchi ko'rgan narx checkout paytida
     to'lanadigan narxga aynan mos keladi (bot/webapp mismatch bo'lmaydi).
+
+    discount_percent > 0 bo'lsa — 1m va 3m tariflarga chegirma qo'llanadi.
     """
-    return [
-        PlanOut(
+    if discount_percent > 0:
+        from bot.services.plan_pricing import get_discounted_plans
+        plans_data = get_discounted_plans(discount_percent)
+    else:
+        plans_data = get_plans()
+
+    result = []
+    for key, p in plans_data.items():
+        original_price = p.get("original_price")
+        result.append(PlanOut(
             key=key,
             title=p["title"],
             days=p["days"],
@@ -62,17 +74,27 @@ def _plans_catalog() -> list[PlanOut]:
             price_label=format_price(p["price"]),
             emoji=p.get("emoji"),
             tag=p.get("tag") or None,
-        )
-        for key, p in get_plans().items()
-    ]
+            original_price=original_price if original_price and original_price != p["price"] else None,
+            original_price_label=format_price(original_price) if original_price and original_price != p["price"] else None,
+        ))
+    return result
 
 
 @router.get("/subscription", response_model=SubscriptionOut)
 async def get_subscription(
     telegram_id: int = Depends(resolve_telegram_id),
     session: AsyncSession = Depends(get_session),
+    promo_code: Optional[str] = None,
 ):
     bot_username = (BOT_USERNAME or "intizomAi_bot").lstrip("@")
+
+    # Promokod bo'lsa — chegirma foizini aniqlaymiz
+    discount_percent = 0
+    if promo_code:
+        from bot.services.premium_service import validate_promocode
+        result = await validate_promocode(session, promo_code)
+        if result.valid and result.discount_percent > 0:
+            discount_percent = result.discount_percent
 
     user = await get_user_by_telegram_id(session, telegram_id)
     if not user:
@@ -81,7 +103,7 @@ async def get_subscription(
             is_premium=False,
             days_left=0,
             free_daily_plan_limit=FREE_DAILY_PLAN_LIMIT,
-            plans=_plans_catalog(),
+            plans=_plans_catalog(discount_percent=discount_percent),
             bot_username=bot_username,
         )
 
@@ -93,7 +115,7 @@ async def get_subscription(
         plan=status.plan,
         plan_title=status.plan_title,
         free_daily_plan_limit=FREE_DAILY_PLAN_LIMIT,
-        plans=_plans_catalog(),
+        plans=_plans_catalog(discount_percent=discount_percent),
         bot_username=bot_username,
     )
 
