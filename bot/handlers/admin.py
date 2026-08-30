@@ -40,6 +40,7 @@ class AdminState(StatesGroup):
     premium_revoke = State()          # ID kutish
     promo_create = State()            # promokod yaratish
     promo_discount_create = State()    # maxsus (chegirmali) promokod yaratish
+    promo_discount_message = State()   # maxsus promokod uchun xabar matni kutish
     # Tarif narxini o'zgartirish (yangi narxni so'mda kutish)
     plan_price_edit = State()
     # To'lovni qo'lda faollashtirish (external_id yoki payment_id orqali)
@@ -1713,9 +1714,9 @@ async def admin_promo_discount_create_process(message: Message, state: FSMContex
         created_by=message.from_user.id, expires_at=expires_at,
         is_free=False, discount_percent=50,
     )
-    await state.clear()
 
     if not promo:
+        await state.clear()
         await message.answer(
             f"⚠️ <code>{code}</code> allaqachon mavjud.",
             parse_mode="HTML",
@@ -1725,6 +1726,13 @@ async def admin_promo_discount_create_process(message: Message, state: FSMContex
 
     uses_label = "cheksiz" if max_uses == 0 else f"{max_uses} marta"
     valid_label = "muddatsiz" if valid_days == 0 else f"{valid_days} kun"
+
+    # Promokod yaratildi — endi xabar matnini so'raymiz
+    await state.update_data(
+        discount_promo_code=promo.code,
+        discount_promo_id=promo.id,
+    )
+    await state.set_state(AdminState.promo_discount_message)
 
     await message.answer(
         f"✅ <b>Maxsus promokod yaratildi!</b>\n\n"
@@ -1737,10 +1745,111 @@ async def admin_promo_discount_create_process(message: Message, state: FSMContex
         f"⭐ 3 oy — <b>39 900 so'm</b> (50% chegirma 🔥)\n"
         f"💎 12 oy — <b>179 900 so'm</b> (o'zgarmaydi)\n\n"
         f"🔢 Limit: <b>{uses_label}</b>\n"
-        f"⏳ Amal qiladi: <b>{valid_label}</b>",
+        f"⏳ Amal qiladi: <b>{valid_label}</b>\n\n"
+        "━━━━━━━━━━━━━━━\n"
+        "📢 Endi <b>barcha userlarga yuboriladigan xabar</b> matnini yozing.\n\n"
+        "Bu xabar:\n"
+        "• Hozirgi barcha userlarga yuboriladi\n"
+        "• Promokod amal qilayotgan paytda yangi qo'shilgan userlarga ham avtomatik yuboriladi\n\n"
+        "<i>HTML format ishlaydi:\n"
+        "&lt;b&gt;bold&lt;/b&gt; → <b>bold</b>\n"
+        "&lt;i&gt;italic&lt;/i&gt; → <i>italic</i></i>",
         parse_mode="HTML",
         reply_markup=back_to_premium_keyboard(),
     )
+
+
+async def _run_promo_broadcast(bot, broadcast_text, progress_msg):
+    """
+    Maxsus promokod xabarini barcha userlarga yuborish — FON vazifasi.
+    `_run_broadcast_all` bilan bir xil pattern (flood-control + blocked user handling).
+    """
+    import asyncio as _asyncio
+    from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
+    from sqlalchemy import select
+    from database.db import AsyncSessionLocal
+    from bot.models.user import User
+
+    sent = failed = blocked = 0
+    async with AsyncSessionLocal() as session:
+        users = (await session.execute(select(User))).scalars().all()
+        total = len(users)
+        for i, user in enumerate(users, 1):
+            try:
+                await bot.send_message(user.telegram_id, broadcast_text, parse_mode="HTML")
+                sent += 1
+            except TelegramRetryAfter as e:
+                await _asyncio.sleep(e.retry_after + 1)
+                try:
+                    await bot.send_message(user.telegram_id, broadcast_text, parse_mode="HTML")
+                    sent += 1
+                except Exception:
+                    failed += 1
+            except TelegramForbiddenError:
+                blocked += 1
+                user.is_active = False
+            except Exception:
+                failed += 1
+
+            if i % 25 == 0:
+                try:
+                    await progress_msg.edit_text(f"⏳ Yuborilmoqda... {i}/{total}")
+                except Exception:
+                    pass
+                try:
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+            await _asyncio.sleep(0.05)
+
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+    try:
+        await progress_msg.edit_text(
+            f"✅ <b>Promokod xabari yuborildi!</b>\n\n"
+            f"👥 Jami: <b>{total} ta</b>\n"
+            f"✅ Muvaffaqiyatli: <b>{sent} ta</b>\n"
+            f"🚫 Bloklagan: <b>{blocked} ta</b>\n"
+            f"❌ Yuborilmadi: <b>{failed} ta</b>\n\n"
+            f"<i>Yangi qo'shilgan userlarga ham promokod amal qilayotgan paytda "
+            f"shu xabar avtomatik yuboriladi.</i>",
+            parse_mode="HTML",
+            reply_markup=back_to_premium_keyboard(),
+        )
+    except Exception:
+        pass
+
+
+@router.message(AdminState.promo_discount_message)
+async def admin_promo_discount_message_process(message: Message, state: FSMContext, session: AsyncSession):
+    """Maxsus promokod uchun xabar matnini qabul qilish va broadcast boshlash."""
+    if not await is_admin(session, message.from_user.id):
+        return
+
+    broadcast_text = (message.text or "").strip()
+    if not broadcast_text:
+        await message.answer(
+            "❌ Xabar matni bo'sh. Iltimos, xabar yozing:",
+            parse_mode="HTML",
+        )
+        return
+
+    data = await state.get_data()
+    promo_code = data.get("discount_promo_code", "")
+
+    # app_settings ga saqlash — yangi userlar uchun
+    from bot.services.app_settings import set_setting
+    await set_setting(session, "discount_promo_message", broadcast_text)
+    await set_setting(session, "discount_promo_code", promo_code)
+
+    await state.clear()
+
+    # Broadcast boshlash (orqa fonda)
+    progress_msg = await message.answer("⏳ Xabar yuborish boshlandi... (orqa fonda davom etadi)")
+    asyncio.create_task(_run_promo_broadcast(message.bot, broadcast_text, progress_msg))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1811,6 +1920,13 @@ async def admin_promo_del(callback: CallbackQuery, session: AsyncSession):
     from bot.services.premium_service import delete_promocode, list_promocodes
     code = await delete_promocode(session, promo_id)
     if code:
+        # Agar o'chirilgan promokod faol maxsus promokod bo'lsa — saqlangan
+        # broadcast xabarini ham tozalaymiz (yangi userlarga yuborilmasin).
+        from bot.services.app_settings import get_setting, set_setting
+        stored_code = await get_setting(session, "discount_promo_code")
+        if stored_code and stored_code.strip().lower() == code.strip().lower():
+            await set_setting(session, "discount_promo_message", None)
+            await set_setting(session, "discount_promo_code", None)
         await callback.answer(f"🗑 {code} o'chirildi", show_alert=True)
     else:
         await callback.answer("Promokod topilmadi", show_alert=True)
