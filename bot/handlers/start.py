@@ -26,6 +26,36 @@ from bot.services.group_service import (
 router = Router()
 
 
+async def _send_active_promo_message(message: Message, session: AsyncSession) -> None:
+    """
+    Agar faol maxsus (chegirmali) promokod bor bo'lsa va uning broadcast
+    xabari saqlangan bo'lsa — yangi foydalanuvchiga shu xabarni yuboradi.
+
+    Promokodning muddati tugagan bo'lsa — xabar yuborilmaydi va saqlangan
+    ma'lumot avtomatik tozalanadi.
+    """
+    from bot.services.app_settings import get_setting, set_setting
+
+    promo_msg = await get_setting(session, "discount_promo_message")
+    promo_code = await get_setting(session, "discount_promo_code")
+    if not promo_msg or not promo_code:
+        return
+
+    # Promokod hali amaldami tekshiramiz
+    from bot.services.premium_service import validate_promocode
+    result = await validate_promocode(session, promo_code)
+    if not result.valid or result.discount_percent <= 0:
+        # Promokod muddati tugagan yoki o'chirilgan — saqlangan xabarni tozalaymiz
+        await set_setting(session, "discount_promo_message", None)
+        await set_setting(session, "discount_promo_code", None)
+        return
+
+    try:
+        await message.answer(promo_msg, parse_mode="HTML")
+    except Exception:
+        pass
+
+
 def parse_premium_payload(args: str | None) -> tuple[bool, str | None]:
     """
     `/start` payload'ini tekshiradi (Mini App tariflar tugmasidan kelgan
@@ -173,6 +203,9 @@ async def start_handler(message: Message, command: CommandObject, session: Async
                 "⚠️ Premium oynasini ochib bo'lmadi. Iltimos, «💎 Premium» "
                 "tugmasini bosib qayta urinib ko'ring.",
             )
+        # Yangi userga faol maxsus promokod xabarini yuborish
+        if is_new:
+            await _send_active_promo_message(message, session)
         return
 
     # Eslatma: 3 kunlik trial funksiyasi butunlay olib tashlangan. Bepul
@@ -210,6 +243,9 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             parse_mode="HTML",
             reply_markup=_persona_kb(),
         )
+        # Yangi userga faol maxsus promokod xabarini yuborish
+        if is_new:
+            await _send_active_promo_message(message, session)
         return
 
     # ── Mavjud (onboarding tugatgan) foydalanuvchi ──
