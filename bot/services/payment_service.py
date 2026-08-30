@@ -99,17 +99,25 @@ def _gen_external_id(user_id: int) -> str:
 
 async def create_checkout_order(session, user, plan_key: str,
                                 bonus_days: int = 0, promo_code: str | None = None,
-                                provider: str | None = None):
+                                provider: str | None = None,
+                                discount_percent: int = 0):
     """
     PaymentOrder (pending) yaratadi va Paylov checkout URL oladi.
     provider — to'lov provayderi (payme/click/uzum/paylov). None bo'lsa default.
+    discount_percent — maxsus promokod chegirmasi (masalan 50 = 50%).
     Qaytaradi: (order, checkout_url). checkout_url None bo'lsa — xato.
     """
     # Effective narx — admin o'zgartirgan narx ustuvor.
     # `SUBSCRIPTION_PLANS` — tarif kaliti va meta (kunlar/emoji/teg) uchun,
     # narx `plan_pricing` xizmatidan olinadi.
     from bot.services.plan_pricing import get_effective_plan
-    plan = get_effective_plan(plan_key) or SUBSCRIPTION_PLANS.get(plan_key)
+
+    # Chegirmali narxni hisoblash (faqat 1m va 3m tariflarga)
+    if discount_percent > 0 and plan_key in ("1m", "3m"):
+        from bot.services.plan_pricing import get_discounted_plan
+        plan = get_discounted_plan(plan_key, discount_percent) or get_effective_plan(plan_key) or SUBSCRIPTION_PLANS.get(plan_key)
+    else:
+        plan = get_effective_plan(plan_key) or SUBSCRIPTION_PLANS.get(plan_key)
     if not plan:
         raise ValueError(f"Noma'lum tarif: {plan_key}")
 

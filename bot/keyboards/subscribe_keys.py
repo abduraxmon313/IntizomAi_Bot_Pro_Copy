@@ -17,22 +17,34 @@ PROVIDER_LABELS = {
 }
 
 
-def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False) -> InlineKeyboardMarkup:
+def plans_keyboard(bonus_days: int = 0, promo_applied: bool = False,
+                   discount_percent: int = 0) -> InlineKeyboardMarkup:
     """
     Obuna planlarini tanlash klaviaturasi (obuna sotib olish uchun).
       • bonus_days>0 (`+` turidagi promokod) → har bir tarif nomida "+N kun" qo'shiladi.
+      • discount_percent>0 (maxsus promokod) → 1m va 3m tariflarga chegirma ko'rsatiladi.
 
     Eslatma: bepul (`-`) turdagi promokodlar bu klaviaturaga kelmaydi — ular
     kiritilishi bilan darhol (to'lovsiz) faollashtiriladi.
     """
     rows = []
-    # Effective plans — admin o'zgartirgan narxlar keshdan keladi.
-    for key, plan in get_plans().items():
+
+    # Chegirmali yoki oddiy planlarni olish.
+    if discount_percent > 0:
+        from bot.services.plan_pricing import get_discounted_plans
+        plans = get_discounted_plans(discount_percent)
+    else:
+        plans = get_plans()
+
+    for key, plan in plans.items():
         emoji = plan.get("emoji", "💎")
         tag = plan.get("tag", "")
         tag_str = f" ({tag})" if tag else ""
         if bonus_days > 0:
             label = f"{emoji} {plan['title']} +{bonus_days} kun — {format_price(plan['price'])} so'm"
+        elif discount_percent > 0 and key in ("1m", "3m"):
+            # Chegirmali ko'rinish: ✅ 1 oy — 19 900 so'm (50% chegirma 🔥)
+            label = f"{emoji} {plan['title']} — {format_price(plan['price'])} so'm{tag_str}"
         else:
             label = f"{emoji} {plan['title']} — {format_price(plan['price'])} so'm{tag_str}"
         rows.append([

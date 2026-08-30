@@ -331,6 +331,7 @@ class PromoResult:
     plan_override: Optional[str] = None
     bonus_days: int = 0
     is_free: bool = False          # True (`-`) = to'lovsiz avtomatik; False (`+`) = sotib olish + bonus
+    discount_percent: int = 0      # 0 = chegirmasiz; 50 = 50% chegirma (maxsus promokod)
     promo: Optional[Promocode] = None
 
 
@@ -366,6 +367,7 @@ async def validate_promocode(session: AsyncSession, code: str) -> PromoResult:
         plan_override=promo.plan,
         bonus_days=promo.bonus_days or 0,
         is_free=bool(promo.is_free),
+        discount_percent=int(getattr(promo, "discount_percent", 0) or 0),
         promo=promo,
     )
 
@@ -453,11 +455,13 @@ async def create_promocode(
     created_by: Optional[int] = None,
     expires_at: Optional[datetime] = None,
     is_free: bool = False,
+    discount_percent: int = 0,
 ) -> Optional[Promocode]:
     """Yangi promokod yaratadi (admin). Mavjud bo'lsa None qaytaradi.
 
     `is_free=True` (`-`) → to'lovsiz avtomatik `bonus_days` kun premium.
     `is_free=False` (`+`) → foydalanuvchi obuna sotib oladi, `bonus_days` bonus.
+    `discount_percent>0` → maxsus chegirma promokod (masalan 50 = 50% chegirma).
     """
     norm = code.strip()
     existing = await session.execute(
@@ -473,6 +477,7 @@ async def create_promocode(
         created_by=created_by,
         expires_at=expires_at,
         is_free=is_free,
+        discount_percent=max(0, min(100, discount_percent)),
     )
     session.add(promo)
     await session.commit()

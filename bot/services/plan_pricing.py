@@ -98,6 +98,42 @@ def get_effective_plan(plan_key: str) -> Optional[dict]:
     return _effective_plans.get(plan_key)
 
 
+def get_discounted_plans(discount_percent: int) -> dict:
+    """
+    Chegirmali tariflarni qaytaradi. 1m va 3m tariflarga chegirma qo'llanadi,
+    12m o'zgarmaydi.
+
+    Qaytaradi: {plan_key: {..., "price": chegirmali_narx, "original_price": asl_narx, "tag": "50% chegirma 🔥"}}
+    """
+    if discount_percent <= 0 or discount_percent > 100:
+        return get_effective_plans()
+
+    import copy
+    plans = copy.deepcopy(_effective_plans)
+
+    # Faqat 1m va 3m tariflarga chegirma qo'llanadi; 12m o'zgarmaydi.
+    discount_keys = {"1m", "3m"}
+    for key, plan in plans.items():
+        if key in discount_keys:
+            original_price = plan["price"]
+            discounted_price = int(original_price * (100 - discount_percent) / 100)
+            # 100 ga yaxlitlash (masalan 39900 * 0.5 = 19950 → 19900)
+            discounted_price = (discounted_price // 100) * 100
+            plan["original_price"] = original_price
+            plan["price"] = discounted_price
+            plan["tag"] = f"{discount_percent}% chegirma 🔥"
+        else:
+            plan["original_price"] = plan["price"]
+
+    return plans
+
+
+def get_discounted_plan(plan_key: str, discount_percent: int) -> Optional[dict]:
+    """Bitta tarif uchun chegirmali ma'lumotni qaytaradi."""
+    plans = get_discounted_plans(discount_percent)
+    return plans.get(plan_key)
+
+
 async def set_plan_meta(
     session: AsyncSession,
     plan_key: str,

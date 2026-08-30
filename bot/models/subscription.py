@@ -62,6 +62,7 @@ class Promocode(Base):
     plan = Column(String(16), nullable=True)          # 1m | 3m | 6m | 12m | None
     bonus_days = Column(Integer, default=0)
     is_free = Column(Boolean, default=False)          # True (`-`) = to'lovsiz; False (`+`) = sotib olish + bonus
+    discount_percent = Column(Integer, default=0)     # 0 = chegirmasiz; 50 = 50% chegirma (maxsus promokod)
 
     max_uses = Column(Integer, default=0)             # 0 = cheksiz
     used_count = Column(Integer, default=0)

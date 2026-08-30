@@ -39,6 +39,7 @@ class AdminState(StatesGroup):
     premium_grant = State()           # "ID plan" kutish
     premium_revoke = State()          # ID kutish
     promo_create = State()            # promokod yaratish
+    promo_discount_create = State()    # maxsus (chegirmali) promokod yaratish
     # Tarif narxini o'zgartirish (yangi narxni so'mda kutish)
     plan_price_edit = State()
     # To'lovni qo'lda faollashtirish (external_id yoki payment_id orqali)
@@ -1643,6 +1644,106 @@ async def admin_promo_create_process(message: Message, state: FSMContext, sessio
 
 
 # ─────────────────────────────────────────────────────────────
+#  🎯 MAXSUS (CHEGIRMALI) PROMOKOD YARATISH
+# ─────────────────────────────────────────────────────────────
+@router.callback_query(F.data == "admin_promo_discount_create")
+async def admin_promo_discount_create_start(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, callback.from_user.id):
+        await callback.answer("❌ Ruxsat yo'q!", show_alert=True)
+        return
+    await callback.message.edit_text(
+        "🎯 <b>Maxsus promokod yaratish</b>\n\n"
+        "Bu turdagi promokod foydalanuvchiga <b>chegirma</b> beradi.\n"
+        "1 oylik va 3 oylik tariflarga chegirma qo'llanadi.\n"
+        "12 oylik tarif o'zgarmaydi.\n\n"
+        "Format: <code>KOD [max_uses] [amal_kun]</code>\n\n"
+        "• <b>KOD</b>: promokod matni\n"
+        "• <b>max_uses</b>: nechta marta ishlatilsin (0 = cheksiz)\n"
+        "• <b>amal_kun</b>: promokod necha kun amal qiladi (0 = muddatsiz)\n\n"
+        "Masalan:\n"
+        "<code>CHEGIRMA50 100 30</code> — 100 marta, 30 kun amal qiladi\n"
+        "<code>VIP2026 0 0</code> — cheksiz, muddatsiz\n"
+        "<code>SALE</code> — cheksiz, muddatsiz",
+        parse_mode="HTML",
+        reply_markup=back_to_premium_keyboard(),
+    )
+    await state.set_state(AdminState.promo_discount_create)
+    await callback.answer()
+
+
+@router.message(AdminState.promo_discount_create)
+async def admin_promo_discount_create_process(message: Message, state: FSMContext, session: AsyncSession):
+    if not await is_admin(session, message.from_user.id):
+        return
+
+    parts = (message.text or "").split()
+    if not parts:
+        await message.answer(
+            "❌ Format: <code>KOD [max_uses] [amal_kun]</code>\n"
+            "Masalan: <code>CHEGIRMA50 100 30</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    from datetime import datetime, timedelta
+    from bot.services.premium_service import create_promocode
+
+    code = parts[0].strip()
+
+    max_uses = 0
+    if len(parts) >= 2:
+        try:
+            max_uses = max(0, int(parts[1]))
+        except ValueError:
+            max_uses = 0
+
+    expires_at = None
+    valid_days = 0
+    if len(parts) >= 3:
+        try:
+            valid_days = max(0, int(parts[2]))
+        except ValueError:
+            valid_days = 0
+        if valid_days > 0:
+            expires_at = datetime.utcnow() + timedelta(days=valid_days)
+
+    # Maxsus promokod: 50% chegirma, bonus_days=0, is_free=False
+    promo = await create_promocode(
+        session, code=code, bonus_days=0, max_uses=max_uses,
+        created_by=message.from_user.id, expires_at=expires_at,
+        is_free=False, discount_percent=50,
+    )
+    await state.clear()
+
+    if not promo:
+        await message.answer(
+            f"⚠️ <code>{code}</code> allaqachon mavjud.",
+            parse_mode="HTML",
+            reply_markup=back_to_premium_keyboard(),
+        )
+        return
+
+    uses_label = "cheksiz" if max_uses == 0 else f"{max_uses} marta"
+    valid_label = "muddatsiz" if valid_days == 0 else f"{valid_days} kun"
+
+    await message.answer(
+        f"✅ <b>Maxsus promokod yaratildi!</b>\n\n"
+        f"🎯 Kod: <code>{promo.code}</code>\n"
+        f"🔥 Chegirma: <b>50%</b>\n"
+        f"📦 Qo'llanadi: <b>1 oylik va 3 oylik</b> tariflarga\n"
+        f"💎 12 oylik: <b>o'zgarmaydi</b>\n\n"
+        f"Natija:\n"
+        f"✅ 1 oy — <b>19 900 so'm</b> (50% chegirma 🔥)\n"
+        f"⭐ 3 oy — <b>39 900 so'm</b> (50% chegirma 🔥)\n"
+        f"💎 12 oy — <b>179 900 so'm</b> (o'zgarmaydi)\n\n"
+        f"🔢 Limit: <b>{uses_label}</b>\n"
+        f"⏳ Amal qiladi: <b>{valid_label}</b>",
+        parse_mode="HTML",
+        reply_markup=back_to_premium_keyboard(),
+    )
+
+
+# ─────────────────────────────────────────────────────────────
 #  PROMOKODLAR RO'YXATI + KUCHSIZLANTIRISH
 # ─────────────────────────────────────────────────────────────
 def _promos_text(promos: list) -> str:
@@ -1653,7 +1754,10 @@ def _promos_text(promos: list) -> str:
     text = "🎟 <b>Promokodlar</b>\n\n"
     for p in promos:
         uses = f"{p.used_count}/{p.max_uses}" if p.max_uses else f"{p.used_count}/∞"
-        if getattr(p, "is_free", False):
+        discount_pct = int(getattr(p, "discount_percent", 0) or 0)
+        if discount_pct > 0:
+            kind = f"🎯 {discount_pct}% chegirma"
+        elif getattr(p, "is_free", False):
             kind = f"🎁 BEPUL {p.bonus_days} kun"
         else:
             kind = f"💳 +{p.bonus_days} kun (to'lov bilan)"

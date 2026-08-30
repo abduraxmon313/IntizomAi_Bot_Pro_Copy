@@ -92,6 +92,7 @@ PAYMENT_ORDER_NEW_COLUMNS = [
 # promocodes jadvali uchun yangi ustunlar.
 PROMOCODE_NEW_COLUMNS = [
     ("is_free", "BOOLEAN DEFAULT FALSE"),
+    ("discount_percent", "INTEGER DEFAULT 0"),
 ]
 
 # subscription_plan_overrides jadvaliga tugma yozuvi va bezaklarini ham

@@ -96,6 +96,9 @@ def admin_premium_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📋 Promokodlar", callback_data="admin_promo_list"),
         ],
         [
+            InlineKeyboardButton(text="🎯 Maxsus promokod", callback_data="admin_promo_discount_create"),
+        ],
+        [
             InlineKeyboardButton(text="💰 Tariflar narxi", callback_data="admin_plans_prices"),
         ],
         [
