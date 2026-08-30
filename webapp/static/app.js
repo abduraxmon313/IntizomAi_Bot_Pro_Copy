@@ -2352,7 +2352,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
   const _shareCard=document.getElementById('shareCard');if(_shareCard)_shareCard.onclick=shareInvite;
   const _chBtn=document.getElementById('channelBtn');if(_chBtn)_chBtn.onclick=()=>openTgLink('https://t.me/Intizom_AI');
-  const _adBtn=document.getElementById('adminBtn');if(_adBtn)_adBtn.onclick=()=>openTgLink('https://t.me/adxamovvvs');
+  const _adBtn=document.getElementById('adminBtn');if(_adBtn)_adBtn.onclick=()=>openTgLink('https://t.me/IntizomAI_Admin_bot');
+  const _igBtn=document.getElementById('instagramBtn');if(_igBtn)_igBtn.onclick=()=>{try{tg?.openLink('https://www.instagram.com/intizomai.uz');}catch(_){window.open('https://www.instagram.com/intizomai.uz','_blank');}}
 
   setTimeout(()=>{try{tg?.ready();}catch(_){}},100);
 });
