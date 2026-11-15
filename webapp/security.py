@@ -170,6 +170,18 @@ def resolve_telegram_id(request: Request, telegram_id: int | None = None) -> int
 
     HTTPException ko'taradi (401/400) agar aniqlab bo'lmasa.
     """
+    # Mobil ilova: `Authorization: Bearer <JWT>` (bot orqali tasdiqlangan kirish).
+    auth_header = request.headers.get("authorization") or ""
+    if auth_header.lower().startswith("bearer "):
+        from bot.services.app_auth import verify_app_token
+        app_tg_id = verify_app_token(auth_header[7:].strip())
+        if app_tg_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Sessiya muddati tugagan. Ilovaga qaytadan kiring.",
+            )
+        return app_tg_id
+
     init_data = None
     try:
         init_data = request.headers.get("x-telegram-init-data")
