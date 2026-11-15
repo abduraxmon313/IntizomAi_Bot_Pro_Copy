@@ -119,18 +119,21 @@ REFERRAL_PAYLOAD_PREFIX = "ref_"
 # ─────────────────────────────────────────────────────────────
 #  MOBIL ILOVA (JWT) AUTENTIFIKATSIYASI
 # ─────────────────────────────────────────────────────────────
-# Mobil ilova foydalanuvchini Telegram bot orqali autentifikatsiya qiladi:
-#   1) Foydalanuvchi ilovada "Telegram orqali kirish" tugmasini bosadi
-#   2) Bot /start app_login deep link'ni qabul qiladi
-#   3) Bot JWT token generatsiya qilib foydalanuvchiga yuboradi
-#   4) Foydalanuvchi tokenni ilovaga kiritadi (yoki deep link orqali qaytadi)
-#   5) Ilova token bilan /api/app/* endpointlariga so'rov yuboradi
+# Ilova Telegram bot orqali kiradi (bot/services/app_auth.py) va keyin
+# /api/webapp/* endpointlariga `Authorization: Bearer <JWT>` yuboradi.
 #
-# JWT_SECRET — token imzolash/tasdiqlash uchun maxfiy kalit.
-# PRODUCTION'da albatta o'zgartiring (Railway env orqali).
-JWT_SECRET = os.getenv("JWT_SECRET", "intizom-ai-app-secret-change-me")
+# JWT_SECRET env berilmasa, kalit BOT_TOKEN'dan hosil qilinadi (u allaqachon
+# maxfiy va serverda bor). Ochiq default qiymat YO'Q: aks holda istalgan odam
+# token yasab, boshqaning hisobiga kira olardi.
+import hashlib as _hashlib
+import hmac as _hmac
+
+JWT_SECRET = os.getenv("JWT_SECRET", "").strip() or (
+    _hmac.new(b"intizomai-mobile-jwt", (BOT_TOKEN or "").encode(), _hashlib.sha256).hexdigest()
+    if BOT_TOKEN else ""
+)
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_DAYS = int(os.getenv("JWT_EXPIRY_DAYS", 365))
+JWT_EXPIRY_DAYS = int(os.getenv("JWT_EXPIRY_DAYS", 180))
 
 
 

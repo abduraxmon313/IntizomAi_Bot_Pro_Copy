@@ -13,6 +13,7 @@ from .group import Group, GroupMember, GroupPermission
 from .plan_override import SubscriptionPlanOverride
 from .bot_chat import BotChat
 from .app_setting import AppSetting
+from .app_login import AppLoginRequest
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
@@ -22,4 +23,5 @@ __all__ = [
     "SubscriptionPlanOverride",
     "BotChat",
     "AppSetting",
+    "AppLoginRequest",
 ]

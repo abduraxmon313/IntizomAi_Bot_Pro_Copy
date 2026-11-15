@@ -165,21 +165,25 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         except Exception:
             joined_group_name = None
 
-    # ── Mobil ilova login (deep-link `app_login`) ─────────────────────
-    # Foydalanuvchi mobil ilovadan "Telegram orqali kirish" tugmasini bosdi →
-    # bu deep link bilan bot chatiga keldi. Bot JWT token generatsiya qilib
-    # foydalanuvchiga yuboradi — foydalanuvchi tokenni ilovaga kiritadi.
-    if command.args and command.args.strip().lower() == "app_login":
-        from bot.services.app_auth import create_app_token
-        token = create_app_token(user.id, user.telegram_id)
-        login_name = user.display_name or user.full_name or "do'st"
+    # ── Mobil ilovaga kirish (deep-link `applogin_<nonce>`) ───────────
+    # Ilova "Telegram orqali kirish" tugmasi shu havolani ochadi. Foydalanuvchi
+    # tasdiqlash tugmasini bosgandan keyingina ilova token oladi.
+    from bot.services.app_auth import parse_app_login_nonce, register_login_request
+    login_nonce = parse_app_login_nonce(command.args)
+    if login_nonce:
+        nonce_hash = await register_login_request(session, login_nonce)
         await message.answer(
-            f"📱 <b>Salom, {login_name}!</b>\n\n"
-            "Mobil ilovaga kirish uchun quyidagi tokenni nusxalab, "
-            "ilovadagi \"Token kiritish\" maydoniga joylang:\n\n"
-            f"<code>{token}</code>\n\n"
-            "⚠️ Bu tokenni boshqalarga bermang!",
+            "📱 <b>IntizomAI ilovasiga kirish</b>\n\n"
+            "Ilovaga shu Telegram hisobingiz bilan kirish uchun pastdagi tugmani bosing.\n\n"
+            "⚠️ Agar kirishni o'zingiz so'ramagan bo'lsangiz yoki havolani boshqa odam "
+            "yuborgan bo'lsa, tugmani <b>bosmang</b>.",
             parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text="✅ Ilovaga kirishni tasdiqlash",
+                    callback_data=f"applogin_ok:{nonce_hash}",
+                ),
+            ]]),
         )
         return
 
@@ -294,6 +298,28 @@ async def start_handler(message: Message, command: CommandObject, session: Async
                 "Bepul ochib ko'ring 👇 Cheksiz imkoniyat uchun 💎 <b>Premium</b>."
             )
         await message.answer(promo_text, parse_mode="HTML", reply_markup=webapp_kb)
+
+
+@router.callback_query(F.data.startswith("applogin_ok:"))
+async def app_login_confirm_handler(callback: CallbackQuery, session: AsyncSession):
+    from bot.services.app_auth import approve_login_request
+    nonce_hash = callback.data.split(":", 1)[1]
+    ok = await approve_login_request(session, nonce_hash, callback.from_user.id)
+    if ok:
+        text = (
+            "✅ <b>Tasdiqlandi!</b>\n\n"
+            "Endi IntizomAI ilovasiga qayting — u o'zi ochiladi."
+        )
+    else:
+        text = (
+            "⌛️ <b>Kirish so'rovi eskirgan.</b>\n\n"
+            "Ilovada «Telegram orqali kirish» tugmasini qaytadan bosing."
+        )
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML")
+    except Exception:
+        pass
+    await callback.answer("✅ Tasdiqlandi" if ok else "Eskirgan so'rov")
 
 
 @router.callback_query(F.data.startswith("ob_persona:"))

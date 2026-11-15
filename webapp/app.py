@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends, config
-from webapp.routes import app_api
+from webapp.routes import app_auth
 from webapp.security import (
     MAX_BODY_BYTES,
     RATE_LIMIT_MAX,
@@ -244,9 +244,9 @@ app.include_router(profile.router, prefix="/api/webapp")
 app.include_router(avatar.router, prefix="/api/webapp")
 app.include_router(friends.router, prefix="/api/webapp")
 app.include_router(config.router, prefix="/api/webapp")
-# ── Mobil ilova (Flutter) uchun REST API ──
-# JWT autentifikatsiya bilan, bot'dagi SHU BIR DB'dan ishlaydi.
-app.include_router(app_api.router, prefix="/api/v1")
+# Mobil ilova (Flutter) kirishi. Ilova qolgan barcha so'rovlarni yuqoridagi
+# /api/webapp/* endpointlariga `Authorization: Bearer <JWT>` bilan yuboradi.
+app.include_router(app_auth.router, prefix="/api/webapp")
 # Paylov webhook — /webhook/paylov (prefiksiz, /api/ ostida emas)
 app.include_router(payments.router)
 
