@@ -116,6 +116,22 @@ REFERRAL_REWARD_SOURCE = os.getenv("REFERRAL_REWARD_SOURCE", "referral").strip()
 # Deep-link payload prefiksi: https://t.me/<bot>?start=ref_<telegram_id>
 REFERRAL_PAYLOAD_PREFIX = "ref_"
 
+# ─────────────────────────────────────────────────────────────
+#  MOBIL ILOVA (JWT) AUTENTIFIKATSIYASI
+# ─────────────────────────────────────────────────────────────
+# Mobil ilova foydalanuvchini Telegram bot orqali autentifikatsiya qiladi:
+#   1) Foydalanuvchi ilovada "Telegram orqali kirish" tugmasini bosadi
+#   2) Bot /start app_login deep link'ni qabul qiladi
+#   3) Bot JWT token generatsiya qilib foydalanuvchiga yuboradi
+#   4) Foydalanuvchi tokenni ilovaga kiritadi (yoki deep link orqali qaytadi)
+#   5) Ilova token bilan /api/app/* endpointlariga so'rov yuboradi
+#
+# JWT_SECRET — token imzolash/tasdiqlash uchun maxfiy kalit.
+# PRODUCTION'da albatta o'zgartiring (Railway env orqali).
+JWT_SECRET = os.getenv("JWT_SECRET", "intizom-ai-app-secret-change-me")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_DAYS = int(os.getenv("JWT_EXPIRY_DAYS", 365))
+
 
 
 # ─────────────────────────────────────────────────────────────

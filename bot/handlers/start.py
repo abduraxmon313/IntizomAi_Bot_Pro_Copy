@@ -165,6 +165,24 @@ async def start_handler(message: Message, command: CommandObject, session: Async
         except Exception:
             joined_group_name = None
 
+    # ── Mobil ilova login (deep-link `app_login`) ─────────────────────
+    # Foydalanuvchi mobil ilovadan "Telegram orqali kirish" tugmasini bosdi →
+    # bu deep link bilan bot chatiga keldi. Bot JWT token generatsiya qilib
+    # foydalanuvchiga yuboradi — foydalanuvchi tokenni ilovaga kiritadi.
+    if command.args and command.args.strip().lower() == "app_login":
+        from bot.services.app_auth import create_app_token
+        token = create_app_token(user.id, user.telegram_id)
+        login_name = user.display_name or user.full_name or "do'st"
+        await message.answer(
+            f"📱 <b>Salom, {login_name}!</b>\n\n"
+            "Mobil ilovaga kirish uchun quyidagi tokenni nusxalab, "
+            "ilovadagi \"Token kiritish\" maydoniga joylang:\n\n"
+            f"<code>{token}</code>\n\n"
+            "⚠️ Bu tokenni boshqalarga bermang!",
+            parse_mode="HTML",
+        )
+        return
+
     # ── Mini App'dan kelgan Premium tugmasi (deep-link `premium` / `premium_<plan>`) ──
     # Foydalanuvchi Mini App Settings > Obunani uzaytirish'da tarifni bosdi va
     # bot chatiga o'tkazildi. Oddiy /start salomlashuvini o'tkazib yuborib,
