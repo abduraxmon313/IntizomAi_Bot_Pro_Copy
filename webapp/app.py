@@ -255,6 +255,16 @@ async def health():
     return {"status": "ok", "asset_version": ASSET_VERSION}
 
 
+@app.get("/privacy")
+async def privacy():
+    # Maxfiylik siyosati — App Store/Google Play uchun ochiq havola talab qilinadi.
+    return FileResponse(
+        STATIC_DIR / "privacy.html",
+        media_type="text/html",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
 @app.get("/")
 async def root():
     # index.html — har doim revalidatsiya (yangi deploy darhol ko'rinsin).
