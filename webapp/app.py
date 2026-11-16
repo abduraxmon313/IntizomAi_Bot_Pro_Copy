@@ -15,8 +15,7 @@ from webapp.routes import goals, plans, stats, subscription, ai, payments, habit
 from webapp.routes import app_auth
 from webapp.security import (
     MAX_BODY_BYTES,
-    RATE_LIMIT_MAX,
-    RATE_LIMIT_WINDOW,
+    rate_limit_key,
     rate_limited,
 )
 
@@ -191,19 +190,19 @@ app.add_middleware(
 async def security_middleware(request: Request, call_next):
     path = request.url.path
 
-    # Faqat API yo'llari uchun rate limit va payload tekshiruvi
-    if path.startswith("/api/"):
-        # Klient IP (proxy orqali bo'lsa X-Forwarded-For)
-        fwd = request.headers.get("x-forwarded-for", "")
-        client_ip = fwd.split(",")[0].strip() if fwd else (
-            request.client.host if request.client else "unknown"
-        )
-
-        # 1) Rate limiting
-        if rate_limited(client_ip):
+    # Faqat API yo'llari uchun rate limit va payload tekshiruvi.
+    # Avatar (profil rasm proksisi) rate-limitdan ozod — u keshlanadi, arzon va
+    # do'stlar ro'yxatida bir vaqtda ko'p yuklanadi (CGNAT ortida IP limitni
+    # yeb qo'ymasligi uchun).
+    if path.startswith("/api/") and not path.startswith("/api/webapp/avatar/"):
+        # 1) Rate limiting — kalit IMKON QADAR foydalanuvchi bo'yicha (CGNAT uchun).
+        key, limit = rate_limit_key(request)
+        retry_after = rate_limited(key, limit)
+        if retry_after:
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Juda ko'p so'rov. Biroz kuting."},
+                headers={"Retry-After": str(retry_after)},
             )
 
         # 2) Payload hajmi cheklovi (Content-Length orqali)
