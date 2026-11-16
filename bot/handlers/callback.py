@@ -1,3 +1,5 @@
+import html
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,8 +46,8 @@ async def habit_done_handler(callback: CallbackQuery, session: AsyncSession):
         pass
     try:
         await callback.message.edit_text(
-            f"✅ <b>{snap['title']}</b> bajarildi!\n\n"
-            f"⭐️ +{HABIT_DONE_SCORE} ball  ·  🔥 Streak: <b>{snap.get('streak', 0)} kun</b>\n\n"
+            f"✅ <b>{html.escape(snap['title'])}</b> bajarildi!\n\n"
+            f"⭐️ +{HABIT_DONE_SCORE} ball  ·  🔥 Seriya: <b>{snap.get('streak', 0)} kun</b>\n\n"
             "Zo'r! Davom eting 💪",
             parse_mode="HTML",
         )
@@ -104,9 +106,9 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
 
     try:
         lines = [
-            f"🎉 <b>{plan.title}</b> — bajarildi!",
+            f"🎉 <b>{html.escape(plan.title)}</b> — bajarildi!",
             "",
-            f"⭐️ +{reward.xp_gained} ball   ·   🔥 {reward.new_streak} kun streak",
+            f"⭐️ +{reward.xp_gained} ball   ·   🔥 {reward.new_streak} kun seriya",
             f"🏆 Jami: <b>{user.total_score}</b> ball   ·   💎 {reward.discipline_score}/100",
         ]
 
@@ -116,7 +118,7 @@ async def done_handler(callback: CallbackQuery, session: AsyncSession):
         if reward.perfect_day:
             extras.append(message_for_perfect_day())
         for ach in reward.new_unlocks:
-            extras.append(f"🏅 <b>Yangi yutuq:</b> {ach.title}")
+            extras.append(f"🏅 <b>Yangi yutuq:</b> {html.escape(ach.title)}")
 
         if extras:
             lines.append("")
@@ -166,7 +168,7 @@ async def failed_handler(callback: CallbackQuery, session: AsyncSession):
     reward = await process_plan_result_full(session, user, plan, is_done=False)
 
     text = (
-        f"🌙 <b>{plan.title}</b> — bu safar bo'lmadi.\n\n"
+        f"🌙 <b>{html.escape(plan.title)}</b> — bu safar bo'lmadi.\n\n"
         f"Zarari yo'q, muhimi — to'xtab qolmaslik.\n"
         f"🏆 Jami: <b>{user.total_score}</b> ball   ·   🔥 {user.streak} kun\n\n"
         f"💪 Ertaga yana imkoniyat bor!"
@@ -192,7 +194,7 @@ async def tomorrow_handler(callback: CallbackQuery, session: AsyncSession):
     new_plan = await move_plan_to_tomorrow(session, plan)
 
     await callback.message.edit_text(
-        f"📅 <b>{plan.title}</b> ertaga ko'chirildi!\n\n"
+        f"📅 <b>{html.escape(plan.title)}</b> ertaga ko'chirildi!\n\n"
         f"📌 Ertaga: {new_plan.plan_date.strftime('%d.%m.%Y')}\n"
         f"{f'🕐 {new_plan.scheduled_time}' if new_plan.scheduled_time else '🕐 Vaqtsiz'}\n\n"
         f"Ertaga eslataman! 💪",
@@ -215,7 +217,7 @@ async def continue_handler(callback: CallbackQuery, session: AsyncSession):
 
     await callback.message.edit_text(
         f"🔁 <b>A'lo!</b>\n\n"
-        f"📌 <b>{plan.title}</b> ertaga ham davom etadi!\n\n"
+        f"📌 <b>{html.escape(plan.title)}</b> ertaga ham davom etadi!\n\n"
         f"📅 Ertaga: {new_plan.plan_date.strftime('%d.%m.%Y')}\n"
         f"{f'🕐 {new_plan.scheduled_time}' if new_plan.scheduled_time else '🕐 Vaqtsiz'}\n\n"
         f"Ertaga ham eslataman! 🔥",

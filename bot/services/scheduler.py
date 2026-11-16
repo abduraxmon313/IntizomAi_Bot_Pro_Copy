@@ -7,6 +7,7 @@ never blocks the rest.
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 from datetime import datetime, timedelta
 
@@ -135,7 +136,7 @@ async def send_plan_notifications(bot):
                 bot, user,
                 (
                     f"⏰ <b>Vaqt bo'ldi!</b>\n\n"
-                    f"📌 <b>{plan.title}</b>\n"
+                    f"📌 <b>{html.escape(plan.title)}</b>\n"
                     f"🕐 {plan.scheduled_time}\n\n"
                     f"✅ Bajarsangiz <b>+{plan.score_value} ball</b>\n"
                     f"❌ Bajarmasangiz <b>-3 ball</b>"
@@ -188,7 +189,7 @@ async def send_streak_warning(bot):
             if user.last_completed_date == today:
                 continue
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔥 Streakni saqlash", callback_data="my_plans")],
+                [InlineKeyboardButton(text="🔥 Seriyani saqlash", callback_data="my_plans")],
             ])
             st = await _deliver(bot, user, message_for_streak_warning(user.streak), kb)
             if st == "blocked":
@@ -223,7 +224,7 @@ async def send_inactivity_comeback(bot):
             st = await _deliver(
                 bot, user,
                 message_for_comeback() +
-                f"\n\n💎 Sening eng yaxshi streaking: <b>{user.longest_streak} kun</b>",
+                f"\n\n💎 Sening eng uzun seriyang: <b>{user.longest_streak} kun</b>",
                 kb,
             )
             if st == "blocked":
@@ -321,9 +322,9 @@ async def send_daily_summary(bot):
                     f"🌙 <b>Kunlik hisobot</b>\n\n"
                     f"✅ Bajarildi: <b>{len(done)} ta</b>\n"
                     f"❌ Bajarilmadi: <b>{len(failed)} ta</b>\n"
-                    f"⏳ Eslatilmadi: <b>{len(pending)} ta</b>\n\n"
+                    f"⏳ Belgilanmagan: <b>{len(pending)} ta</b>\n\n"
                     f"⭐️ Jami ball: <b>{user.total_score or 0}</b>\n"
-                    f"🔥 Streak: <b>{user.streak} kun</b>\n"
+                    f"🔥 Seriya: <b>{user.streak} kun</b>\n"
                     f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
                     f"<i>Ertaga yana davom etamiz!</i>"
                 ),
@@ -378,7 +379,7 @@ async def check_pending_plans(bot):
             lines = []
             for p in plans[:15]:
                 tm = f" 🕐 {p.scheduled_time}" if p.scheduled_time else ""
-                lines.append(f"• <b>{p.title}</b>{tm}")
+                lines.append(f"• <b>{html.escape(p.title)}</b>{tm}")
             extra = f"\n…va yana {len(plans) - 15} ta" if len(plans) > 15 else ""
 
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -435,9 +436,9 @@ async def downgrade_expired_premium(bot):
             st = await _deliver(
                 bot, user,
                 "⌛️ <b>Premium obunangiz tugadi.</b>\n\n"
-                "Mini App va cheksiz imkoniyatlar yopildi.\n"
-                "Streakingizni va natijalaringizni yo'qotmaslik uchun "
-                "obunani yangilang 👇",
+                "Cheksiz rejalar, AI Coach va chuqur tahlil endi cheklangan.\n"
+                "Natijalaringiz va seriyangiz saqlanib qoladi — "
+                "to'liq davom etish uchun obunani yangilang 👇",
                 kb,
             )
             if st == "blocked":
@@ -501,7 +502,7 @@ async def send_habit_reminders(bot):
 
             lines = []
             for h in due[:12]:
-                lines.append(f"{h.icon or '✅'} <b>{h.title}</b>")
+                lines.append(f"{html.escape(h.icon or '✅')} <b>{html.escape(h.title)}</b>")
             extra = f"\n…va yana {len(due) - 12} ta" if len(due) > 12 else ""
 
             kb = None
@@ -571,7 +572,7 @@ async def send_habit_time_reminders(bot):
                     bot, user,
                     (
                         f"⏰ <b>Odat vaqti!</b>\n\n"
-                        f"{h.icon or '✅'} <b>{h.title}</b>\n\n"
+                        f"{html.escape(h.icon or '✅')} <b>{html.escape(h.title)}</b>\n\n"
                         "Bajardingizmi?"
                     ),
                     kb,
