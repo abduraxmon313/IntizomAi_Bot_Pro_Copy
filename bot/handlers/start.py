@@ -1,3 +1,4 @@
+import html
 import os
 
 from aiogram import Router, F
@@ -195,7 +196,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     if is_premium_start:
         # `name` bu blok ichida kerak (pastdagi standart oqimda aniqlanadi,
         # lekin biz erta `return` qilamiz — shu sabab bu yerda o'zimiz olamiz).
-        premium_name = (user.display_name or user.full_name or "do'st")
+        premium_name = html.escape(user.display_name or user.full_name or "do'st")
         # main reply keyboard'ni faqat yangi user uchun ko'rsatamiz (u hali
         # klaviaturani ko'rmagan bo'lishi mumkin). Keyin darhol Premium oynasi.
         if is_new or not user.onboarded:
@@ -233,7 +234,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     # Eslatma: 3 kunlik trial funksiyasi butunlay olib tashlangan. Bepul
     # Premium olishning yagona yo'li — do'st taklif qilish (referral bonusi).
 
-    name = (user.display_name or user.full_name or "do'st")
+    name = html.escape(user.display_name or user.full_name or "do'st")
 
     # ── Guruh taklifi orqali kelgan bo'lsa — BIRINCHI qilib guruhga qo'shilish
     # haqida xabar yuboramiz (foydalanuvchi darhol bilishi uchun), keyin
@@ -241,7 +242,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     if joined_group_name:
         try:
             await message.answer(
-                f"👥 <b>Siz «{joined_group_name}» guruhiga qo'shildingiz!</b>\n\n"
+                f"👥 <b>Siz «{html.escape(joined_group_name)}» guruhiga qo'shildingiz!</b>\n\n"
                 "Mini App'ning <b>Do'stlar</b> bo'limidan guruh a'zolarini "
                 "va ularning bugungi holatini ko'ring.",
                 parse_mode="HTML",
@@ -255,7 +256,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
             f"🎯 <b>Salom, {name}!</b>\n\n"
             "Men — <b>Intizom AI</b>.\n\n"
             "🗒 <b>Rejangizni yozing</b> → 🔔 <b>vaqtida eslataman</b> → "
-            "✅ <b>bajarganingizni kuzataman</b> → 🔥 <b>streakingizni saqlayman</b>.\n\n"
+            "✅ <b>bajarganingizni kuzataman</b> → 🔥 <b>seriyangizni saqlayman</b>.\n\n"
             "Bugundan boshlab bitta oddiy va'da: <b>har kuni kamida 1 ta narsa bajarish</b>."
         )
         await message.answer(welcome, parse_mode="HTML", reply_markup=main_reply_keyboard())
@@ -278,7 +279,7 @@ async def start_handler(message: Message, command: CommandObject, session: Async
     text = (
         f"🎯 <b>Xush kelibsiz, {name}!</b>\n\n"
         f"{emoji} <b>{rank}</b>  ·  {lvl}-daraja\n"
-        f"🔥 Streak: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
+        f"🔥 Seriya: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
         f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>\n\n"
         "Bugun nima qilamiz? 👇"
     )
@@ -385,13 +386,13 @@ async def home_handler(callback: CallbackQuery, session: AsyncSession):
 
     lvl, in_lvl, needed, pct = xp_progress(user.xp or 0)
     rank, emoji = rank_for_level(lvl)
-    name = user.display_name or user.full_name or "do'st"
+    name = html.escape(user.display_name or user.full_name or "do'st")
 
     await callback.message.edit_text(
         f"🏠 <b>Bosh sahifa</b>\n\n"
         f"{emoji} <b>{name}</b>\n"
         f"{rank}  ·  {lvl}-daraja\n\n"
-        f"🔥 Streak: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
+        f"🔥 Seriya: <b>{user.streak or 0} kun</b>   ⭐️ Ball: <b>{user.total_score or 0}</b>\n"
         f"💎 Intizom kuchi: <b>{user.discipline_score or 50}/100</b>",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),

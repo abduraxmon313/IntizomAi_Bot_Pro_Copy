@@ -63,9 +63,17 @@ INITDATA_MAX_AGE = int(os.getenv("INITDATA_MAX_AGE", 86400))  # 24 soat
 # So'rov tanasi maksimal hajmi (bayt)
 MAX_BODY_BYTES = int(os.getenv("MAX_BODY_BYTES", 1_500_000))  # 1.5 MB (avatar upload uchun)
 
-# Rate limit: bir IP uchun oynada ruxsat etilgan so'rovlar
-RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", 120))     # so'rov
-RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", 60))  # sekund
+# Rate limit. MUHIM: kalit IMKON QADAR foydalanuvchi bo'yicha olinadi
+# (Bearer JWT yoki initData'dan tasdiqlangan telegram_id), IP bo'yicha emas.
+# Sabab: O'zbekiston mobil operatorlari ko'p foydalanuvchini bitta tashqi IP
+# ortida (CGNAT) joylaydi — IP bo'yicha limit qo'yilsa, ular bir-birining
+# limitini "yeb" qo'yadi va "Juda ko'p so'rov" xatosi chiqadi.
+#   * Tasdiqlangan foydalanuvchi: RATE_LIMIT_MAX (bitta odam uchun keng).
+#   * Tasdiqlanmagan (anonim) so'rov: RATE_LIMIT_IP_MAX — bitta IP uchun
+#     yuqoriroq, chunki unda ko'p odam bo'lishi mumkin.
+RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_MAX", 240))        # foydalanuvchi/oyna
+RATE_LIMIT_IP_MAX = int(os.getenv("RATE_LIMIT_IP_MAX", 900))  # IP/oyna (anonim)
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", 60))   # sekund
 
 
 def _secret_key() -> bytes:
@@ -129,8 +137,43 @@ def extract_verified_telegram_id(init_data: str | None) -> int | None:
 _hits: dict[str, list[float]] = {}
 
 
-def rate_limited(client_key: str) -> bool:
-    """True qaytarsa — limit oshib ketgan (so'rovni rad etish kerak)."""
+def rate_limit_key(request: Request) -> tuple[str, int]:
+    """
+    So'rov uchun rate-limit kaliti va limitini aniqlaydi.
+
+    Tasdiqlangan foydalanuvchi bo'lsa — `u:<telegram_id>` (per-user limit).
+    Aks holda — `ip:<client_ip>` (anonim uchun yuqoriroq IP limit).
+    initData/JWT tekshiruvi arzon (HMAC) — har so'rovda qilish xavfsiz.
+    """
+    # 1) Mobil ilova: Bearer JWT
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        try:
+            from bot.services.app_auth import verify_app_token
+            tid = verify_app_token(auth[7:].strip())
+            if tid:
+                return f"u:{tid}", RATE_LIMIT_MAX
+        except Exception:
+            pass
+
+    # 2) Mini App: Telegram initData
+    init_data = request.headers.get("x-telegram-init-data")
+    if init_data:
+        tid = extract_verified_telegram_id(init_data)
+        if tid:
+            return f"u:{tid}", RATE_LIMIT_MAX
+
+    # 3) Anonim — IP bo'yicha (CGNAT uchun yuqori limit)
+    fwd = request.headers.get("x-forwarded-for", "")
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    return f"ip:{ip}", RATE_LIMIT_IP_MAX
+
+
+def rate_limited(client_key: str, limit: int = RATE_LIMIT_MAX) -> int:
+    """
+    Limit oshsa — nechchi sekunddan keyin qayta urinish mumkinligini (>=1)
+    qaytaradi; limit ichida bo'lsa 0 qaytaradi (so'rovga ruxsat).
+    """
     now = time.time()
     window_start = now - RATE_LIMIT_WINDOW
     bucket = _hits.get(client_key)
@@ -140,15 +183,16 @@ def rate_limited(client_key: str) -> bool:
     # eski yozuvlarni tozalaymiz
     while bucket and bucket[0] < window_start:
         bucket.pop(0)
-    if len(bucket) >= RATE_LIMIT_MAX:
-        return True
+    if len(bucket) >= limit:
+        retry_after = int(bucket[0] + RATE_LIMIT_WINDOW - now) + 1
+        return max(1, retry_after)
     bucket.append(now)
     # xotira o'smasligi uchun vaqti-vaqti bilan tozalash
     if len(_hits) > 5000:
         for k in list(_hits.keys()):
             if not _hits[k] or _hits[k][-1] < window_start:
                 _hits.pop(k, None)
-    return False
+    return 0
 
 
 
