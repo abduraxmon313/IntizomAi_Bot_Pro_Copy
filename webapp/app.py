@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from webapp.routes import goals, plans, stats, subscription, ai, payments, habits, profile, avatar, friends, config
 from webapp.routes import app_auth
+from webapp.routes import partner
 from webapp.security import (
     MAX_BODY_BYTES,
     rate_limit_key,
@@ -147,10 +148,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"trial cleanup skip: {type(e).__name__}: {e}")
 
+    # Mobil ilova backend'iga to'lov natijasini qayta yuborish sikli (partner API).
+    partner_task = None
+    from bot.config import PARTNER_ENABLED
+    if PARTNER_ENABLED:
+        from bot.services.partner_service import retry_loop
+        partner_task = asyncio.create_task(retry_loop())
+
     logger.info("🌐 FastAPI server tayyor")
     yield
 
-    for task in (bot_task, dilshodbek_task):
+    for task in (bot_task, dilshodbek_task, partner_task):
         if task is not None:
             task.cancel()
             try:
@@ -248,6 +256,8 @@ app.include_router(config.router, prefix="/api/webapp")
 app.include_router(app_auth.router, prefix="/api/webapp")
 # Paylov webhook — /webhook/paylov (prefiksiz, /api/ ostida emas)
 app.include_router(payments.router)
+# Mobil ilova backend'i uchun obuna sotish API'si — /partner/v1/* (HMAC imzo bilan)
+app.include_router(partner.router)
 
 
 @app.get("/health")

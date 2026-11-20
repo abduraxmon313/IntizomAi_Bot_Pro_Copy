@@ -248,6 +248,19 @@ PUBLIC_BASE_URL = (
     or _origin(WEBAPP_URL)
 ).rstrip("/")
 
+# ─────────────────────────────────────────────────────────────
+#  MOBIL ILOVA BACKEND'I (PARTNER) — obuna sotish ko'prigi
+# ─────────────────────────────────────────────────────────────
+# Ilova backend'i alohida Railway loyihada ishlaydi va o'z bazasiga ega. Paylov
+# shartnomasi/IP'lari shu bot serveriga bog'langani uchun, ilova to'lovni shu
+# yerdagi /partner/v1 API orqali boshlaydi. Ikkala tomonda ham BIR XIL kalitlar.
+PARTNER_APP_KEY = (os.getenv("PARTNER_APP_KEY") or "").strip()
+PARTNER_APP_SECRET = (os.getenv("PARTNER_APP_SECRET") or "").strip()
+# To'lov natijasi yuboriladigan manzil, masalan:
+# https://<ilova-backend>.up.railway.app/api/v1/internal/billing/callback
+PARTNER_APP_CALLBACK_URL = (os.getenv("PARTNER_APP_CALLBACK_URL") or "").strip()
+PARTNER_ENABLED = bool(PARTNER_APP_KEY and PARTNER_APP_SECRET)
+
 PAYLOV_WEBHOOK_PATH = "/webhook/paylov"
 # To'liq webhook URL (domen aniqlansa). Aniqlanmasa — faqat path.
 PAYLOV_WEBHOOK_URL = (
