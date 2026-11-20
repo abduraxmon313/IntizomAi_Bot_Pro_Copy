@@ -109,3 +109,21 @@ async def update_profile(
     await session.refresh(user)
 
     return _profile_payload(user)
+
+
+@router.delete("/profile")
+async def delete_profile(
+    telegram_id: int = Depends(resolve_telegram_id),
+    session: AsyncSession = Depends(get_session),
+):
+    """Hisobni va unga bog'liq barcha ma'lumotlarni butunlay o'chiradi."""
+    from bot.services.account_service import AccountDeletionForbidden, delete_account
+
+    user = await get_user_by_telegram_id(session, telegram_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+    try:
+        await delete_account(session, user)
+    except AccountDeletionForbidden as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    return {"ok": True}
