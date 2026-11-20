@@ -14,6 +14,7 @@ from .plan_override import SubscriptionPlanOverride
 from .bot_chat import BotChat
 from .app_setting import AppSetting
 from .app_login import AppLoginRequest
+from .partner_order import PartnerOrder, PartnerPromoRedemption
 
 __all__ = [
     "User", "Plan", "PlanStatus", "ScoreLog", "Admin", "Goal",
@@ -24,4 +25,5 @@ __all__ = [
     "BotChat",
     "AppSetting",
     "AppLoginRequest",
+    "PartnerOrder", "PartnerPromoRedemption",
 ]

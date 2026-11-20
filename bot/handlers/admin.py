@@ -163,6 +163,22 @@ async def admin_activate_payment_process(message: Message, state: FSMContext, se
     ref = (message.text or "").strip()
     order = await find_order(session, ref)
     if order is None:
+        # Mobil ilova buyurtmasi bo'lishi mumkin (partner_orders jadvali).
+        from bot.services import partner_service
+        p_order = await partner_service.find_order(session, ref)
+        if p_order is not None:
+            if p_order.status == "paid":
+                text = "ℹ Bu ilova to'lovi allaqachon faollashtirilgan."
+            else:
+                await partner_service.mark_paid(session, p_order)
+                text = (
+                    "✅ Ilova to'lovi faollashtirildi — Premium ilovada bir necha soniyada ochiladi.\n\n"
+                    f"👤 Ilova foydalanuvchisi: <code>{p_order.app_user_label or p_order.app_user_id}</code>\n"
+                    f"📦 Tarif: <b>{p_order.plan_key}</b> · {p_order.days} kun"
+                )
+            await message.answer(text, parse_mode="HTML", reply_markup=back_to_admin_keyboard())
+            await state.clear()
+            return
         await message.answer(
             "❌ Bunday buyurtma topilmadi.",
             reply_markup=back_to_admin_keyboard(),

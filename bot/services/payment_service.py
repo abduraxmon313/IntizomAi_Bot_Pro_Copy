@@ -246,6 +246,10 @@ async def process_webhook(payload: dict) -> dict:
         )).scalar_one_or_none()
 
         if order is None:
+            # Mobil ilova (partner) buyurtmasimi? — ular alohida jadvalda.
+            from bot.services.partner_service import handle_paylov_webhook
+            if await handle_paylov_webhook(session, payload, state_int):
+                return {"ok": True}
             logger.warning(f"Webhook: buyurtma topilmadi external_id={external_id}")
             return {"ok": True}
 
