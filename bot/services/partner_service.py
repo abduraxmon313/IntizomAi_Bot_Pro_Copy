@@ -20,6 +20,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import re
 import logging
 import secrets
 import time
@@ -49,6 +50,10 @@ logger = logging.getLogger(__name__)
 
 MAX_SKEW_MS = 5 * 60 * 1000
 MAX_NOTIFY_ATTEMPTS = 60
+# Ilova o'zi narx belgilaganda ruxsat etilgan oraliq (tiyin): 1 000 … 100 000 000 so'm.
+MIN_APP_AMOUNT_TIYIN = 1_000 * 100
+MAX_APP_AMOUNT_TIYIN = 100_000_000 * 100
+_PLAN_KEY_RE = re.compile(r"^[a-z0-9_]{1,16}$")
 
 
 class PartnerError(Exception):
@@ -147,6 +152,10 @@ async def catalog(session, promo_code: str | None) -> dict:
     }
 
 
+def _order_title(order: PartnerOrder) -> str:
+    return order.title or SUBSCRIPTION_PLANS.get(order.plan_key, {}).get("title", order.plan_key)
+
+
 def _external_id(order_id_hint: int) -> str:
     return f"izapp{order_id_hint}t{int(time.time())}r{secrets.token_hex(6)}"
 
@@ -179,7 +188,24 @@ async def create_order(session, body: dict) -> dict:
         raise PartnerError(422, "bad_request", "app_user_id noto'g'ri")
     if not client_ref:
         raise PartnerError(422, "bad_request", "client_ref yo'q")
-    if plan_key not in SUBSCRIPTION_PLANS:
+
+    # Ilova backend'i tarif, narx va promokodni o'zi boshqaradi (o'z bazasida) —
+    # imzolangan so'rovda tayyor summa va kunlarni yuboradi. Bot faqat Paylov ko'prigi.
+    app_priced = body.get("amount_tiyin") is not None
+    if app_priced:
+        try:
+            amount = int(body.get("amount_tiyin"))
+            days = int(body.get("days"))
+        except (TypeError, ValueError):
+            raise PartnerError(422, "bad_request", "amount_tiyin/days noto'g'ri")
+        if not (MIN_APP_AMOUNT_TIYIN <= amount <= MAX_APP_AMOUNT_TIYIN):
+            raise PartnerError(422, "bad_amount", "Summa ruxsat etilgan oraliqda emas")
+        if not (1 <= days <= 3650):
+            raise PartnerError(422, "bad_request", "days 1..3650 bo'lishi kerak")
+        if not _PLAN_KEY_RE.match(plan_key):
+            raise PartnerError(422, "plan_unknown", "Noma'lum tarif")
+        title = " ".join(str(body.get("title") or "").split())[:64] or None
+    elif plan_key not in SUBSCRIPTION_PLANS:
         raise PartnerError(422, "plan_unknown", "Noma'lum tarif")
     provider = str(body.get("provider") or PAYLOV_PROVIDER).strip().lower()
     if provider not in PAYLOV_PROVIDERS:
@@ -192,23 +218,31 @@ async def create_order(session, body: dict) -> dict:
         select(PartnerOrder).where(PartnerOrder.client_ref == client_ref)
     )).scalar_one_or_none()
     if existing is not None:
+        if app_priced and (int(existing.amount) != amount or int(existing.days) != days):
+            raise PartnerError(409, "client_ref_conflict", "Bu client_ref boshqa summa bilan band")
         return _public(existing)
 
-    promo_code = (body.get("promo_code") or "").strip() or None
-    bonus_days, discount = 0, 0
-    if promo_code:
-        res = await _validate_promo(session, promo_code)
-        if res.is_free:
-            raise PartnerError(422, "promo_free_at_checkout", "Bu promokod bepul Premium beradi")
-        bonus_days = int(res.bonus_days or 0)
-        discount = int(res.discount_percent or 0)
+    if app_priced:
+        # Promokod ilova bazasida hisoblangan — bot promokodlariga tegmaymiz.
+        promo_code = None
+        bonus_days = max(0, int(body.get("bonus_days") or 0))
+    else:
+        title = None
+        promo_code = (body.get("promo_code") or "").strip() or None
+        bonus_days, discount = 0, 0
+        if promo_code:
+            res = await _validate_promo(session, promo_code)
+            if res.is_free:
+                raise PartnerError(422, "promo_free_at_checkout", "Bu promokod bepul Premium beradi")
+            bonus_days = int(res.bonus_days or 0)
+            discount = int(res.discount_percent or 0)
 
-    plan = None
-    if discount > 0 and plan_key in ("1m", "3m"):
-        plan = get_discounted_plan(plan_key, discount)
-    plan = plan or get_effective_plan(plan_key) or SUBSCRIPTION_PLANS[plan_key]
-    amount = int(plan["price"]) * 100
-    days = int(SUBSCRIPTION_PLANS[plan_key]["days"]) + bonus_days
+        plan = None
+        if discount > 0 and plan_key in ("1m", "3m"):
+            plan = get_discounted_plan(plan_key, discount)
+        plan = plan or get_effective_plan(plan_key) or SUBSCRIPTION_PLANS[plan_key]
+        amount = int(plan["price"]) * 100
+        days = int(SUBSCRIPTION_PLANS[plan_key]["days"]) + bonus_days
 
     next_id = int(await session.scalar(select(func.coalesce(func.max(PartnerOrder.id), 0))) or 0) + 1
     order = PartnerOrder(
@@ -218,6 +252,7 @@ async def create_order(session, body: dict) -> dict:
         app_user_id=app_user_id,
         app_user_label=str(body.get("app_user_label") or "")[:64] or None,
         plan_key=plan_key,
+        title=title,
         days=days,
         bonus_days=bonus_days,
         promocode=promo_code,
@@ -292,6 +327,26 @@ async def redeem_promo(session, body: dict) -> dict:
     return {"days": days, "code": norm}
 
 
+async def export_promocodes(session) -> dict:
+    """Ilova admin paneli promokodlarni bir marta o'z bazasiga ko'chirishi uchun (faqat o'qish)."""
+    rows = (await session.execute(select(Promocode).order_by(Promocode.created_at))).scalars().all()
+    return {
+        "promocodes": [
+            {
+                "code": p.code,
+                "is_free": bool(p.is_free),
+                "bonus_days": int(p.bonus_days or 0),
+                "discount_percent": int(getattr(p, "discount_percent", 0) or 0),
+                "max_uses": int(p.max_uses or 0),
+                "used_count": int(p.used_count or 0),
+                "is_active": bool(p.is_active),
+                "expires_at": p.expires_at.isoformat() + "Z" if p.expires_at else None,
+            }
+            for p in rows
+        ]
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 #  Paylov webhooki (payment_service.process_webhook dan chaqiriladi)
 # ─────────────────────────────────────────────────────────────
@@ -363,7 +418,7 @@ async def mark_paid(session, order: PartnerOrder, payment_id=None) -> bool:
             pass
     try:
         from bot.services.payment_service import _notify_admin
-        title = SUBSCRIPTION_PLANS.get(order.plan_key, {}).get("title", order.plan_key)
+        title = _order_title(order)
         await _notify_admin(
             "📱 <b>Ilovadan to'lov</b>\n\n"
             f"👤 {order.app_user_label or order.app_user_id}\n"
@@ -382,7 +437,7 @@ async def _try_fiscalization(session, order: PartnerOrder) -> None:
         return
     try:
         from bot.services import paylov
-        title = SUBSCRIPTION_PLANS.get(order.plan_key, {}).get("title", order.plan_key)
+        title = _order_title(order)
         item = {
             "title": f"IntizomAI — {title} obuna",
             "price": int(order.amount // 100),

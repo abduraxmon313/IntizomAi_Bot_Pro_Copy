@@ -25,6 +25,8 @@ class PartnerOrder(Base):
     app_user_label = Column(String(64), nullable=True)  # admin xabarlari uchun (@username)
 
     plan_key = Column(String(16), nullable=False)
+    # Tarif nomi (chek va admin xabari uchun). Narxni ilova backend'i belgilaganda keladi.
+    title = Column(String(64), nullable=True)
     days = Column(Integer, nullable=False)              # tarif kunlari + promokod bonusi
     bonus_days = Column(Integer, default=0)
     promocode = Column(String(64), nullable=True)
