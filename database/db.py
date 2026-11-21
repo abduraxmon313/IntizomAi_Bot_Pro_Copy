@@ -89,6 +89,11 @@ PAYMENT_ORDER_NEW_COLUMNS = [
     ("pay_message_id", "BIGINT"),
 ]
 
+# partner_orders — ilova backend'i narxni o'zi belgilaganda tarif nomi.
+PARTNER_ORDER_NEW_COLUMNS = [
+    ("title", "VARCHAR(64)"),
+]
+
 # promocodes jadvali uchun yangi ustunlar.
 PROMOCODE_NEW_COLUMNS = [
     ("is_free", "BOOLEAN DEFAULT FALSE"),
@@ -197,6 +202,14 @@ async def _run_migrations(conn):
             )
         except Exception as e:
             logger.warning(f"Migration skip payment_orders.{col}: {e}")
+
+    for col, ddl in PARTNER_ORDER_NEW_COLUMNS:
+        try:
+            await conn.execute(
+                text(f'ALTER TABLE partner_orders ADD COLUMN IF NOT EXISTS {col} {ddl}')
+            )
+        except Exception as e:
+            logger.warning(f"Migration skip partner_orders.{col}: {e}")
 
     # promocodes uchun yangi ustunlar (is_free — `+`/`-` turi).
     for col, ddl in PROMOCODE_NEW_COLUMNS:

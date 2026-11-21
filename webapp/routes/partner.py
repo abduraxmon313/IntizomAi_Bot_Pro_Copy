@@ -83,3 +83,12 @@ async def redeem(request: Request):
             return await svc.redeem_promo(session, _json(body))
         except svc.PartnerError as e:
             return _err(e)
+
+
+@router.get("/promocodes")
+async def promocodes(request: Request):
+    """Ilova admin panelidagi "Botdan import" uchun — faqat o'qish."""
+    if await _auth(request) is None:
+        return _unauthorized()
+    async with AsyncSessionLocal() as session:
+        return await svc.export_promocodes(session)
