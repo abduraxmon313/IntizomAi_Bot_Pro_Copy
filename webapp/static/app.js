@@ -54,7 +54,8 @@ function applyUserName(nm){
   if(State.user)State.user.first_name=nm;
   State.displayName=nm;
   const ini=(nm[0]||'A').toUpperCase();
-  setText('userName',nm);setText('profName',nm);
+  setText('userName',(nm.split(/\s+/)[0]||nm));setText('profName',nm);
+  setText('greetText',greetingText());
   const hav=document.getElementById('hdrAv');const pav=document.getElementById('profAv');
   // Profil rasmi (Telegram bergan bo'lsa) — bo'lmasa ism birinchi harfi
   const photo=State.photoUrl;
@@ -62,6 +63,8 @@ function applyUserName(nm){
   if(pav){if(photo){pav.style.backgroundImage='url("'+photo+'")';pav.style.backgroundSize='cover';pav.style.backgroundPosition='center';pav.textContent='';}else{pav.style.backgroundImage='';pav.textContent=ini;}}
   const dsc=document.getElementById('editNameDsc');if(dsc)dsc.textContent='Joriy: '+nm;
 }
+// Toshkent vaqti bo'yicha salomlashish (ilovadagi bilan bir xil).
+function greetingText(){const h=(new Date().getUTCHours()+5)%24;if(h>=5&&h<11)return 'Xayrli tong';if(h>=11&&h<17)return 'Xayrli kun';if(h>=17&&h<23)return 'Xayrli kech';return 'Xayrli tun';}
 function initUser(){const u=tg?.initDataUnsafe?.user;if(u){State.telegramId=u.id;State.user=u;State.photoUrl=u.photo_url||null;}else{State.telegramId=parseInt(localStorage.getItem('iz_demo_id')||'12345',10);State.user={id:State.telegramId,first_name:'Foydalanuvchi',username:'demo'};State.photoUrl=null;}State.customPhotoUrl=null;
 const nm=State.user.first_name||'Foydalanuvchi';
 applyUserName(nm);
@@ -368,8 +371,8 @@ function renderHabits(){
     const notDue=!h.due_today||h.finished;
     const checkInner=h.finished?'🏁':(h.done_today?'✓':esc(h.icon||'✅'));
     // Meta chapdan: eslatma vaqti (bo'lsa), streak, takrorlanish, davomiylik.
-    const timeBadge=h.reminder_time?`<span class="hbadge">⏰ ${esc(h.reminder_time)}</span>`:'';
-    return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta">${timeBadge}<span class="hstreak">🔥 ${h.streak||0} kun</span><span class="hbadge">🔁 ${esc(m.rep)}</span><span class="hbadge">⏳ ${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;
+    const timeBadge=h.reminder_time?`<span class="hbadge">${esc(String(h.reminder_time).slice(0,5))}</span>`:'';
+    return `<div class="habit ${h.done_today?'done':''} ${h.finished?'finished':''}" data-id="${h.id}" style="animation-delay:${i*55}ms"><div class="hcheck" data-act="toggle" title="${notDue?'Bugun rejada yo\'q':'Bugun bajarildi'}">${checkInner}</div><div class="hbody"><div class="ttl">${esc(h.title)}</div><div class="meta">${timeBadge}<span class="hstreak">${FLAME_SVG}${h.streak||0} kun</span><span class="hbadge">${esc(m.rep)}</span><span class="hbadge">${esc(m.dur)}</span></div></div><div class="hactions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;
   }).join('');
   bindHabitActions();
 }
@@ -498,9 +501,23 @@ function renderHero(){
   setText('xpPctLabel',pct+'%');
   countUp('streakCount',streak);
   setText('todayStat',tDone+'/'+tTot);
+  // Kun holati kartasi (ilovadagi "Bugun" kartasi kabi): halqa — bugungi
+  // bajarilish foizi, yonida bitta aniq jumla.
+  const left=tTot-tDone;
+  const allDone=tTot>0&&left<=0;
+  const ratio=tTot?Math.min(1,tDone/tTot):0;
+  let dTitle,dText;
+  if(!State.snap){dTitle='Bugun';dText='Yuklanmoqda…';}
+  else if(!tTot){dTitle='Bugun bo\'sh kun';dText='Bitta reja qo\'shing — kun shundan boshlanadi.';}
+  else if(allDone){dTitle='Bugun hammasi bajarildi';dText='Ajoyib. Ertangi kunni rejalab qo\'ysangiz bo\'ladi.';}
+  else if(!tDone){dTitle='Bugun '+tTot+' ta ish bor';dText='Birinchisidan boshlang — qolgani osonlashadi.';}
+  else{dTitle=tTot+' tadan '+tDone+' tasi bajarildi';dText=left===1?'Yana bitta ish qoldi.':'Yana '+left+' ta ish qoldi.';}
+  setText('dayTitle',dTitle);setText('dayText',dText);
+  const pctEl=document.getElementById('dayPct');
+  if(pctEl){if(allDone){pctEl.innerHTML='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';pctEl.classList.add('ok');}else{pctEl.textContent=Math.round(ratio*100)+'%';pctEl.classList.remove('ok');}}
   const riskChip=document.getElementById('streakRiskChip');
-  if(riskChip){if(snap.streak_at_risk&&streak>=2){riskChip.classList.add('warn');riskChip.innerHTML='<span class="em">⚠️</span> Streak xavf ostida';}else{riskChip.classList.remove('warn');riskChip.innerHTML='<span class="em">📋</span> '+tDone+'/'+tTot+' bugun';}}
-  setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const C=2*Math.PI*42;const ring=document.getElementById('dsRing');if(ring)ring.setAttribute('stroke-dashoffset',String(C*(1-ds/100)));countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');const dv=document.getElementById('dsValue');if(dv){dv.classList.remove('pop');void dv.offsetWidth;dv.classList.add('pop');}},120);
+  if(riskChip){const risk=!!(snap.streak_at_risk&&streak>=2);riskChip.classList.toggle('warn',risk);setText('streakLabel',risk?'xavf ostida':'seriya');}
+  setTimeout(()=>{const xb=document.getElementById('xpBar');if(xb)xb.style.width=pct+'%';const ring=document.getElementById('dsRing');if(ring){const C=2*Math.PI*(+ring.getAttribute('r')||44);ring.setAttribute('stroke-dasharray',String(C));ring.setAttribute('stroke-dashoffset',String(C*(1-ratio)));}countUp('dsValue',ds);countUp('totalXpLabel',(snap.xp||0),' XP');},120);
 }
 
 async function loadSnapshot(){try{const s=await api('/api/webapp/stats');State.snap=s;const totalScore=(s.total_score!=null?s.total_score:s.xp)||0;State.user=Object.assign({},State.user||{},{streak:s.streak,total_score:totalScore});const _rawShown=localStorage.getItem('iz_shown_achs');const _firstRun=(_rawShown===null);let shownAchs;try{shownAchs=new Set(JSON.parse(_rawShown||'[]'));}catch(_){shownAchs=new Set();}const newAchs=[];(s.achievements||[]).forEach(a=>{if(!shownAchs.has(a.code)){if(!_firstRun)newAchs.push(a);shownAchs.add(a.code);}});try{localStorage.setItem('iz_shown_achs',JSON.stringify([...shownAchs]));}catch(_){}State.knownAchs=shownAchs;renderHero();if(newAchs.length){newAchs.forEach((a,i)=>setTimeout(()=>showUnlock(a),i*900));}maybePeakUpsell(s);setText('pfStreak',s.streak||0);setText('stStreak',s.streak||0);setText('msScore',totalScore);setText('pfScore',totalScore);setText('stTotal',totalScore);}catch(e){console.warn('snapshot',e);}}
@@ -575,7 +592,7 @@ function openPaywall(){
   const cta=document.getElementById('pwCta');
   // Sarlavha: "IntizomAi Premium 💎" — 💎 sarlavha yonida, subtitle yo'q.
   if(h)h.innerHTML='IntizomAi <span class="pw-pro">Premium</span> <span class="pw-title-gem" aria-hidden="true">💎</span>';
-  if(cta)cta.textContent = isPremium ? '💳 Uzaytirish' : '💎 Tarifni tanlash';
+  if(cta)cta.textContent = isPremium ? 'Uzaytirish' : 'Tarifni tanlash';
   // Tariflar tugmalari — bosilganda to'g'ridan-to'g'ri checkoutga o'tadi.
   renderPaywallPlans(State.sub&&State.sub.plans);
   ov.classList.add('show');
@@ -745,7 +762,7 @@ function applyPremiumUI(s){
     if(icon)icon.textContent='🆓';
     if(title)title.textContent='Bepul rejim';
     if(sub)sub.textContent='Premium bilan barcha imkoniyatlar ochiladi.';
-    if(cta){cta.style.display='';cta.textContent='💎 Premium olish';}
+    if(cta){cta.style.display='';cta.textContent='Premium olish';}
     if(bar)bar.style.width='0%';
   }
 }
@@ -816,14 +833,17 @@ function xpPop(amount){const el=document.createElement('div');el.className='xp-p
 
 
 const HABIT_SCORE=5;
-function planRowHTML(p,i){return `<div class="plan ${p.status==='done'?'done':''}" data-id="${p.id}" style="animation-delay:${i*60}ms"><div class="cbx ${p.status==='done'?'done':''}" data-act="toggle">${p.status==='done'?'✓':''}</div><div class="body"><div class="ttl">${esc(p.title)}</div><div class="meta">${p.scheduled_time||'Vaqt yo\'q'}${p.description?' • '+esc(p.description):''}</div></div><div class="score">+${p.score_value||0}</div><div class="actions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="del" data-act="del" aria-label="O'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M19 6l-2 14H7L5 6m5 4v6m4-6v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></div></div>`;}
+// Ilovadagi TaskRow kabi qator: yumaloq belgi, nom + izoh, o'ngda vaqt.
+const CHECK_SVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const FLAME_SVG='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>';
+const ROW_ACTIONS='<div class="actions"><button class="edit" data-act="edit" aria-label="Tahrirlash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button><button class="del" data-act="del" aria-label="O\'chirish"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button></div>';
+function planRowHTML(p,i){const done=p.status==='done';const t=p.scheduled_time?String(p.scheduled_time).slice(0,5):'';return `<div class="plan ${done?'done':''}" data-id="${p.id}"><div class="cbx ${done?'done':''}" data-act="toggle" role="checkbox" aria-checked="${done}">${done?CHECK_SVG:''}</div><div class="body"><div class="ttl">${esc(p.title)}</div>${p.description?`<div class="meta">${esc(p.description)}</div>`:''}</div>${t?`<div class="time">${esc(t)}</div>`:''}${ROW_ACTIONS}</div>`;}
 function habitRowHTML(h,i){
   const done=h.done_today;
-  // Eslatma vaqti bo'lsa ⏰ vaqt, bo'lmasa takrorlanish (🔁) ko'rsatiladi —
-  // shunda vaqtsiz odatlar ham asosiy sahifada ma'noli ko'rinadi.
-  const freqLabel=(h.frequency==='weekly')?'Haftalik':'Har kuni';
-  const timePart=h.reminder_time?('⏰ '+esc(h.reminder_time)):('🔁 '+freqLabel);
-  return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}" style="animation-delay:${i*60}ms"><div class="cbx ${done?'done':''}" data-act="htoggle">${done?'✓':''}</div><div class="body"><div class="ttl">${esc(h.icon||'✅')} ${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">${timePart}  ·  🔥 ${h.streak||0} kun</div></div><div class="score">+${HABIT_SCORE}</div></div>`;
+  const freqLabel=(h.frequency==='weekly')?'Tanlangan kunlar':'Har kuni';
+  const t=h.reminder_time?String(h.reminder_time).slice(0,5):'';
+  const st=h.streak||0;
+  return `<div class="plan habit-row ${done?'done':''}" data-hid="${h.id}"><div class="cbx ${done?'done':''}" data-act="htoggle" role="checkbox" aria-checked="${!!done}">${done?CHECK_SVG:''}</div><div class="body"><div class="ttl">${esc(h.title)}<span class="htag">Odat</span></div><div class="meta">${freqLabel}</div></div>${st>0?`<div class="streak">${FLAME_SVG}${st}</div>`:''}${t?`<div class="time">${esc(t)}</div>`:''}</div>`;
 }
 function renderPlans(){
   const w=document.getElementById('plansList');if(!w)return;
@@ -990,7 +1010,7 @@ function renderAchs(){const st=State.user?.streak||0;const sc=State.user?.total_
 // Bajarilgan rejalar tarixi — olib tashlandi (UI juda uzun bo'lib ketardi)
 async function renderHistory(){}
 
-const THEMES=[{k:'default',n:'Asl holat',g:'linear-gradient(135deg,#14b8a6,#06b6d4)'},{k:'sprout',n:'Sprout',g:'linear-gradient(135deg,#22c55e,#84cc16)'},{k:'spectrum',n:'Spectrum',g:'linear-gradient(135deg,#f43f5e,#8b5cf6,#06b6d4)'},{k:'gamma',n:'Gamma',g:'linear-gradient(135deg,#a855f7,#7c3aed)'},{k:'atmosphere',n:'Atmosphere',g:'linear-gradient(135deg,#0ea5e9,#6366f1)'},{k:'gold',n:'Gold Leaf',g:'linear-gradient(135deg,#f5d76e,#d4a017)'}];
+const THEMES=[{k:'default',n:'Asl holat',g:'#0B7C9B'},{k:'sprout',n:'Sprout',g:'#16a34a'},{k:'spectrum',n:'Spectrum',g:'#db2777'},{k:'gamma',n:'Gamma',g:'#7c3aed'},{k:'atmosphere',n:'Atmosphere',g:'#2563eb'},{k:'gold',n:'Gold Leaf',g:'#b7791f'}];
 // Tema tanlash — faqat Premium foydalanuvchilar uchun.
 // Bepul foydalanuvchi tugmani bosa, temani o'zgartirmaymiz va paywall'ni ochamiz.
 // (Faol tema (State.theme) old-oldindan localStorage'dan yuklanadi, shuning uchun
@@ -1017,7 +1037,13 @@ function renderThemes(){
   });
 }
 
-function applyMode(){document.documentElement.setAttribute('data-mode',State.mode);document.getElementById('darkToggle').classList.toggle('on',State.mode==='dark');document.getElementById('modeIcon').textContent=State.mode==='dark'?'🌙':'☀️';}
+function applyMode(){document.documentElement.setAttribute('data-mode',State.mode);const dt=document.getElementById('darkToggle');if(dt)dt.classList.toggle('on',State.mode==='dark');
+  // Telegram oynasining sarlavha va fon ranglari ilova fon rangiga moslanadi.
+  const dark=State.mode==='dark';
+  try{tg?.setHeaderColor?.(dark?'#0A0F14':'#F4F6F8');}catch(_){}
+  try{tg?.setBackgroundColor?.(dark?'#0A0F14':'#F4F6F8');}catch(_){}
+  try{tg?.setBottomBarColor?.(dark?'#121920':'#FFFFFF');}catch(_){}
+}
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
@@ -1075,7 +1101,7 @@ async function premiumRequiredDialog(opts){
     icon:opts.icon||'💎',
     title:opts.title||'Faqat Premium foydalanuvchilar uchun',
     message:opts.message||'Bu bo\'limdan foydalanish uchun Premium olishingiz kerak.',
-    okText:'💎 Premium olish',
+    okText:'Premium olish',
     cancelText:'Orqaga',
     okKind:'premium',
   });
@@ -2113,7 +2139,10 @@ function switchPage(n){
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===n));
   // Statistika endi pastki nav'da yo'q — u tepadagi header tugmasi orqali ochiladi.
   // Shuning uchun 'stats' navi bo'sh; 'friends' aksincha 'friends' nav'iga mos.
-  document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===n));
+  // Ilovadagidek: Do'stlar — Natijalar ichidagi bo'lim, Profil — Bugun sahifasi ortida.
+  const navKey=n==='friends'?'stats':(n==='profile'?'home':n);
+  document.querySelectorAll('.nav-item, .nav-ai').forEach(x=>x.classList.toggle('active',x.dataset.nav===navKey));
+  window.scrollTo(0,0);
   if(n==='stats'){renderStats();loadStatsHabits();applyStatsView();}
   if(n==='goals'){renderGoalsView();requestAnimationFrame(moveGoalSegInd);}
   if(n==='habits')loadHabitsAPI();
@@ -2147,6 +2176,11 @@ document.addEventListener('DOMContentLoaded',()=>{
       icon:'👥',
       title:'Do\'stlar bo\'limi 👥',
       message:'Do\'stlar bo\'limi faqatgina Premium foydalanuvchilar uchun.',
+    }))return;
+    if(target==='stats'&&premiumGate({
+      icon:'📊',
+      title:'Natijalar',
+      message:'Statistika bo\'limi faqatgina Premium foydalanuvchilar uchun.',
     }))return;
     if(target==='ai'&&premiumGate({
       icon:'✨',
@@ -2182,7 +2216,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       openModal(gp,pk);
     };
   });
-  document.getElementById('modeBtn').onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
+  const _modeBtn=document.getElementById('modeBtn');if(_modeBtn)_modeBtn.onclick=()=>{State.mode=State.mode==='dark'?'light':'dark';localStorage.setItem('iz_mode',State.mode);applyMode();toast(State.mode==='dark'?'🌙 Tungi rejim':'☀️ Kunduzgi rejim');};
   // Settings (sozlamalar) tugmasi va profil rasmi -> Profil sahifasi
   const _setBtn=document.getElementById('settingsBtn');if(_setBtn)_setBtn.onclick=()=>switchPage('profile');
   const _hdrAv=document.getElementById('hdrAv');if(_hdrAv)_hdrAv.onclick=()=>switchPage('profile');
@@ -2263,7 +2297,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#habitViewSeg .hvs').forEach(it=>it.onclick=()=>{State.habitView=it.dataset.hv;renderHabitsPage();});
   const _tp=document.getElementById('trkPrev');if(_tp)_tp.onclick=()=>{State.trackerWeekStart=addDays(State.trackerWeekStart||startOfWeek(new Date()),-7);renderTracker();};
   const _tn=document.getElementById('trkNext');if(_tn)_tn.onclick=()=>{const ns=addDays(State.trackerWeekStart||startOfWeek(new Date()),7);if(ymd(ns)<=ymd(startOfWeek(new Date()))){State.trackerWeekStart=ns;renderTracker();}};
-  document.querySelectorAll('#statsSeg .hvs').forEach(it=>it.onclick=()=>{State.statsView=it.dataset.sv;applyStatsView();});
+  // Natijalar: Shaxsiy / Do'stlar / Reyting (ilovadagi kabi). Do'stlar alohida
+  // sahifa, lekin bir xil segment orqali ochiladi.
+  document.querySelectorAll('#statsSeg .hvs, #friendsSeg .hvs').forEach(it=>it.onclick=()=>{
+    const v=it.dataset.sv;
+    if(v==='friends'){
+      if(premiumGate({icon:'👥',title:'Do\'stlar',message:'Do\'stlar bo\'limi faqatgina Premium foydalanuvchilar uchun.'}))return;
+      switchPage('friends');return;
+    }
+    State.statsView=v;
+    if(!document.querySelector('.page[data-page="stats"]').classList.contains('active'))switchPage('stats');
+    else applyStatsView();
+  });
+  const _pBack=document.getElementById('profileBack');if(_pBack)_pBack.onclick=()=>switchPage('home');
   document.querySelectorAll('#lbSeg .hvs').forEach(it=>it.onclick=()=>{State.lbPeriod=it.dataset.lb;loadLeaderboard();});
   // Ism tahrirlash wiring
   const _ens=document.getElementById('editNameSetting');if(_ens)_ens.onclick=openNameModal;
